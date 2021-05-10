@@ -6,7 +6,7 @@ This repository is an implementation of the fair federated algorithm discussed i
     Apr. 30, 2021. 
     https://arxiv.org/abs/2104.14937
 ```
-And everyone can use the experimental platform to quickly realize and compare popular centralized federated learning algorithms.
+And everyone can use this experimental platform to quickly realize and compare popular centralized federated learning algorithms.
 
 ## Abstract
  Fairness has emerged as a critical problem in federated learning (FL). In this work, we identify a cause of unfairness in FL -- *conflicting* gradients with large differences in the magnitudes. To address this issue, we propose the federated fair averaging (FedFV) algorithm to mitigate potential conflicts among clients before averaging their gradients. We first use the cosine similarity to detect gradient conflicts, and then iteratively eliminate such conflicts by modifying both the direction and the magnitude of the gradients. We further show the theoretical foundation of FedFV to mitigate the issue conflicting gradients and converge to Pareto stationary solutions. Extensive  experiments on a suite of federated datasets confirm that FedFV compares favorably against state-of-the-art methods in terms of fairness, accuracy and efficiency.
@@ -56,6 +56,10 @@ The whole FL system starts with the `main.py`, which runs `server.run()` after i
 #### Client
 The clients reponse to the server after the server `communicate` with them, and then train the model with its local dataset by the method `train()`., which can be changed as need. After training the model, the clients can send anything(e.g. loss, gradient,... ) to the server through the method `reply()`.     
 ### Task
+We define each task as a combination of the `dataset`, the coresponding model, and the basic loss function. The raw dataset is processed into .json file, following LEAF(). The architechture of the .json file is decribed as below:
+
+Since the task-specified models are usually orthogonal to the FL algorithms, we don't consider it an important part in this system. And the model and the basic loss function are defined in ./task/dataset_name/model_name.py.
 ### utils
+This module is for the initialization and outputting the results.
 
 
