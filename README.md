@@ -20,7 +20,18 @@ torchvision=0.4.2
 cvxopt=1.2.0 (is required for fedmgda+)
 ```
 ## Quick Start
+Try to run the cmd to quickly get a result of the basic algorithm FedAvg on the mnist.  
+```
+python main.py --method fedavg --dataset mnist --model cnn --num_rounds 20
+```
+The result will be stored in ./task/mnist/record/.
 ### Options
+* `dataset` is the benchmark and there are three datasets including 'cifar10', 'mnist' and 'femnist'.
+*  `model` should be the corresponding model of the dataset and is defined under the path ./task/dataset_name/model_name.py.
+* `method` is to choose the FL algorithm to run the experiments. Each method is realized in ./method/method_name.py.
+## Usages
+### Method
+### Task
+### utils
 
-### task
-The 
+
