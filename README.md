@@ -26,9 +26,27 @@ python main.py --method fedavg --dataset mnist --model cnn --num_rounds 20
 ```
 The result will be stored in ./task/mnist/record/.
 ### Options
+Basic Settings:
 * `dataset` is the benchmark and there are three datasets including 'cifar10', 'mnist' and 'femnist'.
-*  `model` should be the corresponding model of the dataset and is defined under the path ./task/dataset_name/model_name.py.
+* `model` should be the corresponding model of the dataset and is defined under the path ./task/dataset_name/model_name.py.
 * `method` is to choose the FL algorithm to run the experiments. Each method is realized in ./method/method_name.py.
+Options in server-side:
+* `sample` decides the way to sample clients in each round('uniform' means uniformly/'prob' means choosing with probility)
+* `aggregate` decides the way to aggregate clients' model. The details are in ./method/fedbase.BaseServer.aggregate.
+* `num_rounds` is the number of communication rounds.
+* `proportion` is the proportion of clients to be selected in each round.
+Options in client-side:
+* `num_epochs` is the number of local training epochs.
+* `learning_rate` is the step size when locally training.
+* `batch_size` is the size of one batch data during local training. 
+* `optimizer` chosen from 'SGD'|'Adam'.
+* `momentum` is the ratio of the momentum item when the optimizer SGD taking each step.
+Other settings:
+* `seed` is for random initialization.
+* `gpu` is the number of the device.
+* `eval_interval` controls the interval between every two evaluations.
+Additional hyper-parameters(etc. alpha,tau for fedfv)
+* each parameter can be defined easily in ./utils/tools.read_option 
 ## Usages
 ### Method
 ### Task
