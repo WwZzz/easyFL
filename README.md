@@ -60,23 +60,14 @@ The clients reponse to the server after the server `communicate` with them, and 
 We define each task as a combination of the `dataset`, the coresponding model, and the basic loss function. The raw dataset is processed into .json file, following LEAF(). The architechture of the .json file is decribed as below:  
 ```
 {    
-
 "users":[],                             // List of str. A list of strings that records users'names
-
 "user_data":                            // Dict. A dict of dataset which is devided by users. The key is str, and the value is also a dict which records the features and coresponding labels.  
-
     {  
-    
-        user1_name:{"x":[],"y":[]},     
-        
+        user1_name:{"x":[],"y":[]},      
         ...,  
-        
-        userN_name:{"x":[],"y":[]}  
-        
+        userN_name:{"x":[],"y":[]}      
     },  
-    
 "num_samples":[]                       //List of integer. A list of the sizes of dataset of users  
-
 }
 ```
 Since the task-specified models are usually orthogonal to the FL algorithms, we don't consider it an important part in this system. And the model and the basic loss function are defined in ./task/dataset_name/model_name.py.
