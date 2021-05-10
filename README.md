@@ -46,9 +46,15 @@ Other settings:
 * `gpu` is the number of the device.
 * `eval_interval` controls the interval between every two evaluations.
 Additional hyper-parameters(etc. alpha,tau for fedfv)
-* each parameter can be defined easily in ./utils/tools.read_option 
+* Each additional parameter can be defined easily in ./utils/tools.read_option 
 ## Usages
+We seperate the FL system into mainly three parts: `method`, `task` and `utils`.
 ### Method
+#### Server
+Each method contains two classes: the `Server` and the `Client`. 
+The whole FL system starts with the `main.py`, which runs `server.run()` after initialization. Then the server repeatedly performs the method `iterate()` for `num_rounds` times, which represents each communication round. In the `iterate()`, the BaseServer firstly selects some clients by the method `select()`, and then sends and receives the privacy-preserving infomation through the method `communicate()`, and finally aggregate the models updated by clients with into the new model `aggregate()`. Therefore, anyone who wants to diy its own method that specifies some operations on the server-side should rewrite the method `iterate()` and methods called by it.
+#### Client
+The clients reponse to the server after the server `communicate` with them, and then train the model with its local dataset by the method `train()`., which can be changed as need. After training the model, the clients can send anything(e.g. loss, gradient,... ) to the server through the method `reply()`.     
 ### Task
 ### utils
 
