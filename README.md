@@ -63,7 +63,7 @@ We define each task as a combination of the `dataset`, the coresponding model, a
 
 "users":[],                             // List of str. A list of strings that records users'names
 
-"user_data":                            // Dict. A dict of dataset which is devided by users. The key is str, and the value is also a dict which records the features and                                                   //coresponding labels.  
+"user_data":                            // Dict. A dict of dataset which is devided by users. The key is str, and the value is also a dict which records the features and coresponding labels.  
 
     {  
     
