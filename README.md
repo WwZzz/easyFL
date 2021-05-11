@@ -70,6 +70,9 @@ We define each task as a combination of the `dataset`, the coresponding model, a
 "num_samples":[]                       //List of integer. A list of the sizes of dataset of users  
 }
 ```
+
+The raw dataset should be download into ./task/dataset_name/data/raw_data, and then run the file `./task/dataset_name/data/create_dataset.py` to get the splited dataset(.json file). The training-data is in ./task/dataset_name/data/train, and the testing-data is in ./task/dataset_name/data/test.
+
 Since the task-specified models are usually orthogonal to the FL algorithms, we don't consider it an important part in this system. And the model and the basic loss function are defined in ./task/dataset_name/model_name.py.
 ### utils
 This module is for the initialization and outputting the results.
