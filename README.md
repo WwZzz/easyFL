@@ -20,7 +20,7 @@ torchvision=0.4.2
 cvxopt=1.2.0 (is required for fedmgda+)
 ```
 ## Quick Start
-First, `cd ./task/mnist/data` and run the file `create_dataset.py` to get the splited dataset mnist.
+First, `cd ./task/mnist/data` in the shell and run the file `create_dataset.py` to get the splited dataset mnist.
 Then run the cmd below to quickly get a result of the basic algorithm FedAvg on the mnist.  
 ```
 python main.py --method fedavg --dataset mnist --model cnn --num_rounds 20
