@@ -49,7 +49,7 @@ Other settings:
 Additional hyper-parameters(etc. alpha,tau for fedfv)
 * Each additional parameter can be defined easily in ./utils/tools.read_option 
 ## Usages
-We seperate the FL system into mainly three parts: `method`, `task` and `utils`.
+We seperate the FL system into three parts: `method`, `task` and `utils`.
 ### Method
 ![](fig_1.jpg)
 #### Server
