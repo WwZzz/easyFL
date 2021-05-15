@@ -76,6 +76,6 @@ The raw dataset should be download into ./task/dataset_name/data/raw_data, and t
 
 Since the task-specified models are usually orthogonal to the FL algorithms, we don't consider it an important part in this system. And the model and the basic loss function are defined in ./task/dataset_name/model_name.py.
 ### utils
-This module is for the initialization and outputting the results.
+This module is for the initialization and outputting the results. To get the tables and figures in the article, please run the file ./utils/data_analysis.py to visualize the results. Each result is stored in ./task/dataset_name/record.
 
 
