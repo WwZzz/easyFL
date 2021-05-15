@@ -138,7 +138,6 @@ class BaseClient():
         self.epochs = option['num_epochs']
         self.learning_rate = option['learning_rate']
         self.batch_size = option['batch_size']
-        self.regularzation = option['regularzation']
         self.momentum = option['momentum']
         self.model = None
 
