@@ -58,7 +58,7 @@ The whole FL system starts with the `main.py`, which runs `server.run()` after i
 #### Client
 The clients reponse to the server after the server `communicate` with them, and then train the model with its local dataset by the method `train()`., which can be changed as need. After training the model, the clients can send anything(e.g. loss, gradient,... ) to the server through the method `reply()`.     
 ### Task
-We define each task as a combination of the `dataset`, the coresponding model, and the basic loss function. The raw dataset is processed into .json file, following LEAF(). The architechture of the .json file is decribed as below:  
+We define each task as a combination of the `dataset`, the coresponding model, and the basic loss function. The raw dataset is processed into .json file, following LEAF(https://github.com/TalwalkarLab/leaf). The architechture of the .json file is decribed as below:  
 ```
 {    
 "users":[],                             // List of str. A list of strings that records users'names
