@@ -1,9 +1,9 @@
 # Federated Learning with Fair Averaging 
-This repository is an implementation of the fair federated algorithm discussed in
+This repository is an implementation of the fair federated learning algorithm (which is recently accepted by IJCAI 2021 conference) discussed in https://ijcai-21.org
 ```
-    Zheng Wang, Xiaoliang Fan, Jianzhong Qi, Chenglu Wen, Cheng Wang and Rongshan Yu
-    Federated Learning with Fair Averaging (ijcai-2021), 
-    Apr. 30, 2021. 
+    Zheng Wang, Xiaoliang Fan, Jianzhong Qi, Cheng Wang, Chenglu Wen and Rongshan Yu,
+    Federated Learning with Fair Averaging, 
+    The 30th International Joint Conference on Artificial Intelligence (IJCAI21), August 21-26, 2021.
     https://arxiv.org/abs/2104.14937
 ```
 And everyone can use this experimental platform to quickly realize and compare popular centralized federated learning algorithms.
