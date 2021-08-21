@@ -77,21 +77,21 @@ python result_analysis.py
    </tr>
    <tr>
       <td>0.1</td>
-      <td>339  / 203</td>
+      <td>339  /  203</td>
       <td>18  /  18 </td>
       <td>1100  / </td>
-      <td>206  / 107</td>
+      <td>206  /  107</td>
    </tr>
    <tr>
       <td>0.2</td>
-      <td>337  / 207</td>
+      <td>337  /  207</td>
       <td>18  /  19 </td>
       <td>978  / </td>
       <td>200  / </td>
    </tr>
    <tr>
       <td>0.5</td>
-      <td>164  / </td>
+      <td>164  /  214</td>
       <td>18  /  18 </td>
       <td>1067  / </td>
       <td>261  / </td>
