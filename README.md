@@ -61,7 +61,6 @@ python result_analysis.py
       <td colspan="2">non-iid</td>
    </tr>
    <tr>
-      <td></td>
       <td>B=full batchszie</td>
       <td>B=10</td>
       <td>B=full batchszie</td>
