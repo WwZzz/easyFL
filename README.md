@@ -104,6 +104,8 @@ python result_analysis.py
       <td>97  / </td>
    </tr>
 </table>
+
+
 ### Options
 
 Basic options:
@@ -156,7 +158,7 @@ Additional hyper-parameters for particular federated algorithms:
 * `mu` is the parameter for FedProx.
 * `alpha` is the parameter for FedFV.
 * `tau` is the parameter for FedFV.
-...
+* ...
 
 Each additional parameter can be defined in `./utils/fflow.read_option`
 
