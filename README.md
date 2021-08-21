@@ -1,6 +1,6 @@
 # easyFL: A Simple Framework for Federated Learning
 
-This repository is PyTorch implementation for paper [Federated Learning  with Fair Averaging](https://arxiv.org/abs/2104.14937) which is accepted by IJCAI-21 Conference.
+This repository is PyTorch implementation for paper [Federated Learning with Fair Averaging](https://arxiv.org/abs/2104.14937) which is accepted by IJCAI-21 Conference.
 
 Our easyFL is a strong and reusable experimental platform for research on federated learning (FL) algorithm. It is easy for FL-beginner to quickly realize and compare popular centralized federated learning algorithms.
 
@@ -15,14 +15,14 @@ Our easyFL is a strong and reusable experimental platform for research on federa
 The model is implemented using Python3 with dependencies below:
 
 ```
-numpy==1.17.2
-pytorch==1.3.1
-torchvision==0.4.2
-cvxopt==1.2.0
-scipy==1.3.1
-matplotlib==3.1.1
-prettytable==2.1.0
-ujson==4.0.2
+numpy>=1.17.2
+pytorch>=1.3.1
+torchvision>=0.4.2
+cvxopt>=1.2.0
+scipy>=1.3.1
+matplotlib>=3.1.1
+prettytable>=2.1.0
+ujson>=4.0.2
 ```
 
 ## QuickStart
@@ -31,7 +31,7 @@ ujson==4.0.2
 
 ```sh
 # generate the splited dataset
-python gen_task.py
+python generate_fedtask.py
 ```
 
 **Second**, run the command below to quickly get a result of the basic algorithm FedAvg on MNIST with a simple CNN:
@@ -99,10 +99,11 @@ Other options:
 
 * `drop` controls the dropout of clients after being selected in each communication round according to distribution Beta(drop,1). The larger this term is, the more possible for clients to drop.
 
-Additional hyper-parameters
+Additional hyper-parameters for particular federated algorithms:
 * `mu` is the parameter for FedProx.
 * `alpha` is the parameter for FedFV.
 * `tau` is the parameter for FedFV.
+...
 
 Each additional parameter can be defined in `./utils/fflow.read_option`
 
@@ -114,10 +115,10 @@ We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and 
 
 ### Benchmark
 
-This module is to generate `fedtask` by partitioning the particular distribution data through `generate_fedtask.py`. To generate different `fedtask`, there are three parameters: `dist`, `num_clients `, `beta`. `dist` denotes the distribution type, `0` denotes iid, `1` denotes`num_clients` is the number of clients participate in FL system, and `beta` is the number of the shards (splitted by the sorted labels) owned by each client. Each dataset can correspond to differrent model (mlp, cnn, resnet18, …)
+This module is to generate `fedtask` by partitioning the particular distribution data through `generate_fedtask.py`. To generate different `fedtask`, there are three parameters: `dist`, `num_clients `, `beta`. `dist` denotes the distribution type (e.g. `0` denotes iid and balanced distribution, `1` denotes niid-label-quantity and balanced distribution). `num_clients` is the number of clients participate in FL system, and `beta` controls the degree of non-iid for different  `dist`. Each dataset can correspond to differrent models (mlp, cnn, resnet18, …). Further details are described in `benchmark/README.md`.
 
 ### Fedtask
-We define each task as a combination of the `dataset`, the corresponding model, and the basic loss function. The raw dataset is processed into .json file, following LEAF (https://github.com/TalwalkarLab/leaf). The architecture of the .json file is described as below:  
+We define each task as a combination of the federated dataset of a particular distribution and the experimental results on it. The raw dataset is processed into .json file, following LEAF (https://github.com/TalwalkarLab/leaf). The architecture of the .json file is described as below:  
 
 ```python
 """
@@ -145,13 +146,14 @@ We define each task as a combination of the `dataset`, the corresponding model, 
 """
 ```
 
-The raw dataset should be download into ./task/dataset_name/data/raw_data, and then run the file `./benchmark/generate_fedtask.py` to get the splited dataset (.json file).
+Run the file `./generate_fedtask.py` to get the splited dataset (.json file).
 
-Since the task-specified models are usually orthogonal to the FL algorithms, we don't consider it an important part in this system. And the model and the basic loss function are defined in `./task/dataset_name/model_name.py`.
+Since the task-specified models are usually orthogonal to the FL algorithms, we don't consider it an important part in this system. And the model and the basic loss function are defined in `./task/dataset_name/model_name.py`. Further details are described in `fedtask/README.md`.
 
 ### Method
 
 This module is the specific federated learning algorithm implementation. Each method contains two classes: the `Server` and the `Client`. 
+
 
 #### Server
 
@@ -161,8 +163,10 @@ The whole FL system starts with the `main.py`, which runs `server.run()` after i
 
 The clients reponse to the server after the server `communicate()` with them, who train the model with their local dataset by `train()`. After training the model, the clients send package (e.g. parameters, loss, gradient,... ) to the server through `reply()`.     
 
+Further details of this module are described in `method/README.md`.
+
 ### Utils
-Utils is composed of commonly used operations: model-level operation (we convert model layers and parameters to dictionary type and apply it in the whole FL system), the initialization of the framework in and the supporting visualization templates to the result. To visualize the results, please run `./utils/result_analysis.py`.
+Utils is composed of commonly used operations: model-level operation (we convert model layers and parameters to dictionary type and apply it in the whole FL system), the flow controlling of the framework in and the supporting visualization templates to the result. To visualize the results, please run `./utils/result_analysis.py`. Further details are described in `utils/README.md`.
 
 ## Citation
 
