@@ -55,7 +55,7 @@ python result_analysis.py
 
 <table>
    <tr>
-      <td colspan="5">The rounds necessary for FedAVG to achieve 99% accuracy on MNIST using CNN with E=5 (reported in [1]  /  ours)</td>
+      <td colspan="5">The rounds necessary for FedAVG to achieve 99% accuracy on MNIST using CNN with E=5 (reported in [<sup>1</sup>](#refer-anchor-1)  /  ours)</td>
    </tr>
    <tr>
       <td rowspan="2">Proportion</td>
@@ -236,4 +236,8 @@ Please cite our paper in your publications if this code helps your research.
 }te
 ```
 ## Remark
-Since we've made great changes on the latest version, to fully reproduce the reported results in the paper, please use another branch `easyFL v1.0` of this project.
+Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://arxiv.org/abs/2104.14937), please use another branch `easyFL v1.0` of this project.
+
+## References
+<div id="refer-anchor-1"></div>
+[1] [Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2017.](https://arxiv.org/abs/1602.05629)
