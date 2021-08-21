@@ -50,6 +50,63 @@ cd ../utils
 # visualize the results
 python result_analysis.py
 ```
+### Performance
+<table>
+   <tr>
+      <td></td>
+   </tr>
+   <tr>
+      <td>Proportion</td>
+      <td>iid</td>
+      <td>non-iid</td>
+   </tr>
+   <tr>
+      <td></td>
+      <td>B=full batchszie</td>
+      <td>B=10</td>
+      <td>B=full batchszie</td>
+      <td>B=10</td>
+   </tr>
+   <tr>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+   </tr>
+   <tr>
+      <td>0.1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+   </tr>
+   <tr>
+      <td>0.2</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+   </tr>
+   <tr>
+      <td>0.5</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+   </tr>
+   <tr>
+      <td>1.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+   </tr>
+   <tr>
+      <td></td>
+   </tr>
+</table>
+
 
 ### Options
 
