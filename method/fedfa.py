@@ -1,12 +1,12 @@
-from utils import fmodule
+from task import modelfuncs
 import copy
 from .fedbase import BaseServer, BaseClient
 import numpy as np
 
 class Server(BaseServer):
-    def __init__(self, option, model, clients, dtest = None):
-        super(Server, self).__init__(option, model, clients, dtest)
-        self.m = fmodule.modeldict_zeroslike(self.model.state_dict())
+    def __init__(self, option, model, clients):
+        super(Server, self).__init__(option, model, clients)
+        self.m = modelfuncs.modeldict_zeroslike(self.model.state_dict())
         self.beta = option['beta']
         self.alpha = 1.0 - self.beta
         self.gamma = option['gamma']
@@ -20,7 +20,7 @@ class Server(BaseServer):
         # wait for replying of the update and loss
         w = self.clients[cid].reply()[0]
         freq = self.clients[cid].frequency
-        acc,loss = self.clients[cid].test('trainset')
+        acc,loss = self.clients[cid].test('train')
         return w, loss, acc, freq
 
     def iterate(self, t):
@@ -47,21 +47,21 @@ class Server(BaseServer):
         # calculate weight = αACCi_inf+βfi_inf
         p = [self.alpha*accinf+self.beta*finf for accinf,finf in zip(ACCinf,Finf)]
         w_new = self.aggregate(ws, p)
-        dw = fmodule.modeldict_sub(w_new, self.model.state_dict())
+        dw = modelfuncs.modeldict_sub(w_new, self.model.state_dict())
         # calculate m = γm+(1-γ)dw
-        self.m = fmodule.modeldict_add(fmodule.modeldict_scale(self.m, self.gamma), fmodule.modeldict_scale(dw, 1 - self.gamma))
-        w_new = fmodule.modeldict_sub(w_new, fmodule.modeldict_scale(self.m, self.learning_rate))
+        self.m = modelfuncs.modeldict_add(modelfuncs.modeldict_scale(self.m, self.gamma), modelfuncs.modeldict_scale(dw, 1 - self.gamma))
+        w_new = modelfuncs.modeldict_sub(w_new, modelfuncs.modeldict_scale(self.m, self.learning_rate))
         self.model.load_state_dict(w_new)
         # output info
         loss_avg = sum(losses) / len(losses)
         return loss_avg
 
 class Client(BaseClient):
-    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):
-        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_test_dict={'x':[],'y':[]}, partition = True):
+        super(Client, self).__init__(option, name, data_train_dict, data_test_dict, partition)
         self.frequency = 0
 
     def reply(self):
         self.frequency += 1
-        self.train()
-        return copy.deepcopy(self.model.state_dict()), self.train_loss()
+        loss = self.train()
+        return copy.deepcopy(self.model.state_dict()), loss

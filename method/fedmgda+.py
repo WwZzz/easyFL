@@ -1,4 +1,4 @@
-from utils import fmodule
+from task import modelfuncs
 from .fedbase import BaseServer, BaseClient
 import numpy as np
 import copy
@@ -19,13 +19,13 @@ def quadprog(P, q, G, h, A, b):
     return np.array(sol['x'])
 
 class Server(BaseServer):
-    def __init__(self, option, model, clients, dtest = None):
-        super(Server, self).__init__(option, model, clients, dtest)
+    def __init__(self, option, model, clients):
+        super(Server, self).__init__(option, model, clients)
         # algorithm hyper-parameters
         self.dynamic_lambdas = np.ones(self.num_clients) * 1.0 / self.num_clients
-        self.learning_rate = option['eta']
+        self.learning_rate = option['learning_rate']
         self.epsilon = option['epsilon']
-        self.paras_name = ['epsilon','eta']
+        self.paras_name = ['epsilon']
 
     def iterate(self, t):
         ws, losses, grads = [], [], []
@@ -35,9 +35,9 @@ class Server(BaseServer):
             w, loss = self.communicate(cid)
             ws.append(w)
             losses.append(loss)
-            grad_i = fmodule.modeldict_sub(self.model.state_dict(), w)
+            grad_i = modelfuncs.modeldict_sub(self.model.state_dict(), w)
             # clip gi
-            grad_i = fmodule.modeldict_scale(grad_i, 1.0 / fmodule.modeldict_norm(grad_i))
+            grad_i = modelfuncs.modeldict_scale(grad_i, 1.0 / modelfuncs.modeldict_norm(grad_i))
             grads.append(grad_i)
         # calculate λ0
         nks = [self.client_vols[cid] for cid in selected_clients]
@@ -49,21 +49,21 @@ class Server(BaseServer):
         # aggregate grads
         dt = self.aggregate(grads, self.dynamic_lambdas)
         # update model
-        w_new = fmodule.modeldict_sub(self.model.state_dict(), fmodule.modeldict_scale(dt, self.learning_rate))
+        w_new = modelfuncs.modeldict_sub(self.model.state_dict(), modelfuncs.modeldict_scale(dt, self.learning_rate))
         self.model.load_state_dict(w_new)
         # output info
         loss_avg = sum(losses) / len(losses)
         return loss_avg
 
     def aggregate(self, ws, p=[]):
-        return fmodule.modeldict_weighted_average(ws, p)
+        return modelfuncs.modeldict_weighted_average(ws, p)
 
     def optim_lambda(self, grads, lambda0):
         # create H_m*m = 2J'J where J=[grad_i]_n*m
         n = len(grads)
         Jt = []
         for gi in grads:
-            Jt.append((copy.deepcopy(fmodule.modeldict_to_tensor1D(gi)).cpu()).numpy())
+            Jt.append((copy.deepcopy(modelfuncs.modeldict_to_tensor1D(gi)).cpu()).numpy())
         Jt = np.array(Jt)
         # target function
         P = 2 * np.dot(Jt, Jt.T)
@@ -87,5 +87,5 @@ class Server(BaseServer):
         return res
 
 class Client(BaseClient):
-    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):
-        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_test_dict={'x':[],'y':[]}, partition = True):
+        super(Client, self).__init__(option, name, data_train_dict, data_test_dict, partition)

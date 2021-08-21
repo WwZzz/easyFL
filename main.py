@@ -1,21 +1,21 @@
-import utils.fflow as flw
-import ujson
+import torch
+
+from utils.tools import *
+import json
+from task import modelfuncs
 
 def main():
     # read options
-    option = flw.read_option()
+    option = read_option()
     # set random seed
-    flw.setup_seed(option['seed'])
-    # initialize server
-    server = flw.initialize(option)
-    # start federated optimization
-    output = server.run()
-    # save results as .json file
-    with open('fedtask/'+ option['task'] + '/record/' + flw.output_filename(option, server), 'w') as outfile:
-        ujson.dump(output, outfile)
+    setup_seed(option['seed'])
+    # initialize
+    server = initialize(option)
+    outdict = server.run()
+    # save results as method{}_mpara{}_r{}_b{}_e{}_lr{}_p{}_seed{}.json file
+    filename=output_filename(option, server)
+    with open('task/'+ option['dataset'] + '/record/' + filename, 'w') as outfile:
+        json.dump(outdict, outfile)
 
 if __name__ == '__main__':
     main()
-
-
-
