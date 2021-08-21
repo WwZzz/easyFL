@@ -53,7 +53,7 @@ python result_analysis.py
 ### Performance
 <table>
    <tr>
-      <td>Original FedAVG E=5 with CNN on MNIST reported in [1]</td>
+      <td colspan="5">Original FedAVG E=5 with CNN on MNIST reported in [1]</td>
    </tr>
    <tr>
       <td rowspan="2">Proportion</td>
