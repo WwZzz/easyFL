@@ -99,7 +99,7 @@ python result_analysis.py
    <tr>
       <td>1.0</td>
       <td>246  / </td>
-      <td>16  / 20</td>
+      <td>16  / 18</td>
       <td>--  /</td>
       <td>97  / </td>
    </tr>
