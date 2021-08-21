@@ -53,7 +53,7 @@ python result_analysis.py
 ### Performance
 <table>
    <tr>
-      <td colspan="5" rowspan="2">FedAVG E=5 with CNN on MNIST reported in 'Communication-Efficient Learning of Deep Networks
+      <td colspan="5">FedAVG E=5 with CNN on MNIST reported in 'Communication-Efficient Learning of Deep Networks
 from Decentralized Data'</td>
    </tr>
    <tr>
