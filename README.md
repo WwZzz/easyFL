@@ -61,48 +61,45 @@ python result_analysis.py
       <td colspan="2">non-iid</td>
    </tr>
    <tr>
-      <td>B=full batchszie</td>
+      <td>B=FULL</td>
       <td>B=10</td>
-      <td>B=full batchszie</td>
+      <td>B=FULL</td>
       <td>B=10</td>
    </tr>
    <tr>
       <td>0.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>387</td>
+      <td>50</td>
+      <td>1181</td>
+      <td>956</td>
    </tr>
    <tr>
       <td>0.1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>339 (1.1x)</td>
+      <td>18 (2.8x)</td>
+      <td>1100 (1.1x)</td>
+      <td>206 (4.6x)</td>
    </tr>
    <tr>
       <td>0.2</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>337 (1.1x)</td>
+      <td>18 (2.8x)</td>
+      <td>978 (1.2x)</td>
+      <td>200 (4.8x)</td>
    </tr>
    <tr>
       <td>0.5</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>164 (2.4x)</td>
+      <td>18 (2.8x)</td>
+      <td>1067 (1.1x)</td>
+      <td>261 (3.7x)</td>
    </tr>
    <tr>
       <td>1.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-   </tr>
-   <tr>
-      <td></td>
+      <td>246 (1.6x)</td>
+      <td>16 (3.1x)</td>
+      <td>--</td>
+      <td>97 (9.9x)</td>
    </tr>
 </table>
 
