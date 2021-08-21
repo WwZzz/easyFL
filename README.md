@@ -70,14 +70,14 @@ python result_analysis.py
    </tr>
    <tr>
       <td>0.0</td>
-      <td>387  /  </td>
+      <td>387  /  325</td>
       <td>50  /  91</td>
       <td>1181  /  </td>
       <td>956  /  </td>
    </tr>
    <tr>
       <td>0.1</td>
-      <td>339  / </td>
+      <td>339  / 203</td>
       <td>18  /  18 </td>
       <td>1100  / </td>
       <td>206  / </td>
