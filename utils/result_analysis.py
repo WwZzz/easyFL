@@ -101,9 +101,9 @@ if __name__ == '__main__':
     flt = {
         # 'e': '5',
         # 'b': '10',
-        'lr': '>0.15',
+        # 'lr': '>0.15',
         # 'r': '30',
-        'p': '0.0',
+        # 'p': '0.0',
         # 'seed': '0',
     }
     # read and filter the filenames

@@ -74,8 +74,13 @@ def initialize(option):
     #init data
     print("init fedtask...", end='')
     task_path = os.path.join('fedtask', option['task'], 'task.json')
-    with open(task_path, 'r') as taskfile:
-        task = ujson.load(taskfile)
+    try:
+        with open(task_path, 'r') as taskfile:
+            task = ujson.load(taskfile)
+    except FileNotFoundError:
+        print("Generate the fedtask {} by generate_fedtask.py".format(option['task']))
+        exit()
+
     meta = task['meta']
     client_names = [name for name in task['clients'].keys()]
     train_data = [task['clients'][key]['dtrain'] for key in task['clients'].keys()]

@@ -134,7 +134,7 @@ class BaseServer():
             selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=False, p=[nk / self.data_vol for nk in self.client_vols]))
             # selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=True, p=[nk/self.data_vol for nk in self.client_vols]))
         # client dropout
-        selected_cids = [cid for cid in selected_cids if self.clients[cid].is_available]
+        selected_cids = [cid for cid in selected_cids if self.clients[cid].is_available()]
         return selected_cids
 
     def aggregate(self, ws, p=[]):

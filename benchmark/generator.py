@@ -37,7 +37,7 @@ data_dist = {
 class TaskGenerator:
     def __init__(self, benchmark, num_classes, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, datapath ='', cnames = []):
         self.benchmark = benchmark
-        self.rootpath = '../fedtask'
+        self.rootpath = './fedtask'
 
         self.datapath = datapath
         if not os.path.exists(self.datapath):
@@ -74,6 +74,10 @@ class TaskGenerator:
 
     def generate(self):
         """ generate federated tasks"""
+        # check if the task exists
+        if os.path.exists(self.savepath):
+            print('Task already exists!')
+            return
         # read raw_data into self.train_data and self.test_data
         self.load_data()
         # convert self.train\test_data into dicts as {'x':[...], 'y':[...]} or {'x':[...], 'y':[...], 'p':[...]}(data['x'][k], d['y'][k], d['p'][k]) denotes the k_th data)
@@ -434,41 +438,3 @@ class Synthetic_TaskGenerator(TaskGenerator):
             X_split[i] = xx.tolist()
             y_split[i] = yy.tolist()
         return X_split, y_split
-
-if __name__ == '__main__':
-    # generating the dataset of mnist-iid of 100 clients
-    mnist_gen = MNIST_TaskGenerator(dist=0, num_clients=100, beta=0)
-    mnist_gen.generate()
-
-    # # generating the dataset of mnist-niid of 100 clients
-    # mnist_niid_gen = MNIST_TaskGenerator(dist=3, num_clients=100, beta=2)
-    # mnist_niid_gen.generate()
-
-    # # generating the dataset of cifar10-iid of 100 clients
-    # cifar10_iid_gen = CIFAR10_TaskGenerator(dist=0, num_clients=100, beta=0)
-    # cifar10_iid_gen.generate()
-
-    # # generating the dataset of cifar10-niid of 100 clients
-    # cifar10_niid_gen = CIFAR10_TaskGenerator(dist=1, num_clients=100, beta=1)
-    # cifar10_niid_gen.generate()
-
-    # # generating the dataset of fashion-mnist-noniid of 3 clients ('T-shirt', 'pullover' and 'shirt')
-    # FashionMNIST_gen = FashionMNIST_TaskGenerator(dist=1, num_clients=3, beta=1, selected=[0,2,6])
-    # FashionMNIST_gen.generate()
-
-    # # generating the dataset of cifar100-niid of 100 clients who only have 1 kind of labels
-    # cifar100_niid_gen = CIFAR100_TaskGenerator(dist=1, num_clients=100, beta=1)
-    # cifar100_niid_gen.generate()
-
-    # # generating synthetic-iid dataset of 30 clients (synthetic_iid, balance)
-    # synthetic_iid_gen = Synthetic_TaskGenerator(dist=0, num_clients=30, beta=(0,0))
-    # synthetic_iid_gen.generate()
-
-    # # generating synthetic-iid dataset of 30 clients (synthetic_iid, imbalance)
-    # synthetic_iid_gen = Synthetic_TaskGenerator(dist=6, num_clients=30, beta=(0,0))
-    # synthetic_iid_gen.generate()
-
-    # # generating synthetic-noniid dataset of 30 clients (synthetic(0,0), balance)
-    # synthetic_iid_gen = Synthetic_TaskGenerator(dist=1, num_clients=30, beta=(0,0))
-    # synthetic_iid_gen.generate()
-
