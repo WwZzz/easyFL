@@ -56,7 +56,7 @@ python result_analysis.py
       <td></td>
    </tr>
    <tr>
-      <td>Proportion</td>
+      <td rowspan="2">Proportion</td>
       <td colspan="2">iid</td>
       <td colspan="2">non-iid</td>
    </tr>
