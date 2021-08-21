@@ -55,7 +55,7 @@ python result_analysis.py
 
 <table>
    <tr>
-      <td colspan="5">The rounds necessary for FedAVG to achieve 99% accuracy on MNIST using CNN with E=5 (reported in [1]/ours)</td>
+      <td colspan="5">The rounds necessary for FedAVG to achieve 99% accuracy on MNIST using CNN with E=5 (reported in [1]  /  ours)</td>
    </tr>
    <tr>
       <td rowspan="2">Proportion</td>
@@ -70,38 +70,38 @@ python result_analysis.py
    </tr>
    <tr>
       <td>0.0</td>
-      <td>387/</td>
-      <td>50/91</td>
-      <td>1181/</td>
-      <td>956/</td>
+      <td>387  /  </td>
+      <td>50  /  91</td>
+      <td>1181  /  </td>
+      <td>956  /  </td>
    </tr>
    <tr>
       <td>0.1</td>
-      <td>339/ </td>
-      <td>18/18 </td>
-      <td>1100/ </td>
-      <td>206/ </td>
+      <td>339  / </td>
+      <td>18  /  18 </td>
+      <td>1100  / </td>
+      <td>206  / </td>
    </tr>
    <tr>
       <td>0.2</td>
-      <td>337/ </td>
-      <td>18/19 </td>
-      <td>978/ </td>
-      <td>200/ </td>
+      <td>337  / </td>
+      <td>18  /  19 </td>
+      <td>978  / </td>
+      <td>200  / </td>
    </tr>
    <tr>
       <td>0.5</td>
-      <td>164/ </td>
-      <td>18/18 </td>
-      <td>1067/ </td>
-      <td>261/ </td>
-   </tr>
+      <td>164  / </td>
+      <td>18  /  18 </td>
+      <td>1067  / </td>
+      <td>261  / </td>
+   </tr> 
    <tr>
       <td>1.0</td>
-      <td>246/ </td>
-      <td>16/ </td>
-      <td>--/</td>
-      <td>97/ </td>
+      <td>246  / </td>
+      <td>16  / </td>
+      <td>--  /</td>
+      <td>97  / </td>
    </tr>
 </table>
 ### Options
