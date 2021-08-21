@@ -178,7 +178,7 @@ Please cite our paper in your publications if this code helps your research.
   author={Wang, Zheng and Fan, Xiaoliang and Qi, Jianzhong and Wen, Chenglu and Wang, Cheng and Yu, Rongshan},
   journal={arXiv preprint arXiv:2104.14937},
   year={2021}
-}
+}te
 ```
 ## Remark
-Since we've made great changes on the last version, to fully reproduce the reported results in the paper, please use another branch `easyFL v1.0` of this project.
+Since we've made great changes on the latest version, to fully reproduce the reported results in the paper, please use another branch `easyFL v1.0` of this project.
