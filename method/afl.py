@@ -1,26 +1,17 @@
-from task import modelfuncs
+from utils import fmodule
 from .fedbase import BaseServer, BaseClient
 import numpy as np
 import copy
 
 class Server(BaseServer):
-    def __init__(self, option, model, clients):
-        super(Server, self).__init__(option, model, clients)
+    def __init__(self, option, model, clients, dtest = None):
+        super(Server, self).__init__(option, model, clients, dtest)
         # algorithm hyper-parameters
         self.dynamic_lambdas = np.ones(self.num_clients) * 1.0 / self.num_clients
         self.learning_rate = option['learning_rate']
         self.learning_rate_lambda = option['learning_rate_lambda']
         self.result_modeldict = copy.deepcopy(self.model.state_dict())
         self.paras_name=['learning_rate_lambda']
-
-    def communicate(self, cid):
-        # setting client(cid)'s model with latest parameters
-        self.trans_model.load_state_dict(self.model.state_dict())
-        self.clients[cid].setModel(self.trans_model)
-        # calculate the loss  Fk(w_(t-1)) of the global model on client[k]'s training dataset
-        _, loss = self.clients[cid].test('train')
-        # wait for replying of the update and loss
-        return self.clients[cid].reply()[0], loss
 
     def iterate(self, t):
         ws, losses, grads = [], [], []
@@ -29,25 +20,25 @@ class Server(BaseServer):
             w, loss = self.communicate(cid)
             ws.append(w)
             losses.append(loss)
-            grads.append(modelfuncs.modeldict_scale(modelfuncs.modeldict_sub(self.model.state_dict(), w), 1.0 / self.learning_rate))
+            grads.append(fmodule.modeldict_scale(fmodule.modeldict_sub(self.model.state_dict(), w), 1.0 / self.learning_rate))
 
         # aggregate grads
         grad = self.aggregate(grads, self.dynamic_lambdas)
-        w_new = modelfuncs.modeldict_sub(self.model.state_dict(), modelfuncs.modeldict_scale(grad, self.learning_rate))
+        w_new = fmodule.modeldict_sub(self.model.state_dict(), fmodule.modeldict_scale(grad, self.learning_rate))
         self.model.load_state_dict(w_new)
         # update lambdas
         for lid in range(len(self.dynamic_lambdas)):
             self.dynamic_lambdas[lid] += self.learning_rate_lambda * losses[lid]
         self.dynamic_lambdas = self.project(self.dynamic_lambdas)
         # record resulting model
-        self.result_modeldict = modelfuncs.modeldict_add(modelfuncs.modeldict_scale(self.result_modeldict, t), w_new)
-        self.result_modeldict = modelfuncs.modeldict_scale(self.result_modeldict, 1.0 / (t + 1))
+        self.result_modeldict = fmodule.modeldict_add(fmodule.modeldict_scale(self.result_modeldict, t), w_new)
+        self.result_modeldict = fmodule.modeldict_scale(self.result_modeldict, 1.0 / (t + 1))
         # output info
         loss_avg = sum(losses) / len(losses)
         return loss_avg
 
     def aggregate(self, ws, p):
-        return modelfuncs.modeldict_weighted_average(ws, p)
+        return fmodule.modeldict_weighted_average(ws, p)
 
     def project(self, p):
         u = sorted(p, reverse=True)
@@ -72,5 +63,5 @@ class Server(BaseServer):
         return accs, losses
 
 class Client(BaseClient):
-    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_test_dict={'x':[],'y':[]}, partition = True):
-        super(Client, self).__init__(option, name, data_train_dict, data_test_dict, partition)
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):
+        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)

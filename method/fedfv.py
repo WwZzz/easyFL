@@ -1,12 +1,12 @@
-from task import modelfuncs
+from utils import fmodule
 from .fedbase import BaseServer, BaseClient
 import copy
 import torch
 import math
 
 class Server(BaseServer):
-    def __init__(self, option, model, clients):
-        super(Server, self).__init__(option, model, clients)
+    def __init__(self, option, model, clients, dtest = None):
+        super(Server, self).__init__(option, model, clients, dtest)
         # algorithm hyper-parameters
         self.learning_rate = option['learning_rate']
         self.alpha = option['alpha']
@@ -14,15 +14,6 @@ class Server(BaseServer):
         self.client_last_sample_round = [-1 for i in range(self.num_clients)]
         self.client_grads_history = [0 for i in range(self.num_clients)]
         self.paras_name=['alpha','tau']
-
-    def communicate(self, cid):
-        # setting client(cid)'s model with latest parameters
-        self.trans_model.load_state_dict(self.model.state_dict())
-        self.clients[cid].setModel(self.trans_model)
-        # calculate the loss  Fk(w_(t-1)) of the global model on client[k]'s training dataset
-        _, loss = self.clients[cid].test('train')
-        # wait for replying of the update and loss
-        return self.clients[cid].reply()[0], loss
 
     def iterate(self, t):
         ws, losses, grads = [], [], []
@@ -32,7 +23,7 @@ class Server(BaseServer):
             w, loss = self.communicate(cid)
             ws.append(w)
             losses.append(loss)
-            gi = modelfuncs.modeldict_sub(self.model.state_dict(), w)
+            gi = fmodule.modeldict_sub(self.model.state_dict(), w)
             grads.append(gi)
             # update GH
             self.client_grads_history[cid] = gi
@@ -60,10 +51,10 @@ class Server(BaseServer):
                     continue
                 else:
                     # calculate the dot of gi and gj
-                    dot = modelfuncs.modeldict_dot(grads[j], order_grads[i])
+                    dot = fmodule.modeldict_dot(grads[j], order_grads[i])
                     if dot < 0:
-                        order_grads[i] = modelfuncs.modeldict_sub(order_grads[i], modelfuncs.modeldict_scale(grads[j], 1.0 * dot / (
-                                    modelfuncs.modeldict_norm(grads[j]) ** 2)))
+                        order_grads[i] = fmodule.modeldict_sub(order_grads[i], fmodule.modeldict_scale(grads[j], 1.0 * dot / (
+                                fmodule.modeldict_norm(grads[j]) ** 2)))
 
         # aggregate projected grads
         gt = self.aggregate(order_grads)
@@ -78,26 +69,26 @@ class Server(BaseServer):
                 # calculate outside conflicts
                 for cid in range(self.num_clients):
                     if self.client_last_sample_round[cid] == t - k:
-                        if modelfuncs.modeldict_dot(self.client_grads_history[cid], gt) < 0:
-                            g_con = modelfuncs.modeldict_add(g_con, self.client_grads_history[cid])
-                dot = modelfuncs.modeldict_dot(gt, g_con)
+                        if fmodule.modeldict_dot(self.client_grads_history[cid], gt) < 0:
+                            g_con = fmodule.modeldict_add(g_con, self.client_grads_history[cid])
+                dot = fmodule.modeldict_dot(gt, g_con)
                 if dot < 0:
-                    gt = modelfuncs.modeldict_sub(gt, modelfuncs.modeldict_scale(g_con, 1.0 * dot / (
-                                modelfuncs.modeldict_norm(g_con) ** 2)))
+                    gt = fmodule.modeldict_sub(gt, fmodule.modeldict_scale(g_con, 1.0 * dot / (
+                            fmodule.modeldict_norm(g_con) ** 2)))
 
         # ||gt||=||1/m*Σgi||
-        gnorm = modelfuncs.modeldict_norm(self.aggregate(grads, p=[]))
-        gt = modelfuncs.modeldict_scale(gt, 1.0 / modelfuncs.modeldict_norm(gt) * gnorm)
+        gnorm = fmodule.modeldict_norm(self.aggregate(grads, p=[]))
+        gt = fmodule.modeldict_scale(gt, 1.0 / fmodule.modeldict_norm(gt) * gnorm)
 
-        w_new = modelfuncs.modeldict_sub(self.model.state_dict(), gt)
+        w_new = fmodule.modeldict_sub(self.model.state_dict(), gt)
         self.model.load_state_dict(w_new)
         # output info
         loss_avg = sum(losses) / len(losses)
         return loss_avg
 
     def aggregate(self, ws, p=[]):
-        return modelfuncs.modeldict_weighted_average(ws, p)
+        return fmodule.modeldict_weighted_average(ws, p)
 
 class Client(BaseClient):
-    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_test_dict={'x':[],'y':[]}, partition = True):
-        super(Client, self).__init__(option, name, data_train_dict, data_test_dict, partition)
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):
+        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)

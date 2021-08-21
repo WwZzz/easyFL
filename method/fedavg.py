@@ -1,11 +1,11 @@
 from .fedbase import BaseServer, BaseClient
 
 class Server(BaseServer):
-    def __init__(self, option, model, clients):
-        super(Server, self).__init__(option, model, clients)
+    def __init__(self, option, model, clients, dtest = None):
+        super(Server, self).__init__(option, model, clients, dtest)
 
 class Client(BaseClient):
-    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_test_dict={'x':[],'y':[]}, partition = True):
-        super(Client, self).__init__(option, name, data_train_dict, data_test_dict, partition)
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate=0):
+        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
 
 
