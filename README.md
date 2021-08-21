@@ -51,9 +51,11 @@ cd ../utils
 python result_analysis.py
 ```
 ### Performance
+
+
 <table>
    <tr>
-      <td colspan="5">The rounds necessary for FedAVG to achieve 99% acc. (E=5 with CNN on MNIST as reported in [1]')</td>
+      <td colspan="5">The rounds necessary for FedAVG to achieve 99% accuracy on MNIST using CNN with E=5 (reported in [1]/ours)</td>
    </tr>
    <tr>
       <td rowspan="2">Proportion</td>
@@ -68,42 +70,40 @@ python result_analysis.py
    </tr>
    <tr>
       <td>0.0</td>
-      <td>387</td>
-      <td>50</td>
-      <td>1181</td>
-      <td>956</td>
+      <td>387/</td>
+      <td>50/91</td>
+      <td>1181/</td>
+      <td>956/</td>
    </tr>
    <tr>
       <td>0.1</td>
-      <td>339 (1.1x)</td>
-      <td>18 (2.8x)</td>
-      <td>1100 (1.1x)</td>
-      <td>206 (4.6x)</td>
+      <td>339/ </td>
+      <td>18/18 </td>
+      <td>1100/ </td>
+      <td>206/ </td>
    </tr>
    <tr>
       <td>0.2</td>
-      <td>337 (1.1x)</td>
-      <td>18 (2.8x)</td>
-      <td>978 (1.2x)</td>
-      <td>200 (4.8x)</td>
+      <td>337/ </td>
+      <td>18/19 </td>
+      <td>978/ </td>
+      <td>200/ </td>
    </tr>
    <tr>
       <td>0.5</td>
-      <td>164 (2.4x)</td>
-      <td>18 (2.8x)</td>
-      <td>1067 (1.1x)</td>
-      <td>261 (3.7x)</td>
+      <td>164/ </td>
+      <td>18/18 </td>
+      <td>1067/ </td>
+      <td>261/ </td>
    </tr>
    <tr>
       <td>1.0</td>
-      <td>246 (1.6x)</td>
-      <td>16 (3.1x)</td>
-      <td>--</td>
-      <td>97 (9.9x)</td>
+      <td>246/ </td>
+      <td>16/ </td>
+      <td>--/</td>
+      <td>97/ </td>
    </tr>
 </table>
-
-
 ### Options
 
 Basic options:
