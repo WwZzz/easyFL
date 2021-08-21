@@ -84,7 +84,7 @@ python result_analysis.py
    </tr>
    <tr>
       <td>0.2</td>
-      <td>337  / </td>
+      <td>337  / 207</td>
       <td>18  /  19 </td>
       <td>978  / </td>
       <td>200  / </td>
