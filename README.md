@@ -100,8 +100,8 @@ python result_analysis.py
       <td>1.0</td>
       <td>246  /  267</td>
       <td>16  /  18</td>
-      <td>--  / 737</td>
-      <td>97  / </td>
+      <td>--  /  737</td>
+      <td>97  /  90</td>
    </tr>
 </table>
 
