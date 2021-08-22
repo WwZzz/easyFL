@@ -43,7 +43,7 @@ def filename_filter(fnames=[], filter={}):
             con = filter[key].strip()
             if con[0] in ['[','{','(']:
                 con = 'in ' + con
-            elif '0'<=con[0]<='9' or con[0]=='.':
+            elif '0'<=con[0]<='9' or con[0]=='.' or con[0]=='-':
                 con = '==' + con
             elif 'a'<=con[0]<='z' or 'A'<=con[0]<='Z':
                 con = "'"+con+"'"
