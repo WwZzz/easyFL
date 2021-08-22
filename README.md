@@ -114,6 +114,7 @@ python result_analysis.py
 |AFL|<a href='#refer-anchor-5'>[Mohri et al., 2019]</a>|ICML' 2019|
 |FedMGDA+|<a href='#refer-anchor-6'>[Hu et al., 2020]</a>|pre-print|
 |FedFA|<a href='#refer-anchor-7'>[Huang et al., 2020]</a>|pre-print|
+|...||
 ### Options
 
 Basic options:
