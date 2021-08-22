@@ -118,7 +118,7 @@ Server-side options:
 
 * `model` should be the corresponding model of the dataset. Options: `mlp`, `cnn`, `resnet18.`
 
-* `sample` decides the way to sample clients in each round. Options: `uniform` means uniformly, `md` means choosing with probility.
+* `sample` decides the way to sample clients in each round. Options: `uniform` means uniformly, `md` means choosing with probability.
 
 * `aggregate` decides the way to aggregate clients' model. Options: `uniform`, `weighted_scale`, `weighted_com`
 
