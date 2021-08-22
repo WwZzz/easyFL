@@ -50,6 +50,22 @@ def filename_filter(fnames=[], filter={}):
             fnames = [f for f in fnames if eval(f[f.find(key)+len(key):f.find('_',f.find(key)+1)]+' '+con)]
     return fnames
 
+def round_to_achieve_test_acc(records, dicts, target=0):
+    tb= pt.PrettyTable()
+    tb.field_names = [
+        'Record',
+        'Round to Achieve {}% Test-Acc.'.format(target),
+    ]
+    for rec, d in zip(records, dicts):
+        r = -1
+        for i in range(len(d['test_accs'])):
+            if d['test_accs'][i]>=target-0.000001:
+                r = i*d['meta']['eval_interval']
+                break
+        tb.add_row([rec, r])
+    print(tb)
+    return
+
 def scan_records(task, header = '', filter = {}):
     path = '../fedtask/' + task + '/record'
     files = os.listdir(path)
