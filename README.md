@@ -52,10 +52,9 @@ python result_analysis.py
 ```
 ### Performance
 
-
 <table>
    <tr>
-      <td colspan="5">The rounds necessary for FedAVG to achieve 99% accuracy on MNIST using CNN with E=5 (reported in <a href='#refer-anchor-1'>[McMahan. et al. 2017]</a>  /  ours)</td>
+      <td colspan="5">The rounds necessary for FedAVG to achieve 99% test accuracy on MNIST using CNN with E=5 (reported in <a href='#refer-anchor-1'>[McMahan. et al. 2017]</a>  /  ours)</td>
    </tr>
    <tr>
       <td rowspan="2">Proportion</td>
