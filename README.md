@@ -72,35 +72,35 @@ python result_analysis.py
       <td>0.0</td>
       <td>387  /  325</td>
       <td>50  /  91</td>
-      <td>1181  /  </td>
+      <td>1181  /  1021</td>
       <td>956  /  771</td>
    </tr>
    <tr>
       <td>0.1</td>
       <td>339  /  203</td>
       <td>18  /  18 </td>
-      <td>1100  / </td>
+      <td>1100  /  453</td>
       <td>206  /  107</td>
    </tr>
    <tr>
       <td>0.2</td>
       <td>337  /  207</td>
       <td>18  /  19 </td>
-      <td>978  / </td>
-      <td>200  / </td>
+      <td>978  /  563</td>
+      <td>200  /  </td>
    </tr>
    <tr>
       <td>0.5</td>
       <td>164  /  214</td>
       <td>18  /  18 </td>
-      <td>1067  / </td>
-      <td>261  / </td>
+      <td>1067  /  606</td>
+      <td>261  /  105</td>
    </tr> 
    <tr>
       <td>1.0</td>
-      <td>246  / </td>
-      <td>16  / 18</td>
-      <td>--  /</td>
+      <td>246  /  267</td>
+      <td>16  /  18</td>
+      <td>--  / 737</td>
       <td>97  / </td>
    </tr>
 </table>
