@@ -2,7 +2,7 @@
 
 This repository is PyTorch implementation for paper [Federated Learning with Fair Averaging](https://arxiv.org/abs/2104.14937) which is accepted by IJCAI-21 Conference.
 
-Our easyFL is a strong and reusable experimental platform for research on federated learning (FL) algorithm. It is easy for FL-beginner to quickly realize and compare popular centralized federated learning algorithms. 
+Our easyFL is a strong and reusable experimental platform for research on federated learning (FL) algorithm. It is easy for FL-researchers to quickly realize and compare popular centralized federated learning algorithms. 
 
 ## Table of Contents
 - [Requirements](#Requirements)
@@ -104,7 +104,16 @@ python result_analysis.py
    </tr>
 </table>
 
-
+### Reproduced FL Algorithms
+|Method|Reference|Publication|
+|---|---|---|
+|FedAvg|<a href='#refer-anchor-1'>[McMahan et al., 2017]</a>|AISTATS' 2017|
+|FedProx|<a href='#refer-anchor-2'>[Li et al., 2020]</a>|MySys' 2020|
+|FedFV|<a href='#refer-anchor-3'>[Wang et al., 2021]</a>|IJCAI' 2021|
+|qFFL|<a href='#refer-anchor-4'>[Li et al., 2019]</a>|ICLR' 2020|
+|AFL|<a href='#refer-anchor-5'>[Mohri et al., 2019]</a>|ICML' 2019|
+|FedMGDA+|<a href='#refer-anchor-6'>[Hu et al., 2020]</a>|pre-print|
+|FedFA|<a href='#refer-anchor-7'>[Huang et al., 2020]</a>|pre-print|
 ### Options
 
 Basic options:
@@ -239,5 +248,23 @@ Since we've made great changes on the latest version, to fully reproduce the rep
 
 ## References
 <div id='refer-anchor-1'></div>
+\[McMahan. et al., 2017\] [Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2017.](https://arxiv.org/abs/1602.05629)
 
-\[McMahan. et al. 2017\] [Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2017.](https://arxiv.org/abs/1602.05629)
+<div id='refer-anchor-2'></div>
+\[Li et al., 2020\] [Tian Li, Anit Kumar Sahu, Manzil Zaheer, Maziar Sanjabi, Ameet Talwalkar, and Virginia Smith. Federated optimization in heterogeneous networks. arXiv
+e-prints, page arXiv:1812.06127, 2020.](https://arxiv.org/abs/1812.06127)
+
+<div id='refer-anchor-3'></div>
+\[Wang et al., 2021]\ [Zheng Wang, Xiaoliang Fan, Jianzhong Qi, Chenglu Wen, Cheng Wang and Rongshan Yu. Federated Learning with Fair Averaging. arXiv e-prints, page arXiv:2104.14937, 2021.](https://arxiv.org/abs/2104.14937)
+
+<div id='refer-anchor-4'></div>
+\[Li et al., 2019\] [ Tian Li, Maziar Sanjabi, and Virginia Smith. Fair resource allocation in federated learning. CoRR, abs/1905.10497, 2019.](https://arxiv.org/abs/1905.10497)
+
+<div id='refer-anchor-5'></div>
+\[Mohri et al., 2019\] [Mehryar Mohri, Gary Sivek, and Ananda Theertha Suresh. Agnostic federated learning. CoRR, abs/1902.00146, 2019.](https://arxiv.org/abs/1902.00146)
+
+<div id='refer-anchor-6'></div>
+\[Hu et al., 2020\] [Zeou Hu, Kiarash Shaloudegi, Guojun Zhang, and Yaoliang Yu. Fedmgda+: Federated learning meets multi-objective optimization. arXiv e-prints, page arXiv:2006.11489, 2020.](https://arxiv.org/abs/2006.11489)
+
+<div id='refer-anchor-7'></div>
+\[Huang et al., 2020\] [Wei Huang, Tianrui Li, Dexian Wang, Shengdong Du, and Junbo Zhang. Fairness and accuracy in federated learning. arXiv e-prints, page arXiv:2012.10069, 2020.](https://arxiv.org/abs/2012.10069)
