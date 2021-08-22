@@ -55,7 +55,7 @@ python result_analysis.py
 
 <table>
    <tr>
-      <td colspan="5">The rounds necessary for FedAVG to achieve 99% accuracy on MNIST using CNN with E=5 (reported in <a href='refer-anchor-1'>[McMahan. et al. 2017]</a>  /  ours)</td>
+      <td colspan="5">The rounds necessary for FedAVG to achieve 99% accuracy on MNIST using CNN with E=5 (reported in <a href='#refer-anchor-1'>[McMahan. et al. 2017]</a>  /  ours)</td>
    </tr>
    <tr>
       <td rowspan="2">Proportion</td>
@@ -240,4 +240,4 @@ Since we've made great changes on the latest version, to fully reproduce the rep
 
 ## References
 <div id='refer-anchor-1'></div>
-\[1\] [Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2017.](https://arxiv.org/abs/1602.05629)
+\[McMahan. et al. 2017\] [Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2017.](https://arxiv.org/abs/1602.05629)
