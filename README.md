@@ -114,7 +114,6 @@ python result_analysis.py
 |AFL|<a href='#refer-anchor-5'>[Mohri et al., 2019]</a>|ICML' 2019|
 |FedMGDA+|<a href='#refer-anchor-6'>[Hu et al., 2020]</a>|pre-print|
 |FedFA|<a href='#refer-anchor-7'>[Huang et al., 2020]</a>|pre-print|
-|...|||
 ### Options
 
 Basic options:
@@ -248,8 +247,12 @@ Please cite our paper in your publications if this code helps your research.
 Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://arxiv.org/abs/2104.14937), please use another branch `easyFL v1.0` of this project.
 
 ## References
-<div id='refer-anchor-1'></div>\[McMahan. et al., 2017\] [Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2017.](https://arxiv.org/abs/1602.05629)
+<div id='refer-anchor-1'></div>
+\[McMahan. et al., 2017\] [Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2017.](https://arxiv.org/abs/1602.05629)
 
-<div id='refer-anchor-2'></div>\[Li et al., 2020\] [Tian Li, Anit Kumar Sahu, Manzil Zaheer, Maziar Sanjabi, Ameet Talwalkar, and Virginia Smith. Federated optimization in heterogeneous networks. arXiv e-prints, page arXiv:1812.06127, 2020.](https://arxiv.org/abs/1812.06127)
+<div id='refer-anchor-2'></div>
+\[Li et al., 2020\] [Tian Li, Anit Kumar Sahu, Manzil Zaheer, Maziar Sanjabi, Ameet Talwalkar, and Virginia Smith. Federated optimization in heterogeneous networks. arXiv e-prints, page arXiv:1812.06127, 2020.](https://arxiv.org/abs/1812.06127)
 
+<div id='refer-anchor-3'></div>
+\[Wang et al., 2021]\ [Zheng Wang, Xiaoliang Fan, Jianzhong Qi, Chenglu Wen, Cheng Wang and Rongshan Yu. Federated Learning with Fair Averaging. arXiv e-prints, page arXiv:2104.14937, 2021.](https://arxiv.org/abs/2104.14937)
 
