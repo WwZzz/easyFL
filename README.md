@@ -268,4 +268,4 @@ e-prints, page arXiv:1812.06127, 2020.](https://arxiv.org/abs/1812.06127)
 \[Hu et al., 2020\] [Zeou Hu, Kiarash Shaloudegi, Guojun Zhang, and Yaoliang Yu. Fedmgda+: Federated learning meets multi-objective optimization. arXiv e-prints, page arXiv:2006.11489, 2020.](https://arxiv.org/abs/2006.11489)
 
 <div id='refer-anchor-7'></div>
-\[Huang et al., 2020\] [Wei Huang, Tianrui Li, Dexian Wang, Shengdong Du, and Junbo Zhang. Fairness and accuracy in federated learning. arXiv e-prints, page arXiv:2012.10069, 2020.](https://arxiv.org/abs/2012.10069)
+\[Huang et al., 2020\] [Wei Huang, Tianrui Li, Dexian Wang, Shengdong Du, and Junbo Zhang. Fairness and accuracy in federated learning. arXiv e-prints, page arXiv:2012.10069, 2020.](https://arxiv.org/abs/2012.10069) 
