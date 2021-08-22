@@ -258,7 +258,7 @@ Since we've made great changes on the latest version, to fully reproduce the rep
 
 <div id='refer-anchor-3'></div>
 
-\[Wang et al., 2021]\ [Zheng Wang, Xiaoliang Fan, Jianzhong Qi, Chenglu Wen, Cheng Wang and Rongshan Yu. Federated Learning with Fair Averaging. arXiv e-prints, page arXiv:2104.14937, 2021.](https://arxiv.org/abs/2104.14937)
+\[Wang et al., 2021\] [Zheng Wang, Xiaoliang Fan, Jianzhong Qi, Chenglu Wen, Cheng Wang and Rongshan Yu. Federated Learning with Fair Averaging. arXiv e-prints, page arXiv:2104.14937, 2021.](https://arxiv.org/abs/2104.14937)
 
 
 <div id='refer-anchor-4'></div>
