@@ -240,7 +240,7 @@ Run the file `./generate_fedtask.py` to get the splited dataset (.json file).
 Since the task-specified models are usually orthogonal to the FL algorithms, we don't consider it an important part in this system. And the model and the basic loss function are defined in `./task/dataset_name/model_name.py`. Further details are described in `fedtask/README.md`.
 
 ### Method
-
+![image](https://github.com/WwZzz/myfigs/blob/master/fig0.png)
 This module is the specific federated learning algorithm implementation. Each method contains two classes: the `Server` and the `Client`. 
 
 
