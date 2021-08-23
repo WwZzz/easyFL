@@ -103,6 +103,29 @@ python result_analysis.py
       <td>97  /  90</td>
    </tr>
 </table>
+<table>
+   <tr>
+      <td colspan="5"> Accelarating process by increasing parallelism for FedAVG on MNIST using CNN (20/100 clients per round)</td>
+   </tr>
+   <tr>
+      <td>Num_threads</td>
+      <td>1 </td>
+      <td>2</td>
+      <td>5</td>
+      <td>10</td>
+      <td>15</td>
+      <td>20</td>
+   </tr>
+   <tr>
+      <td>Mean of time cost per round(s\r)</td>
+      <td>19.5434 </td>
+      <td>13.5733</td>
+      <td>9.9935</td>
+      <td>9.3092</td>
+      <td>9.2885</td>
+      <td><b>8.3867</b></td>
+   </tr>
+
 
 ### Reproduced FL Algorithms
 |Method|Reference|Publication|
