@@ -146,9 +146,9 @@ Basic options:
 
 * `method ` is to choose the FL algorithm. Options: `fedfv`, `fedavg`, `fedprox`, …
 
-Server-side options:
-
 * `model` should be the corresponding model of the dataset. Options: `mlp`, `cnn`, `resnet18.`
+
+Server-side options:
 
 * `sample` decides the way to sample clients in each round. Options: `uniform` means uniformly, `md` means choosing with probability.
 
