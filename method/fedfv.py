@@ -16,16 +16,13 @@ class Server(BaseServer):
         self.paras_name=['alpha','tau']
 
     def iterate(self, t):
-        ws, losses, grads = [], [], []
+        # sampling
         selected_clients = self.sample()
         # training locally
-        for cid in selected_clients:
-            w, loss = self.communicate(cid)
-            ws.append(w)
-            losses.append(loss)
-            gi = fmodule.modeldict_sub(self.model.state_dict(), w)
-            grads.append(gi)
-            # update GH
+        ws, losses = self.communicate(selected_clients)
+        grads = [fmodule.modeldict_sub(self.model.state_dict(), w) for w in ws]
+        # update GH
+        for cid, gi in zip(selected_clients, grads):
             self.client_grads_history[cid] = gi
             self.client_last_sample_round[cid] = t
 

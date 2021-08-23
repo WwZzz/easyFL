@@ -4,20 +4,6 @@ import numpy as np
 import copy
 import cvxopt
 
-def quadprog(P, q, G, h, A, b):
-    """
-    Input: Numpy arrays, the format follows MATLAB quadprog function: https://www.mathworks.com/help/optim/ug/quadprog.html
-    Output: Numpy array of the solution
-    """
-    P = cvxopt.matrix(P.tolist())
-    q = cvxopt.matrix(q.tolist(), tc='d')
-    G = cvxopt.matrix(G.tolist())
-    h = cvxopt.matrix(h.tolist())
-    A = cvxopt.matrix(A.tolist())
-    b = cvxopt.matrix(b.tolist(), tc='d')
-    sol = cvxopt.solvers.qp(P, q.T, G.T, h.T, A.T, b)
-    return np.array(sol['x'])
-
 class Server(BaseServer):
     def __init__(self, option, model, clients, dtest = None):
         super(Server, self).__init__(option, model, clients, dtest)
@@ -28,17 +14,12 @@ class Server(BaseServer):
         self.paras_name = ['epsilon','eta']
 
     def iterate(self, t):
-        ws, losses, grads = [], [], []
         selected_clients = self.sample()
         # training
-        for cid in selected_clients:
-            w, loss = self.communicate(cid)
-            ws.append(w)
-            losses.append(loss)
-            grad_i = fmodule.modeldict_sub(self.model.state_dict(), w)
-            # clip gi
-            grad_i = fmodule.modeldict_scale(grad_i, 1.0 / fmodule.modeldict_norm(grad_i))
-            grads.append(grad_i)
+        ws, losses = self.communicate(selected_clients)
+        grads = [fmodule.modeldict_sub(self.model.state_dict(), w) for w in ws]
+        # clip grads
+        grads = [fmodule.modeldict_scale(gi, 1.0 / fmodule.modeldict_norm(gi)) for gi in grads]
         # calculate λ0
         nks = [self.client_vols[cid] for cid in selected_clients]
         nt = sum(nks)
@@ -83,8 +64,23 @@ class Server(BaseServer):
         for i in range(n):
             h[i] = -lb[i]
             h[n+i] = ub[i]
-        res=quadprog(P, q, G, h, A, b)
+        res=self.quadprog(P, q, G, h, A, b)
         return res
+
+    def quadprog(self, P, q, G, h, A, b):
+        """
+        Input: Numpy arrays, the format follows MATLAB quadprog function: https://www.mathworks.com/help/optim/ug/quadprog.html
+        Output: Numpy array of the solution
+        """
+        P = cvxopt.matrix(P.tolist())
+        q = cvxopt.matrix(q.tolist(), tc='d')
+        G = cvxopt.matrix(G.tolist())
+        h = cvxopt.matrix(h.tolist())
+        A = cvxopt.matrix(A.tolist())
+        b = cvxopt.matrix(b.tolist(), tc='d')
+        sol = cvxopt.solvers.qp(P, q.T, G.T, h.T, A.T, b)
+        return np.array(sol['x'])
+
 
 class Client(BaseClient):
     def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):

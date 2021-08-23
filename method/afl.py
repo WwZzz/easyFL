@@ -14,14 +14,10 @@ class Server(BaseServer):
         self.paras_name=['learning_rate_lambda']
 
     def iterate(self, t):
-        ws, losses, grads = [], [], []
+        # full sampling
         # training
-        for cid in range(self.num_clients):
-            w, loss = self.communicate(cid)
-            ws.append(w)
-            losses.append(loss)
-            grads.append(fmodule.modeldict_scale(fmodule.modeldict_sub(self.model.state_dict(), w), 1.0 / self.learning_rate))
-
+        ws, losses = self.communicate([cid for cid in range(self.num_clients)])
+        grads = [fmodule.modeldict_scale(fmodule.modeldict_sub(self.model.state_dict(), w), 1.0 / self.learning_rate) for w in ws]
         # aggregate grads
         grad = self.aggregate(grads, self.dynamic_lambdas)
         w_new = fmodule.modeldict_sub(self.model.state_dict(), fmodule.modeldict_scale(grad, self.learning_rate))
@@ -52,15 +48,21 @@ class Server(BaseServer):
             res.append(max(p[i]+lmbd, 0))
         return res
 
-    def test_on_clients(self, round):
+    def test_on_clients(self, round, dataflag='valid'):
         accs, losses = [], []
+        trans_model=copy.deepcopy(self.model)
+        trans_model.load_state_dict(self.result_modeldict)
         for c in self.clients:
-            self.trans_model.load_state_dict(self.result_modeldict)
-            c.setModel(self.trans_model)
-            acc, loss = c.test()
+            acc, loss = c.test(trans_model, dataflag)
             accs.append(acc)
             losses.append(loss)
         return accs, losses
+
+    def test_on_dtest(self):
+        if self.dtest:
+            trans_model = copy.deepcopy(self.model)
+            trans_model.load_state_dict(self.result_modeldict)
+            return fmodule.test(trans_model, self.dtest)
 
 class Client(BaseClient):
     def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):

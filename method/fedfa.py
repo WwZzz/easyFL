@@ -13,27 +13,18 @@ class Server(BaseServer):
         self.learning_rate = option['learning_rate']
         self.paras_name=['beta','gamma','momentum']
 
-    def communicate(self, cid):
-        # setting client(cid)'s model with latest parameters
-        self.trans_model.load_state_dict(self.model.state_dict())
-        self.clients[cid].setModel(self.trans_model)
-        # wait for replying of the update and loss
-        w = self.clients[cid].reply()[0]
-        freq = self.clients[cid].frequency
-        acc,loss = self.clients[cid].test('trainset')
-        return w, loss, acc, freq
+    def unpack(self, pkgs):
+        ws = [p["model"].state_dict() for p in pkgs]
+        losses = [p["train_loss"] for p in pkgs]
+        ACC = [p["acc"] for p in pkgs]
+        freq = [p["freq"] for p in pkgs]
+        return ws, losses, ACC, freq
 
     def iterate(self, t):
-        ws, losses, ACC, F = [], [], [], []
         # sample clients
         selected_clients = self.sample()
         # training
-        for cid in selected_clients:
-            w, loss, acc, freq = self.communicate(cid)
-            ws.append(w)
-            losses.append(loss)
-            ACC.append(acc)
-            F.append(freq)
+        ws, losses, ACC, F = self.communicate(selected_clients)
         # aggregate
         # calculate ACCi_inf, fi_inf
         sum_acc = np.sum(ACC)
@@ -61,7 +52,12 @@ class Client(BaseClient):
         super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
         self.frequency = 0
 
-    def reply(self):
+    def pack(self, model):
         self.frequency += 1
-        self.train()
-        return copy.deepcopy(self.model.state_dict()), self.train_loss()
+        acc, loss = self.test(model,'train')
+        return {
+            "model":model,
+            "train_loss":loss,
+            "acc":acc,
+            "freq":self.frequency,
+        }

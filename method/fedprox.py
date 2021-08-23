@@ -14,23 +14,23 @@ class Client(BaseClient):
         super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
         self.mu = option['mu']
 
-    def train(self):
+    def train(self, model):
         # global parameters
-        src_model = copy.deepcopy(self.model.state_dict())
-        self.model.train()
+        src_model = copy.deepcopy(model.state_dict())
+        model.train()
         if self.batch_size == -1:
             self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
-        optimizer = optim(self.model.parameters(), lr=self.learning_rate, momentum=self.momentum)
+        optimizer = optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum)
         epoch_loss = []
         for iter in range(self.epochs):
             batch_loss = []
             for batch_idx, (images, labels) in enumerate(ldr_train):
                 images, labels = images.to(device), labels.to(device)
-                self.model.zero_grad()
-                outputs = self.model(images)
+                model.zero_grad()
+                outputs = model(images)
                 loss = lossfunc(outputs, labels)
-                loss+=self.mu/2 * (fmodule.modeldict_norm(fmodule.modeldict_sub(self.model.state_dict(), src_model)) ** 2)
+                loss+=self.mu/2 * (fmodule.modeldict_norm(fmodule.modeldict_sub(model.state_dict(), src_model)) ** 2)
                 loss.backward()
                 optimizer.step()
                 batch_loss.append(loss.item() / len(labels))

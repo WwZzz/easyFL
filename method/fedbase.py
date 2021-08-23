@@ -1,8 +1,10 @@
 import numpy as np
-from utils import fmodule, fmodule
+from utils import fmodule
 import copy
 from torch.utils.data import DataLoader
 from utils.fmodule import device,lossfunc,optim
+from multiprocessing.dummy import Pool as ThreadPool
+import time
 
 class BaseServer():
     def __init__(self, option, model, clients, dtest = None):
@@ -10,9 +12,9 @@ class BaseServer():
         self.task = option['task']
         self.name = option['method']
         self.model = model
-        self.trans_model = copy.deepcopy(self.model).to(fmodule.device)
         self.dtest = fmodule.XYDataset(dtest['x'], dtest['y']) if dtest else None
         self.eval_interval = option['eval_interval']
+        self.num_threads = option['num_threads']
         # clients settings
         self.clients = clients
         self.num_clients = len(self.clients)
@@ -41,13 +43,20 @@ class BaseServer():
         mean_c_accs = []
         valid_accs = []
         test_accs = []
+        time_costs = []
+        temp = "{:<30s}{:.4f}"
+        global_timestamp_start = time.time()
         for round in range(self.num_rounds+1):
             print("--------------Round {}--------------".format(round))
+            timestamp_start = time.time()
             # train
             local_train_loss = self.iterate(round)
             # decay learning rate
             self.global_lr_scheduler(round)
             local_train_losses.append(local_train_loss)
+            timestamp_end = time.time()
+            time_costs.append(timestamp_end - timestamp_start)
+            print(temp.format("Time Cost:",time_costs[-1])+'s')
             if self.eval_interval>0 and (round==0 or round%self.eval_interval==0 or round== self.num_rounds):
                 # train
                 _, train_loss = self.test_on_clients(round, dataflag='train')
@@ -64,13 +73,16 @@ class BaseServer():
                 mean_c_accs.append(np.mean(accs))
                 std_c_accs.append(np.std(accs))
                 # print
-                temp = "{:<30s}{:.4f}"
                 print(temp.format("Training Loss:", train_losses[-1]))
                 print(temp.format("Testing Loss:", test_losses[-1]))
                 print(temp.format("Testing Accuracy:", test_accs[-1]))
                 print(temp.format("Validating Accuracy:",valid_accs[-1]))
                 print(temp.format("Mean of Client Accuracy:", mean_c_accs[-1]))
                 print(temp.format("Std of Client Accuracy:", std_c_accs[-1]))
+        global_timestamp_end = time.time()
+        print("=================End==================")
+        print(temp.format("Total Time Cost", global_timestamp_end-global_timestamp_start) + 's')
+        print(temp.format("Mean Time Cost Of Each Round", float(np.mean(time_costs))) + 's')
         # create_outdict
         outdict={
             "meta":self.option,
@@ -87,24 +99,12 @@ class BaseServer():
             outdict['client_accs'][self.clients[cid].name]=[c_accs[i][cid] for i in range(len(c_accs))]
         return outdict
 
-    def communicate(self, cid):
-        # setting client(cid)'s model with latest parameters
-        self.trans_model.load_state_dict(self.model.state_dict())
-        self.clients[cid].setModel(self.trans_model)
-        # waiting for the reply of the update and loss
-        return self.clients[cid].reply()
-
     def iterate(self, t):
-        ws, losses = [], []
-        loss_avg = -1
         # sample clients
         selected_clients = self.sample()
         # training
-        for cid in selected_clients:
-            w, loss = self.communicate(cid)
-            ws.append(w)
-            losses.append(loss)
-        # aggregate
+        ws, losses = self.communicate(selected_clients)
+        # aggregate: pk = nk/n as default
         w_new = self.aggregate(ws, p=[1.0*self.client_vols[id]/self.data_vol for id in selected_clients])
         self.model.load_state_dict(w_new)
         # output info
@@ -112,6 +112,33 @@ class BaseServer():
         p = [1.0*nk/sum(nks) for nk in nks]
         loss_avg = sum([loss*pk for loss,pk in zip(losses, p)])
         return loss_avg
+
+    def communicate(self, cids):
+        cpkgs = []
+        if self.num_threads <= 1:
+            # computing iteratively
+            for cid in cids:
+                rp = self.communicate_with(cid)
+                cpkgs.append(rp)
+        else:
+            # computing in parallel
+            pool = ThreadPool(min(self.num_threads, len(cids)))
+            cpkgs = pool.map(self.communicate_with, cids)
+        return self.unpack(cpkgs)
+
+    def communicate_with(self, cid):
+        svr_pkg = self.pack(cid)
+        return self.clients[cid].reply(svr_pkg)
+
+    def pack(self, cid):
+        return {
+            "model" : copy.deepcopy(self.model),
+        }
+
+    def unpack(self, cpkgs):
+        ws = [cp["model"].state_dict() for cp in cpkgs]
+        losses = [cp["train_loss"] for cp in cpkgs]
+        return ws, losses
 
     def global_lr_scheduler(self, round):
         if self.lr_scheduler_type == -1:
@@ -162,8 +189,7 @@ class BaseServer():
         """ Validate accuracies and losses """
         accs, losses = [], []
         for c in self.clients:
-            c.setModel(self.model)
-            acc, loss = c.test(dataflag)
+            acc, loss = c.test(self.model, dataflag)
             accs.append(acc)
             losses.append(loss)
         return accs, losses
@@ -219,20 +245,20 @@ class BaseClient():
         if self.drop_rate==0: return True
         else: return (np.random.rand() < self.drop_rate)
 
-    def train(self):
-        self.model.train()
+    def train(self, model):
+        model.train()
         if self.batch_size == -1:
             # full gradient descent
             self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
-        optimizer = optim(self.model.parameters(), lr=self.learning_rate, momentum=self.momentum, weight_decay = self.weight_decay)
+        optimizer = optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum, weight_decay = self.weight_decay)
         epoch_loss = []
         for iter in range(self.epochs):
             batch_loss = []
             for batch_idx, (images, labels) in enumerate(ldr_train):
                 images, labels = images.to(device), labels.to(device)
-                self.model.zero_grad()
-                outputs = self.model(images)
+                model.zero_grad()
+                outputs = model(images)
                 loss = lossfunc(outputs, labels)
                 loss.backward()
                 optimizer.step()
@@ -240,20 +266,32 @@ class BaseClient():
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
         return sum(epoch_loss) / len(epoch_loss)
 
-    def test(self, dataflag='valid'):
-        if dataflag == 'valid':
-            return fmodule.test(self.model, self.valid_data)
-        elif dataflag == 'train':
-            return fmodule.test(self.model, self.train_data)
+    def test(self, model, dataflag='valid'):
+        if dataflag == 'valid' and self.valid_data:
+            return fmodule.test(model, self.valid_data)
+        elif dataflag == 'train' and self.train_data:
+            return fmodule.test(model, self.train_data)
+        else: return -1, 0
 
-    def train_loss(self):
-        _, loss = fmodule.test(self.model, self.train_data)
-        return loss
+    def train_loss(self, model):
+        return self.test(model,'train')[1]
 
-    def valid_loss(self):
-        _, loss = fmodule.test(self.model, self.valid_data)
-        return loss
+    def valid_loss(self, model):
+        return self.test(model)[1]
 
-    def reply(self):
-        self.train()
-        return copy.deepcopy(self.model.state_dict()), self.train_loss()
+    def unpack(self, received_pkg):
+        # unpack the received package
+        return received_pkg['model']
+
+    def reply(self, svr_pkg):
+        model = self.unpack(svr_pkg)
+        self.train(model)
+        cpkg = self.pack(model)
+        return cpkg
+
+    def pack(self, model):
+        loss = self.train_loss(model)
+        return {
+            "model" : model,
+            "train_loss": loss,
+        }

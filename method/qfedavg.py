@@ -16,27 +16,18 @@ class Server(BaseServer):
         # sample clients
         selected_clients = self.sample()
         # training
-        for cid in selected_clients:
-            w, loss = self.communicate(cid)
-            ws.append(w)
-            losses.append(loss)
-            # plug in the weight updates into the gradient
-            grad = fmodule.modeldict_scale(fmodule.modeldict_sub(self.model.state_dict(), w), 1.0 / self.learning_rate)
-            delta = fmodule.modeldict_scale(grad, np.float_power(loss + 1e-10, self.q))
-            Deltas.append(delta)
-            # estimation of the local Lipchitz constant
-            hs.append(self.q * np.float_power(loss + 1e-10, (self.q - 1)) * (
-                    fmodule.modeldict_norm(grad) ** 2) + self.L * np.float_power(loss + 1e-10, self.q))
+        ws, losses = self.communicate(selected_clients)
+        # plug in the weight updates into the gradient
+        grads = [fmodule.modeldict_scale(fmodule.modeldict_sub(self.model.state_dict(), w), 1.0 / self.learning_rate) for w in ws]
+        Deltas = [fmodule.modeldict_scale(gi, np.float_power(li + 1e-10, self.q)) for gi,li in zip(grads,losses)]
+        # estimation of the local Lipchitz constant
+        hs = [self.q * np.float_power(li + 1e-10, (self.q - 1)) * (fmodule.modeldict_norm(gi) ** 2) + self.L * np.float_power(li + 1e-10, self.q) for gi,li in zip(grads,losses)]
         # aggregate
         w_new = self.aggregate(Deltas, hs)
         self.model.load_state_dict(w_new)
         # output info
         loss_avg = sum(losses) / len(losses)
         return loss_avg
-
-    def sample(self):
-        cids = [i for i in range(self.num_clients)]
-        return list(np.random.choice(cids, self.clients_per_round, replace=False, p=[nk/self.data_vol for nk in self.client_vols]))
 
     def aggregate(self, Deltas, hs):
         demominator = np.sum(np.asarray(hs))
