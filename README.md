@@ -105,7 +105,7 @@ python result_analysis.py
 </table>
 <table>
    <tr>
-      <td colspan="7"> Accelarating process by increasing parallelism for FedAVG on MNIST using CNN (20/100 clients per round)</td>
+      <td colspan="7"> Accelarating FL Process by Increasing Parallelism For FedAVG on MNIST using CNN (20/100 clients per round)</td>
    </tr>
    <tr>
       <td>Num_threads</td>
