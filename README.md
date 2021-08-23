@@ -163,6 +163,8 @@ Other options:
 
 * `drop` controls the dropout of clients after being selected in each communication round according to distribution Beta(drop,1). The larger this term is, the more possible for clients to drop.
 
+* `num_threads` is the number of threads in the clients computing session that aims to accelarate the training process.
+
 Additional hyper-parameters for particular federated algorithms:
 * `mu` is the parameter for FedProx.
 * `alpha` is the parameter for FedFV.
