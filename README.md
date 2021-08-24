@@ -250,7 +250,7 @@ The whole FL system starts with the `main.py`, which runs `server.run()` after i
 
 #### Client
 
-The clients reponse to the server after the server `communicate()` with them, who train the model with their local dataset by `train()`. After training the model, the clients send package (e.g. parameters, loss, gradient,... ) to the server through `reply()`.     
+The clients reponse to the server after the server `communicate_with()` them, who first `unpack()` the received package and then train the model with their local dataset by `train()`. After training the model, the clients `pack()` send package (e.g. parameters, loss, gradient,... ) to the server through `reply()`.     
 
 Further details of this module are described in `method/README.md`.
 
