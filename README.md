@@ -209,7 +209,7 @@ We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and 
 ├─ fedtask
 │  ├─ mnist_client100_dist0_beta0_noise0//IID(beta=0) MNIST for 100 clients with not predefined noise
 │  │  ├─ record							//record of result
-│  |  └─ task.json						//fedtask
+│  |  └─ task.json						//the splitted federated dataset (fedtask)
 |  └─ ...
 ├─ method
 │  ├─ fedavg.py							//FL algorithm implementation inherit fedbase.py
