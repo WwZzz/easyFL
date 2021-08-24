@@ -200,8 +200,6 @@ Each additional parameter can be defined in `./utils/fflow.read_option`
 
 We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and `utils`.
 
-![](Architecture.bmp)
-
 ### Benchmark
 
 This module is to generate `fedtask` by partitioning the particular distribution data through `generate_fedtask.py`. To generate different `fedtask`, there are three parameters: `dist`, `num_clients `, `beta`. `dist` denotes the distribution type (e.g. `0` denotes iid and balanced distribution, `1` denotes niid-label-quantity and balanced distribution). `num_clients` is the number of clients participate in FL system, and `beta` controls the degree of non-iid for different  `dist`. Each dataset can correspond to differrent models (mlp, cnn, resnet18, …). We refer to <a href='#refer-anchor-1'>[McMahan et al., 2017]</a>, <a href='#refer-anchor-2'>[Li et al., 2020]</a>, <a href='#refer-anchor-8'>[Li et al., 2021]</a>, <a href='#refer-anchor-4'>[Li et al., 2019]</a>, <a href='#refer-anchor-9'>[Caldas et al., 2018]</a> when realizing this module. Further details are described in `benchmark/README.md`.
