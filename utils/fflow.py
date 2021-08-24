@@ -37,6 +37,7 @@ def read_option():
     parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
     parser.add_argument('--gpu', help='GPU ID, -1 for CPU', type=int, default=1)
     parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
+    parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
     parser.add_argument('--train_rate', help="the validtion dataset rate of each client's dataet", type=float, default=0.8)
     parser.add_argument('--drop', help="controlling the dropout of clients after being selected in each communication round according to distribution Beta(drop,1)", type=float, default=0)
     # hyper-parameters of different methods
