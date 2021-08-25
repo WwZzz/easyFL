@@ -40,6 +40,7 @@ def read_option():
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
     parser.add_argument('--train_rate', help="the validtion dataset rate of each client's dataet", type=float, default=0.8)
     parser.add_argument('--drop', help="controlling the dropout of clients after being selected in each communication round according to distribution Beta(drop,1)", type=float, default=0)
+
     # hyper-parameters of different methods
     parser.add_argument('--learning_rate_lambda', help='η for λ in afl', type=float, default=0)
     parser.add_argument('--q', help='q in q-fedavg', type=float, default='0.0')
@@ -68,8 +69,9 @@ def initialize(option):
     model_path = '%s.%s.%s.%s' % ('benchmark', bmk, 'model', option['model'])
     utils.fmodule.device = torch.device('cuda:{}'.format(option['gpu']) if torch.cuda.is_available() and option['gpu'] != -1 else 'cpu')
     utils.fmodule.lossfunc = getattr(importlib.import_module(model_path), 'Loss')()
-    utils.fmodule.optim = getattr(importlib.import_module('torch.optim'), option['optimizer'])
-    model = getattr(importlib.import_module(model_path), 'Model')().to(utils.fmodule.device)
+    utils.fmodule.Optim = getattr(importlib.import_module('torch.optim'), option['optimizer'])
+    utils.fmodule.Model = getattr(importlib.import_module(model_path), 'Model')
+    model = utils.fmodule.Model().to(utils.fmodule.device)
     print('done')
 
     #init data

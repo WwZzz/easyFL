@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # synthetic_iid_gen = Synthetic_TaskGenerator(dist=0, num_clients=30, beta=(0,0))
     # synthetic_iid_gen.generate()
 
-    # # generating synthetic-iid dataset of 30 clients (synthetic_iid, imbalance)
+    # generating synthetic-iid dataset of 30 clients (synthetic_iid, imbalance)
     # synthetic_iid_gen = Synthetic_TaskGenerator(dist=6, num_clients=30, beta=(0,0))
     # synthetic_iid_gen.generate()
 

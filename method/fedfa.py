@@ -37,12 +37,11 @@ class Server(BaseServer):
         Finf = [f/sum_f for f in Finf]
         # calculate weight = αACCi_inf+βfi_inf
         p = [self.alpha*accinf+self.beta*finf for accinf,finf in zip(ACCinf,Finf)]
-        w_new = self.aggregate(ws, p)
-        dw = fmodule.modeldict_sub(w_new, self.model.state_dict())
+        wnew = self.aggregate(ws, p)
+        dw = wnew -self.model
         # calculate m = γm+(1-γ)dw
-        self.m = fmodule.modeldict_add(fmodule.modeldict_scale(self.m, self.gamma), fmodule.modeldict_scale(dw, 1 - self.gamma))
-        w_new = fmodule.modeldict_sub(w_new, fmodule.modeldict_scale(self.m, self.learning_rate))
-        self.model.load_state_dict(w_new)
+        self.m = self.gamma*self.m, self.gamma + (1 - self.gamma)*dw
+        self.model = wnew - self.m * self.learning_rate
         # output info
         loss_avg = sum(losses) / len(losses)
         return loss_avg

@@ -1,6 +1,7 @@
 from torch import nn
+from utils.fmodule import FModule
 
-class Model(nn.Module):
+class Model(FModule):
     def __init__(self, dim_in = 784, dim_out = 3):
         super(Model, self).__init__()
         self.layer = nn.Linear(dim_in, dim_out)

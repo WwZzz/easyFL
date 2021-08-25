@@ -1,12 +1,14 @@
 from torch.utils.data import DataLoader, Dataset
 import torch
+from torch import nn
 
 device=None
-optim = None
 lossfunc=None
+Optim = None
+Model = None
 
 class XYDataset(Dataset):
-    def __init__(self, xs, ys):
+    def __init__(self, xs=[], ys=[]):
         self.xs = torch.tensor(xs)
         self.ys = torch.tensor(ys)
 
@@ -16,13 +18,83 @@ class XYDataset(Dataset):
     def __getitem__(self, item):
         return self.xs[item], self.ys[item]
 
+class FModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def __add__(self, other):
+        if isinstance(other, int) and other == 0 : return self
+        if not isinstance(other, FModule): raise TypeError
+        res = Model().to(device)
+        res.load_state_dict(modeldict_add(self.state_dict(), other.state_dict()))
+        return res
+
+    def __radd__(self, other):
+        return self+other
+
+    def __sub__(self, other):
+        if not isinstance(other, FModule): raise TypeError
+        res = Model().to(device)
+        res.load_state_dict(modeldict_sub(self.state_dict(), other.state_dict()))
+        return res
+
+    def __mul__(self, other):
+        res = Model().to(device)
+        res.load_state_dict(modeldict_scale(self.state_dict(), other))
+        return res
+
+    def __rmul__(self, other):
+        return self*other
+
+    def __truediv__(self, other):
+        res = Model().to(device)
+        res.load_state_dict(modeldict_scale(self.state_dict(), 1.0/other))
+        return res
+
+    def __pow__(self, power, modulo=None):
+        return modeldict_norm(self.state_dict(), power)
+
+    def zero_dict(self):
+        for p in self.parameters():
+            p.data.zero_()
+
+    def normalize(self):
+        self.load_state_dict((self/(self**2)).state_dict())
+        return
+
+    def norm(self, p=2):
+        return self**p
+
+    def zeros_like(self):
+        return self-self
+
+    def dot(self, other):
+        return modeldict_dot(self.state_dict(), other.state_dict())
+
+    def cos_sim(self, other):
+        return (self/self**2).dot(other/other**2)
+
+def normalize(w):
+    return w/(w**2)
+
+def dot(w1, w2):
+    return w1.dot(w2)
+
+def average(ws = [], p = []):
+    if not ws: return None
+    if not p: p=[1.0/len(ws) for _ in range(len(ws))]
+    return sum([wi*pi for wi,pi in zip(ws, p)])
+
+def cos_sim(w1, w2):
+    return w1.cos_sim(w2)
+
 def train(model, dataset, epochs=1, learning_rate=0.1, batch_size=128, momentum=0):
     model.train()
     if batch_size == -1:
         # full gradient descent
         batch_size = len(dataset)
     ldr_train = DataLoader(dataset, batch_size= batch_size, shuffle=True)
-    optimizer = optim(model.parameters(), lr=learning_rate, momentum=momentum)
+    optimizer = Optim(model.parameters(), lr=learning_rate, momentum=momentum)
     epoch_loss = []
     for iter in range(epochs):
         batch_loss = []
@@ -45,9 +117,9 @@ def test(model, dataset):
     data_loader = DataLoader(dataset, batch_size=64)
     for idx, (features, labels) in enumerate(data_loader):
         features, labels = features.to(device), labels.to(device)
-        log_probs = model(features)
-        loss += (lossfunc(log_probs, labels).item()*len(labels))
-        y_pred = log_probs.data.max(1, keepdim=True)[1]
+        outputs = model(features)
+        loss += (lossfunc(outputs, labels).item()*len(labels))
+        y_pred = outputs.data.max(1, keepdim=True)[1]
         correct += y_pred.eq(labels.data.view_as(y_pred)).long().cpu().sum()
     accuracy = float(correct) * 100.00 / len(dataset)
     loss/=len(dataset)
@@ -117,7 +189,7 @@ def modeldict_dot(w1, w2):
         for l in w1[layer].shape:
             s *= l
         res += (w1[layer].view(1, s).mm(w2[layer].view(1, s).T))
-    return res
+    return res.view(-1)
 
 def modeldict_num_parameters(w):
     res = 0
