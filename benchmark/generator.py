@@ -249,7 +249,7 @@ class TaskGenerator:
 
 class CIFAR100_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = []):
-        super(CIFAR100_TaskGenerator, self).__init__('cifar100', 100, dist, num_clients, beta, noise, minvol, './cifar100/data', cnames)
+        super(CIFAR100_TaskGenerator, self).__init__('cifar100', 100, dist, num_clients, beta, noise, minvol, './benchmark/cifar100/data', cnames)
 
     def load_data(self):
         self.train_data = datasets.CIFAR100(self.datapath, train=True, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5070751592371323, 0.48654887331495095, 0.4409178433670343), (0.2673342858792401, 0.2564384629170883, 0.27615047132568404))]))
@@ -267,7 +267,7 @@ class CIFAR100_TaskGenerator(TaskGenerator):
 
 class CIFAR10_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = []):
-        super(CIFAR10_TaskGenerator, self).__init__('cifar10', 10, dist, num_clients, beta, noise, minvol, './cifar10/data', cnames)
+        super(CIFAR10_TaskGenerator, self).__init__('cifar10', 10, dist, num_clients, beta, noise, minvol, './benchmark/cifar10/data', cnames)
 
     def load_data(self):
         self.train_data = datasets.CIFAR10(self.datapath, train=True, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))]))
@@ -285,7 +285,7 @@ class CIFAR10_TaskGenerator(TaskGenerator):
 
 class MNIST_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = []):
-        super(MNIST_TaskGenerator, self).__init__('mnist', 10, dist, num_clients, beta, noise, minvol, './mnist/data', cnames)
+        super(MNIST_TaskGenerator, self).__init__('mnist', 10, dist, num_clients, beta, noise, minvol, './benchmark/mnist/data', cnames)
 
     def load_data(self):
         self.train_data = datasets.MNIST(self.datapath, train=True, download=True, transform=transforms.Compose([transforms.ToTensor()]))
@@ -312,7 +312,7 @@ class MNIST_TaskGenerator(TaskGenerator):
 
 class FashionMNIST_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = [], selected = [i for i in range(10)]):
-        super(FashionMNIST_TaskGenerator, self).__init__('fmnist', 10, dist, num_clients, beta, noise, minvol, './fmnist/data', cnames)
+        super(FashionMNIST_TaskGenerator, self).__init__('fmnist', 10, dist, num_clients, beta, noise, minvol, './benchmark/fmnist/data', cnames)
         self.label_dict = {0: 'T-shirt', 1: 'Trouser', 2: 'pullover', 3: 'Dress', 4: 'Coat', 5: 'Sandal', 6: 'shirt', 7: 'Sneaker', 8: 'Bag', 9: 'Abkle boot'}
         self.selected = selected
         self.cnames = [self.label_dict[i] for i in self.selected]
@@ -375,7 +375,7 @@ class FashionMNIST_TaskGenerator(TaskGenerator):
         return images, labels
 
 class Synthetic_TaskGenerator(TaskGenerator):
-    def __init__(self, num_classes=10, seed=931231, dimension=60 , dist = 0, num_clients = 30, beta = (0,0), noise = 0, minvol = 10, datapath ='./synthetic/data', cnames = []):
+    def __init__(self, num_classes=10, seed=931231, dimension=60 , dist = 0, num_clients = 30, beta = (0,0), noise = 0, minvol = 10, datapath ='./benchmark/synthetic/data', cnames = []):
         super(Synthetic_TaskGenerator, self).__init__('synthetic', num_classes, dist, num_clients, beta, noise, minvol, datapath, cnames)
         np.random.seed(seed)
         self.dimension = dimension
