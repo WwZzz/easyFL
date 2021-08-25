@@ -15,7 +15,7 @@ optimizer_list=['SGD', 'Adam']
 def read_option():
     parser = argparse.ArgumentParser()
     # basic settings
-    parser.add_argument('--task', help='name of fedtask;', type=str, default='cifar10_client100_dist0_beta10_noise0')
+    parser.add_argument('--task', help='name of fedtask;', type=str, default='mnist_client100_dist0_beta0_noise0')
     parser.add_argument('--method', help='name of method;', type=str, default='fedavg')
     parser.add_argument('--model', help='name of model;', type=str, default='cnn')
     # methods of server side for sampling and aggregating
@@ -25,22 +25,21 @@ def read_option():
     parser.add_argument('--weight_decay', help='weight decay for the training process', type=float, default=0)
     parser.add_argument('--lr_scheduler', help='type of the global learning rate scheduler', type=int, default=-1)
     # hyper-parameters of training in server side
-    parser.add_argument('--num_rounds', help='number of communication rounds', type=int, default=10)
-    parser.add_argument('--proportion', help='proportion of clients sampled per round', type=float, default=0.1)
+    parser.add_argument('--num_rounds', help='number of communication rounds', type=int, default=20)
+    parser.add_argument('--proportion', help='proportion of clients sampled per round', type=float, default=0.2)
     # hyper-parameters of local training
-    parser.add_argument('--num_epochs', help='number of epochs when clients trainset on data;', type=int, default=1)
+    parser.add_argument('--num_epochs', help='number of epochs when clients trainset on data;', type=int, default=5)
     parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.1)
-    parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=int, default=-1)
+    parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=int, default=10)
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
     parser.add_argument('--momentum', help='momentum of local update', type=float, default=0)
     # controlling
     parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
-    parser.add_argument('--gpu', help='GPU ID, -1 for CPU', type=int, default=1)
+    parser.add_argument('--gpu', help='GPU ID, -1 for CPU', type=int, default=-1)
     parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
-    parser.add_argument('--train_rate', help="the validtion dataset rate of each client's dataet", type=float, default=0.8)
+    parser.add_argument('--train_rate', help="the validtion dataset rate of each client's dataet", type=float, default=1)
     parser.add_argument('--drop', help="controlling the dropout of clients after being selected in each communication round according to distribution Beta(drop,1)", type=float, default=0)
-
     # hyper-parameters of different methods
     parser.add_argument('--learning_rate_lambda', help='η for λ in afl', type=float, default=0)
     parser.add_argument('--q', help='q in q-fedavg', type=float, default='0.0')
@@ -69,9 +68,8 @@ def initialize(option):
     model_path = '%s.%s.%s.%s' % ('benchmark', bmk, 'model', option['model'])
     utils.fmodule.device = torch.device('cuda:{}'.format(option['gpu']) if torch.cuda.is_available() and option['gpu'] != -1 else 'cpu')
     utils.fmodule.lossfunc = getattr(importlib.import_module(model_path), 'Loss')()
-    utils.fmodule.Optim = getattr(importlib.import_module('torch.optim'), option['optimizer'])
-    utils.fmodule.Model = getattr(importlib.import_module(model_path), 'Model')
-    model = utils.fmodule.Model().to(utils.fmodule.device)
+    utils.fmodule.optim = getattr(importlib.import_module('torch.optim'), option['optimizer'])
+    model = getattr(importlib.import_module(model_path), 'Model')().to(utils.fmodule.device)
     print('done')
 
     #init data
