@@ -117,7 +117,7 @@ def modeldict_dot(w1, w2):
         for l in w1[layer].shape:
             s *= l
         res += (w1[layer].view(1, s).mm(w2[layer].view(1, s).T))
-    return res
+    return res.view(-1)
 
 def modeldict_num_parameters(w):
     res = 0
