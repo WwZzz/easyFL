@@ -1,10 +1,12 @@
 # import matplotlib
 # matplotlib.rcParams['pdf.fonttype'] = 42
 # matplotlib.rcParams['ps.fonttype'] = 42
-from utils.fflow import *
+
 import matplotlib.pyplot as plt
 import ujson
 import prettytable as pt
+import os
+import numpy as np
 
 def read_data_into_dicts(task, records):
     path = '../fedtask/'+task+'/record'

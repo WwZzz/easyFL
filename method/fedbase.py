@@ -2,7 +2,7 @@ import numpy as np
 from utils import fmodule
 import copy
 from torch.utils.data import DataLoader
-from utils.fmodule import device,lossfunc,optim
+from utils.fmodule import device,lossfunc,Optim
 from multiprocessing.dummy import Pool as ThreadPool
 import time
 
@@ -25,6 +25,7 @@ class BaseServer():
         self.decay_rate = option['learning_rate_decay']
         self.clients_per_round = max(int(self.num_clients * option['proportion']), 1)
         self.lr_scheduler_type = option['lr_scheduler']
+        self.current_round = -1
         # sampling and aggregating methods
         self.sample_option = option['sample']
         self.agg_option = option['aggregate']
@@ -48,6 +49,7 @@ class BaseServer():
         global_timestamp_start = time.time()
         for round in range(self.num_rounds+1):
             print("--------------Round {}--------------".format(round))
+            self.current_round+=1
             timestamp_start = time.time()
             # train
             local_train_loss = self.iterate(round)
@@ -57,6 +59,8 @@ class BaseServer():
             timestamp_end = time.time()
             time_costs.append(timestamp_end - timestamp_start)
             print(temp.format("Time Cost:",time_costs[-1])+'s')
+            # free the cache of gpu
+            # torch.cuda.empty_cache()
             if self.eval_interval>0 and (round==0 or round%self.eval_interval==0 or round== self.num_rounds):
                 # train
                 _, train_loss = self.test_on_clients(round, dataflag='train')
@@ -93,7 +97,7 @@ class BaseServer():
             "test_accs":test_accs,
             "test_losses":test_losses,
             "valid_accs":valid_accs,
-            "client_accs":{}
+            "client_accs":{},
             }
         for cid in range(self.num_clients):
             outdict['client_accs'][self.clients[cid].name]=[c_accs[i][cid] for i in range(len(c_accs))]
@@ -105,8 +109,7 @@ class BaseServer():
         # training
         ws, losses = self.communicate(selected_clients)
         # aggregate: pk = nk/n as default
-        w_new = self.aggregate(ws, p=[1.0*self.client_vols[id]/self.data_vol for id in selected_clients])
-        self.model.load_state_dict(w_new)
+        self.model = self.aggregate(ws, p=[1.0*self.client_vols[id]/self.data_vol for id in selected_clients])
         # output info
         nks = [self.client_vols[cid] for cid in selected_clients]
         p = [1.0*nk/sum(nks) for nk in nks]
@@ -138,7 +141,7 @@ class BaseServer():
         }
 
     def unpack(self, cpkgs):
-        ws = [cp["model"].state_dict() for cp in cpkgs]
+        ws = [cp["model"] for cp in cpkgs]
         losses = [cp["train_loss"] for cp in cpkgs]
         return ws, losses
 
@@ -167,7 +170,7 @@ class BaseServer():
         return selected_cids
 
     def aggregate(self, ws, p=[]):
-        if not ws: return self.model.state_dict()
+        if not ws: return self.model
         """
         pk = nk/n where n=self.data_vol
         K = |S_t|
@@ -180,12 +183,12 @@ class BaseServer():
         if self.agg_option == 'weighted_scale':
             K = len(ws)
             N = self.num_clients
-            q = [1.0*pk*N/K for pk in p]
-            return fmodule.modeldict_weighted_average(ws, q)
+            return fmodule.sum([wk*pk for wk,pk in zip(ws, p)])*N/K
         elif self.agg_option == 'uniform':
-            return fmodule.modeldict_weighted_average(ws)
+            return fmodule.sum(ws)/len(ws)
         elif self.agg_option == 'weighted_com':
-            return fmodule.modeldict_add(fmodule.modeldict_scale(self.model.state_dict(), 1 - sum(p)), fmodule.modeldict_weighted_average(ws, p))
+            w = fmodule.sum([wk*pk for wk,pk in zip(ws, p)])
+            return (1.0-sum(p))*self.model + w
 
     def test_on_clients(self, round, dataflag='valid'):
         """ Validate accuracies and losses """
@@ -199,11 +202,6 @@ class BaseServer():
     def test_on_dtest(self):
         if self.dtest:
             return fmodule.test(self.model, self.dtest)
-
-    def clients_drop(self):
-        for c in self.clients:
-            c.set_available()
-        return
 
 class BaseClient():
     def __init__(self,  option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = -1):
@@ -253,7 +251,7 @@ class BaseClient():
             # full gradient descent
             self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
-        optimizer = optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum, weight_decay = self.weight_decay)
+        optimizer = Optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum, weight_decay = self.weight_decay)
         epoch_loss = []
         for iter in range(self.epochs):
             batch_loss = []
@@ -273,7 +271,7 @@ class BaseClient():
             return fmodule.test(model, self.valid_data)
         elif dataflag == 'train' and self.train_data:
             return fmodule.test(model, self.train_data)
-        else: return -1, 0
+        else: return -1, -1
 
     def train_loss(self, model):
         return self.test(model,'train')[1]

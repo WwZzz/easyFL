@@ -7,8 +7,8 @@
     Deep Residual Learning for Image Recognition
     https://arxiv.org/abs/1512.03385v1
 """
-
 import torch.nn as nn
+from utils.fmodule import FModule
 
 class BasicBlock(nn.Module):
     """Basic Block for resnet 18 and resnet 34
@@ -76,13 +76,10 @@ class BottleNeck(nn.Module):
     def forward(self, x):
         return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
 
-class ResNet(nn.Module):
-
-    def __init__(self, block, num_block, num_classes=100):
+class Model(FModule):
+    def __init__(self, block=BasicBlock, num_block=[2,2,2,2], num_classes=100):
         super().__init__()
-
         self.in_channels = 64
-
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(64),
@@ -130,12 +127,8 @@ class ResNet(nn.Module):
         output = self.avg_pool(output)
         output = output.view(output.size(0), -1)
         output = self.fc(output)
-
         return output
 
-class Model(ResNet):
-    def __init__(self):
-        super(Model, self).__init__(BasicBlock,[2,2,2,2])
 
 class Loss(nn.Module):
     def __init__(self):
@@ -144,5 +137,3 @@ class Loss(nn.Module):
 
     def forward(self, output, target):
         return self.cross_entropy(output, target)
-
-

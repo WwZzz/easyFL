@@ -1,7 +1,8 @@
 from torch import nn
 import torch.nn.functional as F
+from utils.fmodule import FModule
 
-class Model(nn.Module):
+class Model(FModule):
     def __init__(self):
         super(Model, self).__init__()
         self.fc1 = nn.Linear(784, 200)

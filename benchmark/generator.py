@@ -22,7 +22,17 @@ import os.path
 from torchvision import datasets, transforms
 import gzip
 import random
+import urllib
+import zipfile
+import collections
+import os
+import re
+import sys
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
 from scipy.special import softmax
+
 
 data_dist = {
     0: 'iid',
@@ -35,11 +45,11 @@ data_dist = {
 }
 
 class TaskGenerator:
-    def __init__(self, benchmark, num_classes, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, datapath ='', cnames = []):
+    def __init__(self, benchmark, num_classes, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, datapath ='', cnames = [], selected = None):
         self.benchmark = benchmark
         self.rootpath = './fedtask'
 
-        self.datapath = datapath
+        self.datapath = datapath if datapath.endswith('/') else datapath+'/'
         if not os.path.exists(self.datapath):
             os.makedirs(self.datapath)
         self.datavol = -1
@@ -51,6 +61,7 @@ class TaskGenerator:
         self.num_clients = num_clients
         self.cnames = ['client '+str(i) for i in range(num_clients)] if cnames == [] else cnames
         self.noise = noise
+        self.selected = selected
 
         self.dist = dist
         self.distname = data_dist[self.dist]
@@ -247,6 +258,18 @@ class TaskGenerator:
 
         return udata_idxs
 
+    def download_from_url(self, url= None, filename = 'tmp'):
+        if url:
+            urllib.request.urlretrieve(url, self.datapath+filename)
+        return self.datapath+filename
+
+    def extract_from_zip(self, src_path, target_path):
+        f = zipfile.ZipFile(src_path)
+        f.extractall(target_path)
+        targets = f.namelist()
+        f.close()
+        return [os.path.join(target_path, tar) for tar in targets]
+
 class CIFAR100_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = []):
         super(CIFAR100_TaskGenerator, self).__init__('cifar100', 100, dist, num_clients, beta, noise, minvol, './benchmark/cifar100/data', cnames)
@@ -312,9 +335,8 @@ class MNIST_TaskGenerator(TaskGenerator):
 
 class FashionMNIST_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = [], selected = [i for i in range(10)]):
-        super(FashionMNIST_TaskGenerator, self).__init__('fmnist', 10, dist, num_clients, beta, noise, minvol, './benchmark/fmnist/data', cnames)
+        super(FashionMNIST_TaskGenerator, self).__init__('fmnist', 10, dist, num_clients, beta, noise, minvol, './benchmark/fmnist/data', cnames, selected)
         self.label_dict = {0: 'T-shirt', 1: 'Trouser', 2: 'pullover', 3: 'Dress', 4: 'Coat', 5: 'Sandal', 6: 'shirt', 7: 'Sneaker', 8: 'Bag', 9: 'Abkle boot'}
-        self.selected = selected
         self.cnames = [self.label_dict[i] for i in self.selected]
         self.num_labels = len(selected)
 
@@ -438,3 +460,4 @@ class Synthetic_TaskGenerator(TaskGenerator):
             X_split[i] = xx.tolist()
             y_split[i] = yy.tolist()
         return X_split, y_split
+

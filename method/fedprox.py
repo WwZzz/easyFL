@@ -1,6 +1,6 @@
 from .fedbase import BaseServer, BaseClient
 from torch.utils.data import DataLoader
-from utils.fmodule import device,lossfunc,optim
+from utils.fmodule import device,lossfunc,Optim
 import copy
 from utils import fmodule
 
@@ -16,12 +16,12 @@ class Client(BaseClient):
 
     def train(self, model):
         # global parameters
-        src_model = copy.deepcopy(model.state_dict())
+        src_model = copy.deepcopy(model)
         model.train()
         if self.batch_size == -1:
             self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
-        optimizer = optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum)
+        optimizer = Optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum)
         epoch_loss = []
         for iter in range(self.epochs):
             batch_loss = []
@@ -30,7 +30,7 @@ class Client(BaseClient):
                 model.zero_grad()
                 outputs = model(images)
                 loss = lossfunc(outputs, labels)
-                loss+=self.mu/2 * (fmodule.modeldict_norm(fmodule.modeldict_sub(model.state_dict(), src_model)) ** 2)
+                loss+=self.mu/2 * ((model-src_model).norm() ** 2)
                 loss.backward()
                 optimizer.step()
                 batch_loss.append(loss.item() / len(labels))

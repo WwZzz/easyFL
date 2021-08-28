@@ -29,7 +29,7 @@ def read_option():
     parser.add_argument('--proportion', help='proportion of clients sampled per round', type=float, default=0.2)
     # hyper-parameters of local training
     parser.add_argument('--num_epochs', help='number of epochs when clients trainset on data;', type=int, default=5)
-    parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.1)
+    parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.2)
     parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=int, default=10)
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
     parser.add_argument('--momentum', help='momentum of local update', type=float, default=0)
@@ -62,24 +62,20 @@ def setup_seed(seed):
     torch.cuda.manual_seed_all(123+seed)
 
 def initialize(option):
-    # init model
-    print("init model...",end='')
+    # init fedtask
+    print("init fedtask...", end='')
     bmk = option['task'][:option['task'].find('_')]
     model_path = '%s.%s.%s.%s' % ('benchmark', bmk, 'model', option['model'])
     utils.fmodule.device = torch.device('cuda:{}'.format(option['gpu']) if torch.cuda.is_available() and option['gpu'] != -1 else 'cpu')
     utils.fmodule.lossfunc = getattr(importlib.import_module(model_path), 'Loss')()
-    utils.fmodule.optim = getattr(importlib.import_module('torch.optim'), option['optimizer'])
-    model = getattr(importlib.import_module(model_path), 'Model')().to(utils.fmodule.device)
-    print('done')
-
-    #init data
-    print("init fedtask...", end='')
+    utils.fmodule.Optim = getattr(importlib.import_module('torch.optim'), option['optimizer'])
+    utils.fmodule.Model = getattr(importlib.import_module(model_path), 'Model')
     task_path = os.path.join('fedtask', option['task'], 'task.json')
     try:
         with open(task_path, 'r') as taskfile:
             task = ujson.load(taskfile)
     except FileNotFoundError:
-        print("Generate the fedtask {} by generate_fedtask.py".format(option['task']))
+        print("Task {} not found.".format(option['task']))
         exit()
 
     meta = task['meta']
@@ -101,7 +97,7 @@ def initialize(option):
     # init server
     print("init server...", end='')
     server_path = '%s.%s' % ('method', option['method'])
-    server = getattr(importlib.import_module(server_path), 'Server')(option, model, clients, dtest = test_data)
+    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model().to(utils.fmodule.device), clients, dtest = test_data)
     print('done')
     return server
 

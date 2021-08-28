@@ -17,9 +17,9 @@ class Server(BaseServer):
         selected_clients = self.sample()
         # training
         ws, losses = self.communicate(selected_clients)
-        grads = [fmodule.modeldict_sub(self.model.state_dict(), w) for w in ws]
+        grads = [self.model-w for w in ws]
         # clip grads
-        grads = [fmodule.modeldict_scale(gi, 1.0 / fmodule.modeldict_norm(gi)) for gi in grads]
+        for gi in grads: gi.normalize()
         # calculate λ0
         nks = [self.client_vols[cid] for cid in selected_clients]
         nt = sum(nks)
@@ -28,16 +28,12 @@ class Server(BaseServer):
         self.dynamic_lambdas = self.optim_lambda(grads, lambda0)
         self.dynamic_lambdas = [ele[0] for ele in self.dynamic_lambdas]
         # aggregate grads
-        dt = self.aggregate(grads, self.dynamic_lambdas)
+        dt = fmodule.average(grads, self.dynamic_lambdas)
         # update model
-        w_new = fmodule.modeldict_sub(self.model.state_dict(), fmodule.modeldict_scale(dt, self.learning_rate))
-        self.model.load_state_dict(w_new)
+        self.model = self.model - dt * self.learning_rate
         # output info
         loss_avg = sum(losses) / len(losses)
         return loss_avg
-
-    def aggregate(self, ws, p=[]):
-        return fmodule.modeldict_weighted_average(ws, p)
 
     def optim_lambda(self, grads, lambda0):
         # create H_m*m = 2J'J where J=[grad_i]_n*m

@@ -1,7 +1,6 @@
 from utils import fmodule
 from .fedbase import BaseServer, BaseClient
 import copy
-import torch
 import math
 
 class Server(BaseServer):
@@ -20,7 +19,7 @@ class Server(BaseServer):
         selected_clients = self.sample()
         # training locally
         ws, losses = self.communicate(selected_clients)
-        grads = [fmodule.modeldict_sub(self.model.state_dict(), w) for w in ws]
+        grads = [self.model - w for w in ws]
         # update GH
         for cid, gi in zip(selected_clients, grads):
             self.client_grads_history[cid] = gi
@@ -28,17 +27,16 @@ class Server(BaseServer):
 
         # project grads
         order_grads = copy.deepcopy(grads)
-        order = [k for k in range(len(order_grads))]
+        order = [_ for _ in range(len(order_grads))]
 
         # sort client gradients according to their losses in ascending orders
         tmp = sorted(list(zip(losses, order)), key=lambda x: x[0])
         order = [x[1] for x in tmp]
 
         # keep the original direction for clients with the αm largest losses
+        keep_original = []
         if self.alpha > 0:
             keep_original = order[math.ceil((len(order) - 1) * (1 - self.alpha)):]
-        else:
-            keep_original = []
 
         # mitigate internal conflicts by iteratively projecting gradients
         for i in range(len(order_grads)):
@@ -48,43 +46,29 @@ class Server(BaseServer):
                     continue
                 else:
                     # calculate the dot of gi and gj
-                    dot = fmodule.modeldict_dot(grads[j], order_grads[i])
+                    dot = grads[j].dot(order_grads[i])
                     if dot < 0:
-                        order_grads[i] = fmodule.modeldict_sub(order_grads[i], fmodule.modeldict_scale(grads[j], 1.0 * dot / (
-                                fmodule.modeldict_norm(grads[j]) ** 2)))
+                        order_grads[i] = order_grads[i] - grads[j] * dot / (grads[j].norm()**2)
 
         # aggregate projected grads
-        gt = self.aggregate(order_grads)
+        gt = fmodule.average(order_grads)
         # mitigate external conflicts
         if t >= self.tau:
-            for k in range(0, self.tau):
-                k = self.tau - k
-                # create zero vector
-                g_con = {}
-                for layer in gt.keys():
-                    g_con[layer] = torch.zeros_like(gt[layer])
+            for k in range(self.tau-1, -1, -1):
                 # calculate outside conflicts
-                for cid in range(self.num_clients):
-                    if self.client_last_sample_round[cid] == t - k:
-                        if fmodule.modeldict_dot(self.client_grads_history[cid], gt) < 0:
-                            g_con = fmodule.modeldict_add(g_con, self.client_grads_history[cid])
-                dot = fmodule.modeldict_dot(gt, g_con)
+                g_con = sum([self.client_grads_history[cid] for cid in range(self.num_clients) if self.client_last_sample_round[cid] == t - k and gt.dot(self.client_grads_history[cid]) < 0])
+                dot = gt.dot(g_con)
                 if dot < 0:
-                    gt = fmodule.modeldict_sub(gt, fmodule.modeldict_scale(g_con, 1.0 * dot / (
-                            fmodule.modeldict_norm(g_con) ** 2)))
+                    gt = gt - g_con*dot/(g_con.norm()**2)
 
         # ||gt||=||1/m*Σgi||
-        gnorm = fmodule.modeldict_norm(self.aggregate(grads, p=[]))
-        gt = fmodule.modeldict_scale(gt, 1.0 / fmodule.modeldict_norm(gt) * gnorm)
+        gnorm = fmodule.average(grads).norm()
+        gt = gt/gt.norm()*gnorm
 
-        w_new = fmodule.modeldict_sub(self.model.state_dict(), gt)
-        self.model.load_state_dict(w_new)
+        self.model = self.model-gt
         # output info
         loss_avg = sum(losses) / len(losses)
         return loss_avg
-
-    def aggregate(self, ws, p=[]):
-        return fmodule.modeldict_weighted_average(ws, p)
 
 class Client(BaseClient):
     def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):

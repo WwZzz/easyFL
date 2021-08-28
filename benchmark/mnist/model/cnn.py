@@ -1,9 +1,10 @@
 from torch import nn
 import torch.nn.functional as F
+from utils.fmodule import FModule
 
-class Model(nn.Module):
+class Model(FModule):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5)
         self.fc1 = nn.Linear(1024, 512)

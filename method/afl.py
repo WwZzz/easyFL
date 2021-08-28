@@ -10,31 +10,23 @@ class Server(BaseServer):
         self.dynamic_lambdas = np.ones(self.num_clients) * 1.0 / self.num_clients
         self.learning_rate = option['learning_rate']
         self.learning_rate_lambda = option['learning_rate_lambda']
-        self.result_modeldict = copy.deepcopy(self.model.state_dict())
+        self.result_model = copy.deepcopy(self.model)
         self.paras_name=['learning_rate_lambda']
 
     def iterate(self, t):
         # full sampling
         # training
         ws, losses = self.communicate([cid for cid in range(self.num_clients)])
-        grads = [fmodule.modeldict_scale(fmodule.modeldict_sub(self.model.state_dict(), w), 1.0 / self.learning_rate) for w in ws]
+        grads = [(self.model - w)/self.learning_rate for w in ws]
         # aggregate grads
-        grad = self.aggregate(grads, self.dynamic_lambdas)
-        w_new = fmodule.modeldict_sub(self.model.state_dict(), fmodule.modeldict_scale(grad, self.learning_rate))
-        self.model.load_state_dict(w_new)
+        grad = fmodule.average(grads, self.dynamic_lambdas)
+        self.model = self.model - self.learning_rate*grad
         # update lambdas
-        for lid in range(len(self.dynamic_lambdas)):
-            self.dynamic_lambdas[lid] += self.learning_rate_lambda * losses[lid]
+        self.dynamic_lambdas = [lmb_i+self.learning_rate_lambda*loss_i for lmb_i,loss_i in zip(self.dynamic_lambdas, losses)]
         self.dynamic_lambdas = self.project(self.dynamic_lambdas)
         # record resulting model
-        self.result_modeldict = fmodule.modeldict_add(fmodule.modeldict_scale(self.result_modeldict, t), w_new)
-        self.result_modeldict = fmodule.modeldict_scale(self.result_modeldict, 1.0 / (t + 1))
-        # output info
-        loss_avg = sum(losses) / len(losses)
-        return loss_avg
-
-    def aggregate(self, ws, p):
-        return fmodule.modeldict_weighted_average(ws, p)
+        self.result_model = (t*self.result_model + self.model)/(t+1)
+        return sum(losses) / len(losses)
 
     def project(self, p):
         u = sorted(p, reverse=True)
@@ -50,19 +42,15 @@ class Server(BaseServer):
 
     def test_on_clients(self, round, dataflag='valid'):
         accs, losses = [], []
-        trans_model=copy.deepcopy(self.model)
-        trans_model.load_state_dict(self.result_modeldict)
         for c in self.clients:
-            acc, loss = c.test(trans_model, dataflag)
+            acc, loss = c.test(self.result_model, dataflag)
             accs.append(acc)
             losses.append(loss)
         return accs, losses
 
     def test_on_dtest(self):
         if self.dtest:
-            trans_model = copy.deepcopy(self.model)
-            trans_model.load_state_dict(self.result_modeldict)
-            return fmodule.test(trans_model, self.dtest)
+            return fmodule.test(self.result_model, self.dtest)
 
 class Client(BaseClient):
     def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):
