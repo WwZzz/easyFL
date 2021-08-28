@@ -337,7 +337,6 @@ class FashionMNIST_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = [], selected = [i for i in range(10)]):
         super(FashionMNIST_TaskGenerator, self).__init__('fmnist', 10, dist, num_clients, beta, noise, minvol, './benchmark/fmnist/data', cnames, selected)
         self.label_dict = {0: 'T-shirt', 1: 'Trouser', 2: 'pullover', 3: 'Dress', 4: 'Coat', 5: 'Sandal', 6: 'shirt', 7: 'Sneaker', 8: 'Bag', 9: 'Abkle boot'}
-        self.selected = selected
         self.cnames = [self.label_dict[i] for i in self.selected]
         self.num_labels = len(selected)
 

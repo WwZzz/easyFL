@@ -236,7 +236,7 @@ def modeldict_add(wd1, wd2):
     for layer in wd1.keys():
         res[layer] = wd1[layer] + wd2[layer]
     return res
-
+  
 def modeldict_dot(wd1, wd2):
     res = torch.Tensor([0.]).to(wd1[list(wd1)[0]].device)
     for layer in wd1.keys():
