@@ -1,7 +1,6 @@
 from utils import fmodule
 from .fedbase import BaseServer, BaseClient
 import copy
-import torch
 import math
 
 class Server(BaseServer):

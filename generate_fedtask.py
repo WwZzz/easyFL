@@ -25,9 +25,9 @@ if __name__ == '__main__':
     # FashionMNIST_gen = FashionMNIST_TaskGenerator(dist=1, num_clients=3, beta=1, selected=[0,2,6])
     # FashionMNIST_gen.generate()
 
-    # # generating the dataset of cifar100-niid of 100 clients who only have 1 kind of labels
-    # cifar100_niid_gen = CIFAR100_TaskGenerator(dist=1, num_clients=100, beta=1)
-    # cifar100_niid_gen.generate()
+    # generating the dataset of cifar100-niid of 100 clients who only have 1 kind of labels
+    # cifar100_iid_gen = CIFAR100_TaskGenerator(dist=0, num_clients=100, beta=0)
+    # cifar100_iid_gen.generate()
 
     # # generating synthetic-iid dataset of 30 clients (synthetic_iid, balance)
     # synthetic_iid_gen = Synthetic_TaskGenerator(dist=0, num_clients=30, beta=(0,0))

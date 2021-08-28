@@ -25,6 +25,7 @@ class BaseServer():
         self.decay_rate = option['learning_rate_decay']
         self.clients_per_round = max(int(self.num_clients * option['proportion']), 1)
         self.lr_scheduler_type = option['lr_scheduler']
+        self.current_round = -1
         # sampling and aggregating methods
         self.sample_option = option['sample']
         self.agg_option = option['aggregate']
@@ -48,6 +49,7 @@ class BaseServer():
         global_timestamp_start = time.time()
         for round in range(self.num_rounds+1):
             print("--------------Round {}--------------".format(round))
+            self.current_round+=1
             timestamp_start = time.time()
             # train
             local_train_loss = self.iterate(round)
@@ -57,6 +59,8 @@ class BaseServer():
             timestamp_end = time.time()
             time_costs.append(timestamp_end - timestamp_start)
             print(temp.format("Time Cost:",time_costs[-1])+'s')
+            # free the cache of gpu
+            # torch.cuda.empty_cache()
             if self.eval_interval>0 and (round==0 or round%self.eval_interval==0 or round== self.num_rounds):
                 # train
                 _, train_loss = self.test_on_clients(round, dataflag='train')
@@ -93,7 +97,7 @@ class BaseServer():
             "test_accs":test_accs,
             "test_losses":test_losses,
             "valid_accs":valid_accs,
-            "client_accs":{}
+            "client_accs":{},
             }
         for cid in range(self.num_clients):
             outdict['client_accs'][self.clients[cid].name]=[c_accs[i][cid] for i in range(len(c_accs))]
@@ -123,6 +127,8 @@ class BaseServer():
             # computing in parallel
             pool = ThreadPool(min(self.num_threads, len(cids)))
             cpkgs = pool.map(self.communicate_with, cids)
+            pool.close()
+            pool.join()
         return self.unpack(cpkgs)
 
     def communicate_with(self, cid):
@@ -177,11 +183,11 @@ class BaseServer():
         if self.agg_option == 'weighted_scale':
             K = len(ws)
             N = self.num_clients
-            return sum([wk*pk for wk,pk in zip(ws, p)])*N/K
+            return fmodule.sum([wk*pk for wk,pk in zip(ws, p)])*N/K
         elif self.agg_option == 'uniform':
-            return sum(ws)/len(ws)
+            return fmodule.sum(ws)/len(ws)
         elif self.agg_option == 'weighted_com':
-            w = sum([wk*pk for wk,pk in zip(ws, p)])
+            w = fmodule.sum([wk*pk for wk,pk in zip(ws, p)])
             return (1.0-sum(p))*self.model + w
 
     def test_on_clients(self, round, dataflag='valid'):
