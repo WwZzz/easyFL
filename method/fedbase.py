@@ -124,6 +124,8 @@ class BaseServer():
             # computing in parallel
             pool = ThreadPool(min(self.num_threads, len(cids)))
             cpkgs = pool.map(self.communicate_with, cids)
+            pool.close()
+            pool.join()
         return self.unpack(cpkgs)
 
     def communicate_with(self, cid):
