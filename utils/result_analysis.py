@@ -17,7 +17,6 @@ def read_data_into_dicts(task, records):
             file_path = os.path.join(path, f)
             with open(file_path, 'r') as inf:
                 rec = ujson.load(inf)
-                inf.close()
             res.append(rec)
     return res
 

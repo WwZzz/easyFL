@@ -10,8 +10,8 @@ class Server(BaseServer):
         self.paras_name = ['mu']
 
 class Client(BaseClient):
-    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):
-        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, train_rate = 0.8, drop_rate = 0):
+        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, train_rate, drop_rate)
         self.mu = option['mu']
 
     def train(self, model):
@@ -21,7 +21,7 @@ class Client(BaseClient):
         if self.batch_size == -1:
             self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
-        optimizer = Optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum)
+        optimizer = fmodule.get_optimizer(self.optimizer, model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         epoch_loss = []
         for iter in range(self.epochs):
             batch_loss = []

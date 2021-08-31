@@ -31,16 +31,14 @@ class Server(BaseServer):
         dt = fmodule.average(grads, self.dynamic_lambdas)
         # update model
         self.model = self.model - dt * self.learning_rate
-        # output info
-        loss_avg = sum(losses) / len(losses)
-        return loss_avg
+        return selected_clients
 
     def optim_lambda(self, grads, lambda0):
         # create H_m*m = 2J'J where J=[grad_i]_n*m
         n = len(grads)
         Jt = []
         for gi in grads:
-            Jt.append((copy.deepcopy(fmodule.modeldict_to_tensor1D(gi)).cpu()).numpy())
+            Jt.append((copy.deepcopy(fmodule._modeldict_to_tensor1D(gi)).cpu()).numpy())
         Jt = np.array(Jt)
         # target function
         P = 2 * np.dot(Jt, Jt.T)
@@ -79,5 +77,5 @@ class Server(BaseServer):
 
 
 class Client(BaseClient):
-    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):
-        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, train_rate = 0.8, drop_rate = 0):
+        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, train_rate, drop_rate)

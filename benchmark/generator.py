@@ -9,7 +9,7 @@ balance:
 -----------------------------------------------------------------------------------
 depends on partitions:
     feature skew:   4 Noise: each party owns data samples of a fixed number of labels.
-                    5 ID: For FEMNIST, we divide and assign the writers (and their characters) into each party randomly and equally.
+                    5 ID: For Shakespeare\FEMNIST, we divide and assign the writers (and their characters) into each party randomly and equally.
 -----------------------------------------------------------------------------------
 imbalance:
     iid:            6 Vol: only the vol of local dataset varies.
@@ -27,12 +27,10 @@ import zipfile
 import collections
 import os
 import re
-import sys
 import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
-
 from scipy.special import softmax
 
+ssl._create_default_https_context = ssl._create_unverified_context
 
 data_dist = {
     0: 'iid',
@@ -42,6 +40,7 @@ data_dist = {
     4: 'feature_skew_noise',
     5: 'feature_skew_id',
     6: 'iid_volumn_skew',
+    7: 'niid_volumn_skew',
 }
 
 class TaskGenerator:
@@ -65,6 +64,7 @@ class TaskGenerator:
 
         self.dist = dist
         self.distname = data_dist[self.dist]
+        self.supported_dists = []
         self.beta = beta
 
         self.taskname = self.benchmark+'_'+('client'+str(self.num_clients)+'_')+('dist'+str(self.dist)+'_')+('beta' + str(self.beta).replace(" ","") + '_')+('noise'+str(self.noise))
@@ -258,10 +258,9 @@ class TaskGenerator:
 
         return udata_idxs
 
-    def download_from_url(self, url= None, filename = 'tmp'):
-        if url:
-            urllib.request.urlretrieve(url, self.datapath+filename)
-        return self.datapath+filename
+    def download_from_url(self, url= None, filepath = os.path.join('.','tmp')):
+        if url: urllib.request.urlretrieve(url, filepath)
+        return filepath
 
     def extract_from_zip(self, src_path, target_path):
         f = zipfile.ZipFile(src_path)
@@ -273,6 +272,7 @@ class TaskGenerator:
 class CIFAR100_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = []):
         super(CIFAR100_TaskGenerator, self).__init__('cifar100', 100, dist, num_clients, beta, noise, minvol, './benchmark/cifar100/data', cnames)
+        self.supported_dists = [0,1,2,3,4,6]
 
     def load_data(self):
         self.train_data = datasets.CIFAR100(self.datapath, train=True, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5070751592371323, 0.48654887331495095, 0.4409178433670343), (0.2673342858792401, 0.2564384629170883, 0.27615047132568404))]))
@@ -291,6 +291,7 @@ class CIFAR100_TaskGenerator(TaskGenerator):
 class CIFAR10_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = []):
         super(CIFAR10_TaskGenerator, self).__init__('cifar10', 10, dist, num_clients, beta, noise, minvol, './benchmark/cifar10/data', cnames)
+        self.supported_dists = [0, 1, 2, 3, 4, 6]
 
     def load_data(self):
         self.train_data = datasets.CIFAR10(self.datapath, train=True, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))]))
@@ -309,6 +310,7 @@ class CIFAR10_TaskGenerator(TaskGenerator):
 class MNIST_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = []):
         super(MNIST_TaskGenerator, self).__init__('mnist', 10, dist, num_clients, beta, noise, minvol, './benchmark/mnist/data', cnames)
+        self.supported_dists = [0, 1, 2, 3, 4, 6]
 
     def load_data(self):
         self.train_data = datasets.MNIST(self.datapath, train=True, download=True, transform=transforms.Compose([transforms.ToTensor()]))
@@ -332,21 +334,22 @@ class MNIST_TaskGenerator(TaskGenerator):
             res[self.train_data['y'][i]]+=1
         return res
 
-
 class FashionMNIST_TaskGenerator(TaskGenerator):
     def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = [], selected = [i for i in range(10)]):
-        super(FashionMNIST_TaskGenerator, self).__init__('fmnist', 10, dist, num_clients, beta, noise, minvol, './benchmark/fmnist/data', cnames, selected)
+        super(FashionMNIST_TaskGenerator, self).__init__('fashion_mnist', 10, dist, num_clients, beta, noise, minvol, './benchmark/fashion_mnist/data', cnames, selected)
         self.label_dict = {0: 'T-shirt', 1: 'Trouser', 2: 'pullover', 3: 'Dress', 4: 'Coat', 5: 'Sandal', 6: 'shirt', 7: 'Sneaker', 8: 'Bag', 9: 'Abkle boot'}
+        self.selected = selected
         self.cnames = [self.label_dict[i] for i in self.selected]
         self.num_labels = len(selected)
+        self.supported_dists = [0, 1, 2, 3, 4, 6]
 
     def load_data(self):
         self.train_data = datasets.FashionMNIST(self.datapath, train=True, download=True,
                                          transform=transforms.Compose([transforms.ToTensor()]))
         self.test_data = datasets.FashionMNIST(self.datapath, train=False, download=True,
                                         transform=transforms.Compose([transforms.ToTensor()]))
-        X_train, y_train = self.load_mnist('./fmnist/data/FashionMNIST/raw/', kind='train')
-        X_test, y_test = self.load_mnist('./fmnist/data/FashionMNIST/raw/', kind='t10k')
+        X_train, y_train = self.load_mnist('fashion_mnist/data/FashionMNIST/raw/', kind='train')
+        X_test, y_test = self.load_mnist('fashion_mnist/data/FashionMNIST/raw/', kind='t10k')
         mu = np.mean(X_train.astype(np.float32), 0)
         sigma = np.std(X_train.astype(np.float32), 0)
         self.X_train = ((X_train.astype(np.float32) - mu) / (sigma + 0.001)).tolist()
@@ -396,6 +399,310 @@ class FashionMNIST_TaskGenerator(TaskGenerator):
             images = np.frombuffer(imgpath.read(), dtype=np.uint8, offset=16).reshape(len(labels), 784)
         return images, labels
 
+class Shakespeare_TaskGenerator(TaskGenerator):
+    def __init__(self, dist, num_clients = 1, beta = 0.5, noise = 0, minvol = 10, cnames = [], selected = 0, val_frac=0.2):
+        super(Shakespeare_TaskGenerator, self).__init__('shakespeare', 10, dist, num_clients, beta, noise, minvol, './benchmark/shakespeare/data', cnames, selected)
+        self.RANDOM_SEED = 1234
+        # Regular expression to capture an actors name, and line continuation
+        self.CHARACTER_RE = re.compile(r'^  ([a-zA-Z][a-zA-Z ]*)\. (.*)')
+        self.CONT_RE = re.compile(r'^    (.*)')
+        # The Comedy of Errors has errors in its indentation so we need to use
+        # different regular expressions.
+        self.COE_CHARACTER_RE = re.compile(r'^([a-zA-Z][a-zA-Z ]*)\. (.*)')
+        self.COE_CONT_RE = re.compile(r'^(.*)')
+        self.ALL_LETTERS = "\n !\"&'(),-.0123456789:;>?ABCDEFGHIJKLMNOPQRSTUVWXYZ[]abcdefghijklmnopqrstuvwxyz}"
+        self.NUM_LETTERS = len(self.ALL_LETTERS)
+        self.SEQ_LENGTH = 80
+        self.val_frac = val_frac
+        self.supported_dists = [0, 5, 6]
+        return
+
+    def generate(self):
+        self.load_data()
+        self.preprocess_data()
+        user_dict = self.partition()
+        # fill output
+        self.fill_output(user_dict)
+        self.save_task()
+        return
+
+    def partition(self):
+        if self.dist == 0:
+            trainX = []
+            trainY = []
+            validX = []
+            validY = []
+            for user in self.user_dict.keys():
+                trainX.extend(self.user_dict[user]['dtrain']['x'])
+                trainY.extend(self.user_dict[user]['dtrain']['y'])
+                validX.extend(self.user_dict[user]['dvalid']['x'])
+                validY.extend(self.user_dict[user]['dvalid']['y'])
+            user_dict = {}
+            train_d_idxs = np.random.permutation(len(trainY))
+            valid_d_idxs = np.random.permutation(len(validY))
+            train_udata_idxs = np.array_split(train_d_idxs, self.num_clients)
+            valid_udata_idxs = np.array_split(valid_d_idxs, self.num_clients)
+            cnames = ['client '+str(i) for i in range(self.num_clients)]
+            for cid in range(self.num_clients):
+                user_dict[cnames[cid]] = {
+                    'dtrain':{
+                        'x':[trainX[did] for did in train_udata_idxs[cid]],
+                        'y':[trainY[did] for did in train_udata_idxs[cid]],
+                    },
+                    'dvalid':{
+                        'x': [validX[did] for did in valid_udata_idxs[cid]],
+                        'y': [validY[did] for did in valid_udata_idxs[cid]],
+                    },
+                    'dvol':len(train_udata_idxs[cid])
+                }
+            return user_dict
+
+        elif self.dist == 5:
+            return self.user_dict
+
+        elif self.dist == 6:
+            minv = 0
+            trainX = []
+            trainY = []
+            validX = []
+            validY = []
+            for user in self.user_dict.keys():
+                trainX.extend(self.user_dict[user]['dtrain']['x'])
+                trainY.extend(self.user_dict[user]['dtrain']['y'])
+                validX.extend(self.user_dict[user]['dvalid']['x'])
+                validY.extend(self.user_dict[user]['dvalid']['y'])
+            user_dict = {}
+            train_d_idxs = np.random.permutation(len(trainY))
+            valid_d_idxs = np.random.permutation(len(validY))
+            cnames = ['client ' + str(i) for i in range(self.num_clients)]
+            while minv < self.minvol:
+                proportions = np.random.dirichlet(np.repeat(self.beta, self.num_clients))
+                proportions = proportions / proportions.sum()
+                minv = np.min(proportions * self.datavol)
+            train_proportions = (np.cumsum(proportions) * len(train_d_idxs)).astype(int)[:-1]
+            train_udata_idxs = np.split(train_d_idxs, train_proportions)
+            valid_proportions = (np.cumsum(proportions) * len(valid_d_idxs)).astype(int)[:-1]
+            valid_udata_idxs = np.split(valid_d_idxs, valid_proportions)
+            for cid in range(self.num_clients):
+                user_dict[cnames[cid]] = {
+                    'dtrain':{
+                        'x':[trainX[did] for did in train_udata_idxs[cid]],
+                        'y':[trainY[did] for did in train_udata_idxs[cid]],
+                    },
+                    'dvalid':{
+                        'x': [validX[did] for did in valid_udata_idxs[cid]],
+                        'y': [validY[did] for did in valid_udata_idxs[cid]],
+                    },
+                    'dvol':len(train_udata_idxs[cid])
+                }
+            return user_dict
+
+    def fill_output(self, user_dict):
+        self.output = {
+            'meta': {
+                'benchmark': self.benchmark,
+                'num_clients': self.num_clients,
+                'dist': self.dist,
+                'beta': self.beta
+            },
+            'clients': user_dict,
+            'dtest': self.test_data
+        }
+        return
+
+    def load_data(self):
+        # download and read raw dataset
+        raw_path = os.path.join(self.datapath, 'raw_data')
+        all_data_path = os.path.join(raw_path, 'all_data.json')
+        if not os.path.exists(all_data_path):
+            if not os.path.exists(raw_path):
+                os.mkdir(raw_path)
+            src_path = self.download_from_url("http://www.gutenberg.org/files/100/old/1994-01-100.zip", os.path.join(raw_path, 'tmp'))
+            tar_paths = self.extract_from_zip(src_path, raw_path)
+            os.remove(src_path)
+            with open(tar_paths[0], 'r') as input_file:
+                shakespeare_full = input_file.read()
+            plays, discarded_lines = self._split_into_plays(shakespeare_full)
+            users_and_plays, all_examples, num_skipped = self._get_examples_by_character(plays)
+            all_data = {}
+            for user in all_examples.keys():
+                all_data[user] = {
+                    'play': users_and_plays[user],
+                    'sound_bites': all_examples[user],
+                }
+            with open(all_data_path,'w') as f:
+                ujson.dump(all_data, f)
+            os.remove(tar_paths[0])
+        return all_data_path
+
+    def example_to_text(self, examples):
+        text = ' '.join(examples)
+        text = re.sub(r"   *", r' ', text)
+        X = []
+        Y = []
+        for i in range(0, len(text) - self.SEQ_LENGTH, 1):
+            seq_in = text[i:i + self.SEQ_LENGTH]
+            seq_out = text[i + self.SEQ_LENGTH]
+            X.append(seq_in)
+            Y.append(seq_out)
+        return X,Y
+
+    def X_text_to_vec(self, X):
+        return [[self.ALL_LETTERS.find(c) for c in word] for word in X]
+
+    def Y_text_to_vec(self, Y):
+        return [self.ALL_LETTERS.find(c) for c in Y]
+
+    def preprocess_data(self):
+        with open(os.path.join(self.datapath, 'raw_data','all_data.json'),'r') as f:
+            all_data = ujson.load(f)
+        self.cnames = []
+        user_dict = {}
+        all_users = [user for user in all_data.keys()]
+        train_users = []
+        while(len(train_users)<self.num_clients):
+            user = np.random.choice(all_users)
+            if user in train_users: continue
+            examples = all_data[user]['sound_bites']
+            play = all_data[user]['play']
+            # devide the sentence into training set and validating set
+            num_val = max(int(len(examples) * self.val_frac), 1)
+            train_examples = examples[:-num_val]
+            val_examples = examples[-num_val:]
+            assert len(val_examples) == num_val
+            assert len(train_examples) >= len(val_examples)
+            trainX, trainY = self.example_to_text(train_examples)
+            valX, valY = self.example_to_text(val_examples)
+            trainX = self.X_text_to_vec(trainX)
+            trainY = self.Y_text_to_vec(trainY)
+            valX = self.X_text_to_vec(valX)
+            valY = self.Y_text_to_vec(valY)
+            dvol = len(trainX)
+            if dvol<self.minvol:
+                continue
+            if trainY and valY:
+                train_users.append(user)
+                self.cnames.append(user)
+                user_dict[user] = {}
+                user_dict[user]['dtrain'] = {'x': trainX, 'y': trainY}
+                user_dict[user]['dvalid'] = {'x': valX, 'y': valY}
+                user_dict[user]['dvol'] = len(trainY)
+        test_users = []
+        test_dict = {'x':[], 'y':[]}
+        num_test = self.beta
+        all_users = list(set(all_users)-set(train_users))
+        while(len(test_users)<num_test and all_users):
+            user = np.random.choice(all_users)
+            if user in test_users: continue
+            test_users.append(user)
+            test_examples = all_data[user]['sound_bites']
+            play = all_data[user]['play']
+            testX, testY = self.example_to_text(test_examples)
+            test_dict['x'].extend(self.X_text_to_vec(testX))
+            test_dict['y'].extend(self.Y_text_to_vec(testY))
+        self.test_data = test_dict
+        self.user_dict = user_dict
+        return
+
+    def _split_into_plays(self, shakespeare_full):
+        """Splits the full data by play."""
+        # List of tuples (play_name, dict from character to list of lines)
+        plays = []
+        discarded_lines = []  # Track discarded lines.
+        slines = shakespeare_full.splitlines(True)[1:]
+        # skip contents, the sonnets, and all's well that ends well
+        author_count = 0
+        start_i = 0
+        for i, l in enumerate(slines):
+            if 'by William Shakespeare' in l:
+                author_count += 1
+            if author_count == 1:
+                start_i = i - 5
+                break
+        slines = slines[start_i:]
+        current_character = None
+        comedy_of_errors = False
+        for i, line in enumerate(slines):
+            # This marks the end of the plays in the file.
+            if i > 124195 - start_i:
+                break
+            # This is a pretty good heuristic for detecting the start of a new play:
+            if 'by William Shakespeare' in line:
+                current_character = None
+                characters = collections.defaultdict(list)
+                # The title will be 2, 3, 4, 5, 6, or 7 lines above "by William Shakespeare".
+                for j in range(2,8):
+                    if slines[i - j].strip():
+                        title = slines[i-j]
+                        break
+                title = title.strip()
+
+                assert title, (
+                        'Parsing error on line %d. Expecting title 2 or 3 lines above.' %
+                        i)
+                comedy_of_errors = (title == 'THE COMEDY OF ERRORS')
+                # Degenerate plays are removed at the end of the method.
+                plays.append((title, characters))
+                continue
+            # match_character_regex
+            match = (self.COE_CHARACTER_RE.match(line) if comedy_of_errors else self.CHARACTER_RE.match(line))
+            if match:
+                character, snippet = match.group(1), match.group(2)
+                # Some character names are written with multiple casings, e.g., SIR_Toby
+                # and SIR_TOBY. To normalize the character names, we uppercase each name.
+                # Note that this was not done in the original preprocessing and is a
+                # recent fix.
+                character = character.upper()
+                if not (comedy_of_errors and character.startswith('ACT ')):
+                    characters[character].append(snippet)
+                    current_character = character
+                    continue
+                else:
+                    current_character = None
+                    continue
+            elif current_character:
+                # _match_continuation_regex
+                match = (self.COE_CONT_RE.match(line) if comedy_of_errors else self.CONT_RE.match(line))
+                if match:
+                    if comedy_of_errors and match.group(1).startswith('<'):
+                        current_character = None
+                        continue
+                    else:
+                        characters[current_character].append(match.group(1))
+                        continue
+            # Didn't consume the line.
+            line = line.strip()
+            if line and i > 2646:
+                # Before 2646 are the sonnets, which we expect to discard.
+                discarded_lines.append('%d:%s' % (i, line))
+        # Remove degenerate "plays".
+        return [play for play in plays if len(play[1]) > 1], discarded_lines
+
+    def play_and_character(self, play, character):
+        return re.sub('\\W+', '_',(play + '_' + character).replace(' ', '_'))
+
+    def _get_examples_by_character(self, plays):
+        skipped_characters = 0
+        all_examples = collections.defaultdict(list)
+        def add_examples(example_dict, example_tuple_list):
+            for play, character, sound_bite in example_tuple_list:
+                example_dict[self.play_and_character(
+                    play, character)].append(sound_bite)
+        users_and_plays = {}
+        for play, characters in plays:
+            curr_characters = list(characters.keys())
+            for c in curr_characters:
+                users_and_plays[self.play_and_character(play, c)] = play
+            for character, sound_bites in characters.items():
+                examples = [(play, character, sound_bite) for sound_bite in sound_bites]
+                if len(examples) < 2:
+                    skipped_characters += 1
+                    # Skip characters with fewer than 2 lines since we need at least one
+                    # train and one test line.
+                    continue
+                add_examples(all_examples, examples)
+        return users_and_plays, all_examples, skipped_characters
+
 class Synthetic_TaskGenerator(TaskGenerator):
     def __init__(self, num_classes=10, seed=931231, dimension=60 , dist = 0, num_clients = 30, beta = (0,0), noise = 0, minvol = 10, datapath ='./benchmark/synthetic/data', cnames = []):
         super(Synthetic_TaskGenerator, self).__init__('synthetic', num_classes, dist, num_clients, beta, noise, minvol, datapath, cnames)
@@ -404,6 +711,7 @@ class Synthetic_TaskGenerator(TaskGenerator):
         self.num_classes = num_classes
         self.W_global = np.random.normal(0, 1, (self.dimension, self.num_classes))
         self.b_global = np.random.normal(0, 1, self.num_classes)
+        self.supported_dists = [0, 5, 6, 7]
 
     def generate(self):
         xs, ys = self.gen_data(self.num_clients)

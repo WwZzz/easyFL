@@ -91,7 +91,7 @@ def initialize(option):
     Client=getattr(importlib.import_module(client_path), 'Client')
     # the probability of dropout obey distribution beta(drop, 1). The larger 'drop' is, the more possible for a device to drop
     client_drop_rates = np.random.beta(option['drop']+0.00001,1,meta['num_clients'])
-    clients = [Client(option, name = client_names[cid], data_train_dict = train_data[cid], data_val_dict = valid_data[cid], partition = option['train_rate'], drop_rate = client_drop_rates[cid]) for cid in range(meta['num_clients'])]
+    clients = [Client(option, name = client_names[cid], data_train_dict = train_data[cid], data_val_dict = valid_data[cid], train_rate = option['train_rate'], drop_rate = client_drop_rates[cid]) for cid in range(meta['num_clients'])]
     print('done')
 
     # init server

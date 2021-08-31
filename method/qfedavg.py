@@ -11,7 +11,6 @@ class Server(BaseServer):
         self.paras_name = ['q']
 
     def iterate(self, t):
-        ws, losses, Deltas, hs = [], [], [], []
         # sample clients
         selected_clients = self.sample()
         # training
@@ -23,8 +22,7 @@ class Server(BaseServer):
         hs = [self.q * np.float_power(li + 1e-10, (self.q - 1)) * (gi.norm() ** 2) + self.L * np.float_power(li + 1e-10, self.q) for gi,li in zip(grads,losses)]
         # aggregate
         self.model = self.aggregate(Deltas, hs)
-        # output info
-        return sum(losses) / len(losses)
+        return selected_clients
 
     def aggregate(self, Deltas, hs):
         demominator = np.sum(np.asarray(hs))
@@ -34,5 +32,5 @@ class Server(BaseServer):
         return w_new
 
 class Client(BaseClient):
-    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):
-        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, train_rate = 0.8, drop_rate = 0):
+        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, train_rate, drop_rate)

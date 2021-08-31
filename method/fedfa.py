@@ -1,12 +1,11 @@
 from utils import fmodule
-import copy
 from .fedbase import BaseServer, BaseClient
 import numpy as np
 
 class Server(BaseServer):
     def __init__(self, option, model, clients, dtest = None):
         super(Server, self).__init__(option, model, clients, dtest)
-        self.m = fmodule.modeldict_zeroslike(self.model.state_dict())
+        self.m = fmodule._modeldict_zeroslike(self.model.state_dict())
         self.beta = option['beta']
         self.alpha = 1.0 - self.beta
         self.gamma = option['gamma']
@@ -42,13 +41,11 @@ class Server(BaseServer):
         # calculate m = γm+(1-γ)dw
         self.m = self.gamma*self.m, self.gamma + (1 - self.gamma)*dw
         self.model = wnew - self.m * self.learning_rate
-        # output info
-        loss_avg = sum(losses) / len(losses)
-        return loss_avg
+        return selected_clients
 
 class Client(BaseClient):
-    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = 0):
-        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, train_rate = 0.8, drop_rate = 0):
+        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, train_rate, drop_rate)
         self.frequency = 0
 
     def pack(self, model):

@@ -3,6 +3,7 @@ from benchmark.generator import CIFAR100_TaskGenerator
 from benchmark.generator import CIFAR10_TaskGenerator
 from benchmark.generator import Synthetic_TaskGenerator
 from benchmark.generator import FashionMNIST_TaskGenerator
+from benchmark.generator import Shakespeare_TaskGenerator
 
 if __name__ == '__main__':
     # generating the dataset of mnist-iid of 100 clients
@@ -28,6 +29,9 @@ if __name__ == '__main__':
     # generating the dataset of cifar100-niid of 100 clients who only have 1 kind of labels
     # cifar100_iid_gen = CIFAR100_TaskGenerator(dist=0, num_clients=100, beta=0)
     # cifar100_iid_gen.generate()
+
+    # shk_gen = Shakespeare_TaskGenerator(dist = 5, num_clients=31, beta = 6)
+    # shk_gen.generate()
 
     # # generating synthetic-iid dataset of 30 clients (synthetic_iid, balance)
     # synthetic_iid_gen = Synthetic_TaskGenerator(dist=0, num_clients=30, beta=(0,0))

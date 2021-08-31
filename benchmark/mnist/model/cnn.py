@@ -5,9 +5,9 @@ from utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5)
-        self.fc1 = nn.Linear(1024, 512)
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, padding=2)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5, padding=2)
+        self.fc1 = nn.Linear(3136, 512)
         self.fc2 = nn.Linear(512, 10)
 
     def forward(self, x):

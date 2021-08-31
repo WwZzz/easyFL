@@ -20,6 +20,7 @@ class BaseServer():
         self.num_clients = len(self.clients)
         self.client_vols = [c.datavol for c in self.clients]
         self.data_vol = sum(self.client_vols)
+        self.clients_buffer = [{} for _ in range(self.num_clients)]
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
         self.decay_rate = option['learning_rate_decay']
@@ -37,7 +38,6 @@ class BaseServer():
     def run(self):
         accs = []
         c_accs = []
-        local_train_losses = []
         train_losses = []
         test_losses = []
         std_c_accs = []
@@ -52,10 +52,9 @@ class BaseServer():
             self.current_round+=1
             timestamp_start = time.time()
             # train
-            local_train_loss = self.iterate(round)
+            selected_clients = self.iterate(round)
             # decay learning rate
             self.global_lr_scheduler(round)
-            local_train_losses.append(local_train_loss)
             timestamp_end = time.time()
             time_costs.append(timestamp_end - timestamp_start)
             print(temp.format("Time Cost:",time_costs[-1])+'s')
@@ -111,10 +110,7 @@ class BaseServer():
         # aggregate: pk = nk/n as default
         self.model = self.aggregate(ws, p=[1.0*self.client_vols[id]/self.data_vol for id in selected_clients])
         # output info
-        nks = [self.client_vols[cid] for cid in selected_clients]
-        p = [1.0*nk/sum(nks) for nk in nks]
-        loss_avg = sum([loss*pk for loss,pk in zip(losses, p)])
-        return loss_avg
+        return selected_clients
 
     def communicate(self, cids):
         cpkgs = []
@@ -175,10 +171,10 @@ class BaseServer():
         pk = nk/n where n=self.data_vol
         K = |S_t|
         N = |S|
-        --------------------------------------------------------------------------------------------
-         weighted_scale                 |uniform (default)          |weighted_com (original fedavg)
-        ============================================================================================
-        N/K * Σpk * wk                 |1/K * Σwk                  |(1-Σpk) * w_old + Σpk * wk
+        -------------------------------------------------------------------------------------------------------------------------
+         weighted_scale                 |uniform (default)          |weighted_com (original fedavg)   |other
+        ==============================================================================================|============================
+        N/K * Σpk * wk                 |1/K * Σwk                  |(1-Σpk) * w_old + Σpk * wk     |Σ(pk/Σpk) * wk
         """
         if self.agg_option == 'weighted_scale':
             K = len(ws)
@@ -189,6 +185,10 @@ class BaseServer():
         elif self.agg_option == 'weighted_com':
             w = fmodule.sum([wk*pk for wk,pk in zip(ws, p)])
             return (1.0-sum(p))*self.model + w
+        else:
+            sump = sum(p)
+            p = [pk/sump for pk in p]
+            return fmodule.sum([wk * pk for wk, pk in zip(ws, p)])
 
     def test_on_clients(self, round, dataflag='valid'):
         """ Validate accuracies and losses """
@@ -202,13 +202,14 @@ class BaseServer():
     def test_on_dtest(self):
         if self.dtest:
             return fmodule.test(self.model, self.dtest)
+        else: return -1,-1
 
 class BaseClient():
-    def __init__(self,  option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, partition = 0.8, drop_rate = -1):
+    def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, train_rate = 0.8, drop_rate = -1):
         self.name = name
         self.frequency = 0
         # client's benchmark
-        if partition==0:
+        if train_rate==0:
             self.train_data = fmodule.XYDataset(data_train_dict['x'], data_train_dict['y'])
             self.valid_data = fmodule.XYDataset(data_val_dict['x'], data_val_dict['y'])
         else:
@@ -218,16 +219,17 @@ class BaseClient():
             np.random.shuffle(data_x)
             np.random.set_state(rng_state)
             np.random.shuffle(data_y)
-            if partition==1:
+            if train_rate==1:
                 self.train_data = fmodule.XYDataset(data_x, data_y)
                 self.valid_data = self.train_data
             else:
-                k = int(len(data_x) * partition)
+                k = int(len(data_x) * train_rate)
                 self.train_data = fmodule.XYDataset(data_x[:k], data_y[:k])
                 self.valid_data = fmodule.XYDataset(data_x[k:], data_y[k:])
         self.datavol = len(self.train_data)
         self.drop_rate = drop_rate if drop_rate>0.01 else 0
         # hyper-parameters for training
+        self.optimizer = option['optimizer']
         self.epochs = option['num_epochs']
         self.learning_rate = option['learning_rate']
         self.batch_size = option['batch_size']
@@ -251,14 +253,14 @@ class BaseClient():
             # full gradient descent
             self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
-        optimizer = Optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum, weight_decay = self.weight_decay)
+        optimizer = fmodule.get_optimizer(self.optimizer, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         epoch_loss = []
         for iter in range(self.epochs):
             batch_loss = []
-            for batch_idx, (images, labels) in enumerate(ldr_train):
-                images, labels = images.to(device), labels.to(device)
+            for batch_idx, (features, labels) in enumerate(ldr_train):
+                features, labels = features.to(device), labels.to(device)
                 model.zero_grad()
-                outputs = model(images)
+                outputs = model(features)
                 loss = lossfunc(outputs, labels)
                 loss.backward()
                 optimizer.step()
