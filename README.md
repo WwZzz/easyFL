@@ -295,6 +295,11 @@ Please cite our paper in your publications if this code helps your research.
 ## Remark
 Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project.
 
+
+## Contact
+Zheng Wang, zwang@stu.xmu.edu.cn
+Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
+
 ## References
 <div id='refer-anchor-1'></div>
 
