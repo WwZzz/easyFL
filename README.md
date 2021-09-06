@@ -298,6 +298,7 @@ Since we've made great changes on the latest version, to fully reproduce the rep
 
 ## Contact
 Zheng Wang, zwang@stu.xmu.edu.cn
+
 Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
 
 ## References
