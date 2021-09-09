@@ -56,10 +56,12 @@ class Server(BaseServer):
         if t >= self.tau:
             for k in range(self.tau-1, -1, -1):
                 # calculate outside conflicts
-                g_con = sum([self.client_grads_history[cid] for cid in range(self.num_clients) if self.client_last_sample_round[cid] == t - k and gt.dot(self.client_grads_history[cid]) < 0])
-                dot = gt.dot(g_con)
-                if dot < 0:
-                    gt = gt - g_con*dot/(g_con.norm()**2)
+                gcs = [self.client_grads_history[cid] for cid in range(self.num_clients) if self.client_last_sample_round[cid] == t - k and gt.dot(self.client_grads_history[cid]) < 0]
+                if gcs:
+                    g_con = fmodule.sum(gcs)
+                    dot = gt.dot(g_con)
+                    if dot < 0:
+                        gt = gt - g_con*dot/(g_con.norm()**2)
 
         # ||gt||=||1/m*Σgi||
         gnorm = fmodule.average(grads).norm()
