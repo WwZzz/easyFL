@@ -38,7 +38,7 @@ class Server(BaseServer):
         n = len(grads)
         Jt = []
         for gi in grads:
-            Jt.append((copy.deepcopy(fmodule._modeldict_to_tensor1D(gi)).cpu()).numpy())
+            Jt.append((copy.deepcopy(fmodule._modeldict_to_tensor1D(gi.state_dict())).cpu()).numpy())
         Jt = np.array(Jt)
         # target function
         P = 2 * np.dot(Jt, Jt.T)
