@@ -10,7 +10,7 @@ Our easyFL is a strong and reusable experimental platform for research on federa
 - [Architecture](#Architecture)
 - [Remark](# Remark)
 - [Citation](#Citation)
-- [Contact](# Contact)
+- [Contacts](# Contacts)
 - [References](# References)
 
 ## Requirements
@@ -300,7 +300,7 @@ Please cite our paper in your publications if this code helps your research.
 }te
 ```
 
-## Contact
+## Contacts
 Zheng Wang, zwang@stu.xmu.edu.cn
 
 Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
