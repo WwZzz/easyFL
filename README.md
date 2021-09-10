@@ -8,10 +8,10 @@ Our easyFL is a strong and reusable experimental platform for research on federa
 - [Requirements](#Requirements)
 - [QuickStart](#QuickStart)
 - [Architecture](#Architecture)
-- [Remark](# Remark)
+- [Remark](#Remark)
 - [Citation](#Citation)
-- [Contacts](# Contacts)
-- [References](# References)
+- [Contacts](#Contacts)
+- [References](#References)
 
 ## Requirements
 
