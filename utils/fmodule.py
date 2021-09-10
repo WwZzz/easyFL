@@ -34,7 +34,7 @@ class FModule(nn.Module):
         if isinstance(other, int) and other == 0 : return self
         if not isinstance(other, FModule): raise TypeError
         res = Model().to(device)
-        res.load_state_dict(_modeldict_add(self.state_dict(), other.state_dict()))
+        _model_dict_cp(res.state_dict(), _modeldict_add(self.state_dict(), other.state_dict()))
         return res
 
     def __radd__(self, other):
@@ -43,12 +43,12 @@ class FModule(nn.Module):
     def __sub__(self, other):
         if not isinstance(other, FModule): raise TypeError
         res = Model().to(device)
-        res.load_state_dict(_modeldict_sub(self.state_dict(), other.state_dict()))
+        _model_dict_cp(res.state_dict(), _modeldict_sub(self.state_dict(), other.state_dict()))
         return res
 
     def __mul__(self, other):
         res = Model().to(device)
-        res.load_state_dict(_modeldict_scale(self.state_dict(), other))
+        _model_dict_cp(res.state_dict(), _modeldict_scale(self.state_dict(), other))
         return res
 
     def __rmul__(self, other):
@@ -56,7 +56,7 @@ class FModule(nn.Module):
 
     def __truediv__(self, other):
         res = Model().to(device)
-        res.load_state_dict(_modeldict_scale(self.state_dict(), 1.0 / other))
+        _model_dict_cp(res.state_dict(), _modeldict_scale(self.state_dict(), 1.0/other))
         return res
 
     def __pow__(self, power, modulo=None):
@@ -64,7 +64,7 @@ class FModule(nn.Module):
 
     def __neg__(self):
         res = Model().to(device)
-        res.load_state_dict(_modeldict_scale(self.state_dict(), -1.0))
+        _model_dict_cp(res.state_dict(), _modeldict_scale(self.state_dict(), -1.0))
         return res
 
     def load(self, other):
@@ -184,6 +184,11 @@ def test(model, dataset):
     loss/=len(dataset)
     return accuracy, loss
 
+def _model_dict_cp(wd1, wd2):
+    for layer in wd1.keys():
+        wd1[layer] = wd2[layer]
+    return
+
 def _modeldict_sum(wds):
     if not wds: return None
     wd_sum = {}
@@ -241,7 +246,7 @@ def _modeldict_norm(wd, p=2):
     for layer in wd.keys():
         if wd[layer].dtype not in [torch.float, torch.float32, torch.float64]: continue
         res += torch.pow(torch.norm(wd[layer], p),p)
-    return torch.pow(res, 1.0/p)
+    return torch.pow(res, 1.0/p).view(-1)
 
 def _modeldict_to_tensor1D(wd):
     res = torch.Tensor().type_as(wd[list(wd)[0]]).to(wd[list(wd)[0]].device)

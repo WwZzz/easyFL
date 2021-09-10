@@ -3,6 +3,7 @@ from torch.utils.data import DataLoader
 from utils.fmodule import device,lossfunc,Optim
 import copy
 from utils import fmodule
+import torch
 
 class Server(BaseServer):
     def __init__(self, option, model, clients, dtest = None):
@@ -30,7 +31,9 @@ class Client(BaseClient):
                 model.zero_grad()
                 outputs = model(images)
                 loss = lossfunc(outputs, labels)
-                loss+=self.mu/2 * ((model-src_model).norm() ** 2)
+                dw = model - src_model
+                reg = self.mu/2 * fmodule.dot(dw, dw)
+                loss = loss + reg
                 loss.backward()
                 optimizer.step()
                 batch_loss.append(loss.item() / len(labels))
