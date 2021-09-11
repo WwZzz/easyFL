@@ -51,9 +51,13 @@ class Client(BaseClient):
     def train(self, model, cg):
         if not self.c:
             self.c = model.zeros_like()
+            self.c.freeze_grad()
         # global parameters
         src_model = copy.deepcopy(model)
+        src_model.freeze_grad()
+        cg.freeze_grad()
         model.train()
+        model.op_with_graph()
         if self.batch_size == -1:
             self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
@@ -75,6 +79,7 @@ class Client(BaseClient):
                 num_batches += 1
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
         # update local control variate c
+        model.op_without_graph()
         K = self.epochs * num_batches
         dy = model - src_model
         dc = -1.0 / (K * self.learning_rate) * dy - cg

@@ -18,7 +18,9 @@ class Client(BaseClient):
     def train(self, model):
         # global parameters
         src_model = copy.deepcopy(model)
+        src_model.freeze_grad()
         model.train()
+        model.op_with_graph()
         if self.batch_size == -1:
             self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
@@ -31,12 +33,12 @@ class Client(BaseClient):
                 model.zero_grad()
                 outputs = model(images)
                 loss = lossfunc(outputs, labels)
-                dw = model - src_model
-                reg = self.mu/2 * fmodule.dot(dw, dw)
-                loss = loss + reg
+                reg = (model-src_model).norm()**2
+                loss+=reg
                 loss.backward()
                 optimizer.step()
                 batch_loss.append(loss.item() / len(labels))
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
+        model.op_without_graph()
         return sum(epoch_loss) / len(epoch_loss)
 

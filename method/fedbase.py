@@ -179,11 +179,11 @@ class BaseServer():
         if self.agg_option == 'weighted_scale':
             K = len(ws)
             N = self.num_clients
-            return fmodule.sum([wk*pk for wk,pk in zip(ws, p)])*N/K
+            return fmodule.sum([wk * pk for wk, pk in zip(ws, p)]) * N / K
         elif self.agg_option == 'uniform':
             return fmodule.average(ws)
         elif self.agg_option == 'weighted_com':
-            w = fmodule.sum([wk*pk for wk,pk in zip(ws, p)])
+            w = fmodule.sum([wk * pk for wk, pk in zip(ws, p)])
             return (1.0-sum(p))*self.model + w
         else:
             sump = sum(p)
