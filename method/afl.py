@@ -19,7 +19,7 @@ class Server(BaseServer):
         ws, losses = self.communicate([cid for cid in range(self.num_clients)])
         grads = [(self.model - w)/self.learning_rate for w in ws]
         # aggregate grads
-        grad = fmodule.average(grads, self.dynamic_lambdas)
+        grad = fmodule._model_average(grads, self.dynamic_lambdas)
         self.model = self.model - self.learning_rate*grad
         # update lambdas
         self.dynamic_lambdas = [lmb_i+self.learning_rate_lambda*loss_i for lmb_i,loss_i in zip(self.dynamic_lambdas, losses)]

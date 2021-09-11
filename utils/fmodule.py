@@ -129,7 +129,7 @@ def element_wise_func(w, func):
         _modeldict_cp(res.state_dict(), _modeldict_element_wise(w.state_dict(), func))
     return res
 
-def sum(ms):
+def _model_sum(ms):
     if not ms: return None
     op_with_graph = sum([w.ingraph for w in ms]) > 0
     res = Model().to(ms[0].get_device())
@@ -146,7 +146,7 @@ def sum(ms):
         _modeldict_cp(res.state_dict(), _modeldict_sum([w.state_dict() for w in ms]))
     return res
 
-def average(ms = [], p = []):
+def _model_average(ms = [], p = []):
     if not ms: return None
     if not p: p = [1.0 / len(ms) for _ in range(len(ms))]
     op_with_graph = sum([w.ingraph for w in ms]) > 0
@@ -260,7 +260,8 @@ def get_module_from_model(model, res = None):
     if res==None: res = []
     ch_names = [item[0] for item in model.named_children()]
     if ch_names==[]:
-        res.append(model)
+        if model._parameters:
+            res.append(model)
     else:
         for name in ch_names:
             get_module_from_model(model.__getattr__(name), res)

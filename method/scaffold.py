@@ -36,8 +36,8 @@ class Server(BaseServer):
         return selected_clients
 
     def aggregate(self, dys, dcs):  # c_list is c_i^+
-        dw = fmodule.average(dys)
-        dc = fmodule.average(dcs)
+        dw = fmodule._model_average(dys)
+        dc = fmodule._model_average(dcs)
         new_model = self.model + self.eta * dw
         new_c = self.cg + 1.0 * len(dcs) / self.num_clients * dc
         return new_model, new_c

@@ -23,8 +23,8 @@ class Server(BaseServer):
         return selected_clients
 
     def aggregate(self, ws):
-        self.h = self.h - self.alpha/self.num_clients*(fmodule.sum(ws)-self.model)
-        w_new = fmodule.average(ws)-1.0/self.alpha*self.h
+        self.h = self.h - self.alpha/self.num_clients*(fmodule._model_sum(ws) - self.model)
+        w_new = fmodule._model_average(ws) - 1.0 / self.alpha * self.h
         return w_new
 
 

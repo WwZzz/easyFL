@@ -51,20 +51,20 @@ class Server(BaseServer):
                         order_grads[i] = order_grads[i] - grads[j] * dot / (grads[j].norm()**2)
 
         # aggregate projected grads
-        gt = fmodule.average(order_grads)
+        gt = fmodule._model_average(order_grads)
         # mitigate external conflicts
         if t >= self.tau:
             for k in range(self.tau-1, -1, -1):
                 # calculate outside conflicts
                 gcs = [self.client_grads_history[cid] for cid in range(self.num_clients) if self.client_last_sample_round[cid] == t - k and gt.dot(self.client_grads_history[cid]) < 0]
                 if gcs:
-                    g_con = fmodule.sum(gcs)
+                    g_con = fmodule._model_sum(gcs)
                     dot = gt.dot(g_con)
                     if dot < 0:
                         gt = gt - g_con*dot/(g_con.norm()**2)
 
         # ||gt||=||1/m*Σgi||
-        gnorm = fmodule.average(grads).norm()
+        gnorm = fmodule._model_average(grads).norm()
         gt = gt/gt.norm()*gnorm
 
         self.model = self.model-gt
