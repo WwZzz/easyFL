@@ -141,7 +141,7 @@ python result_analysis.py
 |FedMGDA+|<a href='#refer-anchor-6'>[Hu et al., 2020]</a>|pre-print|
 |FedFA|<a href='#refer-anchor-7'>[Huang et al., 2020]</a>|pre-print|
 |SCAFFOLD|<a href='#refer-anchor-11'>[Karimireddy et al., 2020]</a>|ICML' 2020|
-| FedDyn      | <a href='#refer-anchor-11'>[Acar et al., 2021]</a>        | ICLR' 2021    |
+| FedDyn      | <a href='#refer-anchor-12'>[Acar et al., 2021]</a>       | ICLR' 2021    |
 | ...         |||
 |### Options|||
 
