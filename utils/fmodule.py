@@ -213,7 +213,7 @@ def _model_scale(m, s):
 
 def _model_norm(m, power=2):
     op_with_graph = m.ingraph
-    res = torch.Tensor(0.).to(m.get_device())
+    res = torch.tensor(0.).to(m.get_device())
     if op_with_graph:
         ml = get_module_from_model(m)
         for n in ml:
@@ -227,7 +227,7 @@ def _model_norm(m, power=2):
 
 def _model_dot(m1, m2):
     op_with_graph = m1.ingraph or m2.ingraph
-    res = torch.Tensor(0.).to(m1.get_device())
+    res = torch.tensor(0.).to(m1.get_device())
     if op_with_graph:
         ml1 = get_module_from_model(m1)
         ml2 = get_module_from_model(m2)
@@ -240,12 +240,12 @@ def _model_dot(m1, m2):
 
 def _model_cossim(m1, m2):
     op_with_graph = m1.ingraph or m2.ingraph
-    res = torch.Tensor(0.).to(m1.get_device())
+    res = torch.tensor(0.).to(m1.get_device())
     if op_with_graph:
         ml1 = get_module_from_model(m1)
         ml2 = get_module_from_model(m2)
-        l1 = torch.Tensor(0.).to(m1.device)
-        l2 = torch.Tensor(0.).to(m1.device)
+        l1 = torch.tensor(0.).to(m1.device)
+        l2 = torch.tensor(0.).to(m1.device)
         for n1, n2 in zip(ml1, ml2):
             res += _modeldict_dot(n1._parameters, n2._parameters)
             for l in n1._parameters.keys():
@@ -389,7 +389,7 @@ def _modeldict_sub(wd1, wd2):
     return res
 
 def _modeldict_norm(wd, p=2):
-    res = torch.Tensor(0.).to(wd[list(wd)[0]].device)
+    res = torch.tensor(0.).to(wd[list(wd)[0]].device)
     for layer in wd.keys():
         if wd[layer] is None: continue
         if wd[layer].dtype not in [torch.float, torch.float32, torch.float64]: continue
@@ -405,7 +405,7 @@ def _modeldict_to_tensor1D(wd):
     return res
 
 def _modeldict_dot(wd1, wd2):
-    res = torch.Tensor(0.).to(wd1[list(wd1)[0]].device)
+    res = torch.tensor(0.).to(wd1[list(wd1)[0]].device)
     for layer in wd1.keys():
         if wd1[layer] is None:
             continue
@@ -414,9 +414,9 @@ def _modeldict_dot(wd1, wd2):
     return res.view(-1)
 
 def _modeldict_cossim(wd1, wd2):
-    res = torch.Tensor(0.).to(wd1[list(wd1)[0]].device)
-    l1 = torch.Tensor(0.).to(wd1[list(wd1)[0]].device)
-    l2 = torch.Tensor(0.).to(wd1[list(wd1)[0]].device)
+    res = torch.tensor(0.).to(wd1[list(wd1)[0]].device)
+    l1 = torch.tensor(0.).to(wd1[list(wd1)[0]].device)
+    l2 = torch.tensor(0.).to(wd1[list(wd1)[0]].device)
     for layer in wd1.keys():
         if wd1[layer] is None:
             continue

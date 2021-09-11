@@ -34,7 +34,7 @@ class Client(BaseClient):
                 outputs = model(images)
                 loss = lossfunc(outputs, labels)
                 dw = src_model-model
-                loss += 0.5 * self.alpha * dw.dot(dw)
+                loss += 0.5 * self.mu * dw.dot(dw)
                 loss.backward()
                 optimizer.step()
                 batch_loss.append(loss.item() / len(labels))
