@@ -143,7 +143,8 @@ python result_analysis.py
 |SCAFFOLD|<a href='#refer-anchor-11'>[Karimireddy et al., 2020]</a>|ICML' 2020|
 | FedDyn      | <a href='#refer-anchor-12'>[Acar et al., 2021]</a>       | ICLR' 2021    |
 | ...         |||
-|### Options|||
+
+### Options
 
 Basic options:
 
