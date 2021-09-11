@@ -140,8 +140,10 @@ python result_analysis.py
 |AFL|<a href='#refer-anchor-5'>[Mohri et al., 2019]</a>|ICML' 2019|
 |FedMGDA+|<a href='#refer-anchor-6'>[Hu et al., 2020]</a>|pre-print|
 |FedFA|<a href='#refer-anchor-7'>[Huang et al., 2020]</a>|pre-print|
-|...||
-### Options
+|SCAFFOLD|<a href='#refer-anchor-11'>[Karimireddy et al., 2020]</a>|ICML' 2020|
+| FedDyn      | <a href='#refer-anchor-12'>[Acar et al., 2021]</a>       | ICLR' 2021    |
+| ...         |||
+|### Options|||
 
 Basic options:
 
@@ -346,3 +348,12 @@ Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
 <div id='refer-anchor-10'></div>
 
 \[He et al., 2020\] [He, Chaoyang and Li, Songze and So, Jinhyun and Zhang, Mi and Wang, Hongyi and Wang, Xiaoyang and Vepakomma, Praneeth and Singh, Abhishek and Qiu, Hang and Shen, Li and Zhao, Peilin and Kang, Yan and Liu, Yang and Raskar, Ramesh and Yang, Qiang and Annavaram, Murali and Avestimehr, Salman. FedML: A Research Library and Benchmark for Federated Machine Learning. arXiv preprint arXiv:2007.13518, 2020.](https://arxiv.org/abs/2007.13518)
+
+<div id='refer-anchor-11'></div>
+
+\[Karimireddy et al., 2020\] [Sai Praneeth Karimireddy, Satyen Kale, Mehryar Mohri, Sashank Reddi, Sebastian Stich, Ananda Theertha Suresh Proceedings of the 37th International Conference on Machine Learning, PMLR 119:5132-5143, 2020.](https://arxiv.org/abs/1910.06378v3)
+
+<div id='refer-anchor-12'></div>
+
+[Acar et al., 2021] [Durmus Alp Emre Acar, Yue Zhao, Ramon Matas, Matthew Mattina, Paul Whatmough, Venkatesh Saligrama. Federated Learning Based on Dynamic Regularization. International Conference on Learning Representations (ICLR), 2021](https://openreview.net/forum?id=B7v4QMR6Z9w)
+
