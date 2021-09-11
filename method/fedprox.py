@@ -20,9 +20,7 @@ class Client(BaseClient):
         src_model = copy.deepcopy(model)
         src_model.freeze_grad()
         model.train()
-        model.op_with_graph()
-        if self.batch_size == -1:
-            self.batch_size = len(self.train_data)
+        if self.batch_size == -1: self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
         optimizer = fmodule.get_optimizer(self.optimizer, model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         epoch_loss = []
@@ -32,9 +30,11 @@ class Client(BaseClient):
                 images, labels = images.to(device), labels.to(device)
                 model.zero_grad()
                 outputs = model(images)
-                loss = lossfunc(outputs, labels)
-                dw = src_model-model
-                loss += 0.5 * self.mu * dw.dot(dw)
+                l1 = lossfunc(outputs, labels)
+                l2 = 0
+                for pm, ps in zip(model.parameters(), src_model.parameters()):
+                    l2 += torch.sum(torch.pow(pm-ps,2))
+                loss = l1 + 0.5 * self.mu * l2
                 loss.backward()
                 optimizer.step()
                 batch_loss.append(loss.item() / len(labels))

@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from utils.fmodule import device, lossfunc, Optim
 import copy
 from utils import fmodule
-
+import torch
 
 class Server(BaseServer):
     def __init__(self, option, model, clients, dtest=None):
@@ -38,16 +38,15 @@ class Client(BaseClient):
     def train(self, model):
         if self.gradL == None:
             self.gradL = model.zeros_like()
-        self.gradL.freeze_grad()
         # global parameters
         src_model = copy.deepcopy(model)
         src_model.freeze_grad()
+        self.gradL.freeze_grad()
         model.train()
-        model.op_with_grad()
         if self.batch_size == -1:
             self.batch_size = len(self.train_data)
         ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
-        optimizer = Optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum)
+        optimizer = fmodule.get_optimizer(self.optimizer, model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         epoch_loss = []
         for iter in range(self.epochs):
             batch_loss = []
@@ -56,15 +55,17 @@ class Client(BaseClient):
                 model.zero_grad()
                 outputs = model(images)
                 l1 = lossfunc(outputs, labels)
-                l2 = fmodule.dot(self.gradL, model)
-                l3 = self.alpha/2*((model-src_model).norm()**2)
-                loss = l1 - l2 + l3
+                l2 = 0
+                l3 = 0
+                for pgl, pm, ps in zip(self.gradL.parameters(), model.parameters(), src_model.parameters()):
+                    l2 += torch.dot(pgl.view(-1), pm.view(-1))
+                    l3 += torch.sum(torch.pow(pm-ps,2))
+                loss = l1 - l2 + 0.5 * self.alpha * l3
                 loss.backward()
                 optimizer.step()
                 batch_loss.append(loss.item() / len(labels))
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
         # update grad_L
         self.gradL = self.gradL - self.alpha * (model-src_model)
-        model.op_without_grad()
         return sum(epoch_loss) / len(epoch_loss)
 
