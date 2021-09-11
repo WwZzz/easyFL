@@ -33,8 +33,8 @@ class Client(BaseClient):
                 model.zero_grad()
                 outputs = model(images)
                 loss = lossfunc(outputs, labels)
-                reg = (model-src_model).norm()**2
-                loss+=reg
+                dw = src_model-model
+                loss += 0.5 * self.alpha * dw.dot(dw)
                 loss.backward()
                 optimizer.step()
                 batch_loss.append(loss.item() / len(labels))
