@@ -316,7 +316,7 @@ def _modeldict_sum(wds):
         wd_sum[layer] = torch.zeros_like(wds[0][layer])
     for wid in range(len(wds)):
         for layer in wd_sum.keys():
-            if wds[0][layer] == None:
+            if wds[0][layer] is None:
                 wd_sum[layer] = None
             wd_sum[layer] = wd_sum[layer] + wds[wid][layer]
     return wd_sum
@@ -329,7 +329,7 @@ def _modeldict_weighted_average(wds, weights=[]):
     if len(weights) == 0: weights = [1.0 / len(wds) for _ in range(len(wds))]
     for wid in range(len(wds)):
         for layer in wd_avg.keys():
-            if wds[0][layer] == None:
+            if wds[0][layer] is None:
                 wd_avg[layer] = None
             weight = weights[wid] if "num_batches_tracked" not in layer else 1
             wd_avg[layer] = wd_avg[layer] + wds[wid][layer] * weight
