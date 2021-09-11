@@ -9,8 +9,8 @@ class Server(BaseServer):
         self.beta = option['beta']
         self.alpha = 1.0 - self.beta
         self.gamma = option['gamma']
-        self.learning_rate = option['learning_rate']
-        self.paras_name=['beta','gamma','momentum']
+        self.eta = option['learning_rate']
+        self.paras_name=['beta','gamma']
 
     def unpack(self, pkgs):
         ws = [p["model"].state_dict() for p in pkgs]
@@ -40,13 +40,14 @@ class Server(BaseServer):
         dw = wnew -self.model
         # calculate m = γm+(1-γ)dw
         self.m = self.gamma*self.m, self.gamma + (1 - self.gamma)*dw
-        self.model = wnew - self.m * self.learning_rate
+        self.model = wnew - self.m * self.eta
         return selected_clients
 
 class Client(BaseClient):
     def __init__(self, option, name = '', data_train_dict = {'x':[],'y':[]}, data_val_dict={'x':[],'y':[]}, train_rate = 0.8, drop_rate = 0):
         super(Client, self).__init__(option, name, data_train_dict, data_val_dict, train_rate, drop_rate)
         self.frequency = 0
+        self.momentum = option['gamma']
 
     def pack(self, model):
         self.frequency += 1
