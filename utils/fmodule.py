@@ -221,7 +221,7 @@ def _model_norm(m, power=2):
                 if n._parameters[l] is None: continue
                 if n._parameters[l].dtype not in [torch.float, torch.float32, torch.float64]: continue
                 res += torch.sum(torch.pow(n._parameters[l], power))
-        return torch.pow(res, 1.0 / power).view(-1)
+        return torch.pow(res, 1.0 / power)
     else:
         return _modeldict_norm(m.state_dict(), power)
 
@@ -233,7 +233,7 @@ def _model_dot(m1, m2):
         ml2 = get_module_from_model(m2)
         for n1, n2 in zip(ml1, ml2):
             res += _modeldict_dot(n1._parameters, n2._parameters)
-        return res.view(-1)
+        return res
     else:
         _modeldict_cp(res.state_dict(), _modeldict_dot(m1.state_dict(), m2.state_dict()))
     return res
@@ -251,10 +251,10 @@ def _model_cossim(m1, m2):
             for l in n1._parameters.keys():
                 l1 += torch.sum(torch.pow(n1._parameters[l], 2))
                 l2 += torch.sum(torch.pow(n2._parameters[l], 2))
-        return (res / torch.pow(l1, 0.5) * torch(l2, 0.5)).view(-1)
+        return (res / torch.pow(l1, 0.5) * torch(l2, 0.5))
     else:
         _modeldict_cp(res.state_dict(), _modeldict_cossim(m1.state_dict(), m2.state_dict()))
-    return res
+        return res
 
 def get_module_from_model(model, res = None):
     if res==None: res = []
@@ -394,7 +394,7 @@ def _modeldict_norm(wd, p=2):
         if wd[layer] is None: continue
         if wd[layer].dtype not in [torch.float, torch.float32, torch.float64]: continue
         res += torch.sum(torch.pow(wd[layer], p))
-    return torch.pow(res, 1.0/p).view(-1)
+    return torch.pow(res, 1.0/p)
 
 def _modeldict_to_tensor1D(wd):
     res = torch.Tensor().type_as(wd[list(wd)[0]]).to(wd[list(wd)[0]].device)
@@ -411,7 +411,7 @@ def _modeldict_dot(wd1, wd2):
             continue
         if wd1[layer].dtype not in [torch.float, torch.float32, torch.float64]:continue
         res += (wd1[layer].view(-1).dot(wd2[layer].view(-1)))
-    return res.view(-1)
+    return res
 
 def _modeldict_cossim(wd1, wd2):
     res = torch.tensor(0.).to(wd1[list(wd1)[0]].device)
@@ -424,7 +424,7 @@ def _modeldict_cossim(wd1, wd2):
         res += (wd1[layer].view(-1).dot(wd2[layer].view(-1)))
         l1 += torch.sum(torch.pow(wd1[layer], 2))
         l2 += torch.sum(torch.pow(wd2[layer], 2))
-    return (res/(torch.pow(l1, 0.5)*torch.pow(l2, 0.5))).view(-1)
+    return res/(torch.pow(l1, 0.5)*torch.pow(l2, 0.5))
 
 def _modeldict_element_wise(wd, func):
     res = {}
