@@ -98,40 +98,77 @@ class FModule(nn.Module):
     def get_device(self):
         return next(self.parameters()).device
 
-def normalize(w):
-    return w/(w**2)
+def train(model, dataset, epochs=1, learning_rate=0.1, batch_size=128, momentum=0):
+    model.train()
+    if batch_size == -1:
+        # full gradient descent
+        batch_size = len(dataset)
+    ldr_train = DataLoader(dataset, batch_size= batch_size, shuffle=True)
+    optimizer = Optim(model.parameters(), lr=learning_rate, momentum=momentum)
+    epoch_loss = []
+    for iter in range(epochs):
+        batch_loss = []
+        for batch_idx, (features, labels) in enumerate(ldr_train):
+            features, labels = features.to(device), labels.to(device)
+            model.zero_grad()
+            outputs = model(features)
+            loss = lossfunc(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            batch_loss.append(loss.item()/len(labels))
+        epoch_loss.append(sum(batch_loss) / len(batch_loss))
+    return sum(epoch_loss) / len(epoch_loss)
 
-def dot(w1, w2):
-    return w1.dot(w2)
+@torch.no_grad()
+def test(model, dataset):
+    model.eval()
+    loss = 0
+    correct = 0
+    data_loader = DataLoader(dataset, batch_size=64)
+    for idx, (features, labels) in enumerate(data_loader):
+        features, labels = features.to(device), labels.to(device)
+        outputs = model(features)
+        loss += (lossfunc(outputs, labels).item()*len(labels))
+        y_pred = outputs.data.max(1, keepdim=True)[1]
+        correct += y_pred.eq(labels.data.view_as(y_pred)).long().cpu().sum()
+    accuracy = float(correct) * 100.00 / len(dataset)
+    loss/=len(dataset)
+    return accuracy, loss
 
-def cos_sim(w1, w2):
-    return w1.cos_sim(w2)
+def normalize(m):
+    return m/(m**2)
 
-def exp(w):
+def dot(m1, m2):
+    return m1.dot(m2)
+
+def cos_sim(m1, m2):
+    return m1.cos_sim(m2)
+
+def exp(m):
     """element-wise exp"""
-    return element_wise_func(w, torch.exp)
+    return element_wise_func(m, torch.exp)
 
-def log(w):
+def log(m):
     """element-wise log"""
-    return element_wise_func(w, torch.log)
+    return element_wise_func(m, torch.log)
 
-def element_wise_func(w, func):
-    if not w: return None
-    res = Model().to(w.get_device())
-    if w.ingraph:
+def element_wise_func(m, func):
+    if not m: return None
+    res = Model().to(m.get_device())
+    if m.ingraph:
         res.op_with_graph()
-        wl = get_module_from_model(w)
-        for wd in wl:
-            rd = _modeldict_element_wise(wd._parameters, func)
-            for l in wd._parameters.keys():
-                wd._parameters[l] = rd[l]
+        ml = get_module_from_model(m)
+        for md in ml:
+            rd = _modeldict_element_wise(md._parameters, func)
+            for l in md._parameters.keys():
+                md._parameters[l] = rd[l]
     else:
-        _modeldict_cp(res.state_dict(), _modeldict_element_wise(w.state_dict(), func))
+        _modeldict_cp(res.state_dict(), _modeldict_element_wise(m.state_dict(), func))
     return res
 
 def _model_sum(ms):
     if not ms: return None
-    op_with_graph = sum([w.ingraph for w in ms]) > 0
+    op_with_graph = sum([mi.ingraph for mi in ms]) > 0
     res = Model().to(ms[0].get_device())
     if op_with_graph:
         mlks = [get_module_from_model(mi) for mi in ms]
@@ -140,10 +177,11 @@ def _model_sum(ms):
             mpks = [mlk[n]._parameters for mlk in mlks]
             rd = _modeldict_sum(mpks)
             for l in mlr[n]._parameters.keys():
+                if mlr[n]._parameters[l] is None: continue
                 mlr[n]._parameters[l] = rd[l]
         res.op_with_graph()
     else:
-        _modeldict_cp(res.state_dict(), _modeldict_sum([w.state_dict() for w in ms]))
+        _modeldict_cp(res.state_dict(), _modeldict_sum([mi.state_dict() for mi in ms]))
     return res
 
 def _model_average(ms = [], p = []):
@@ -158,6 +196,7 @@ def _model_average(ms = [], p = []):
             mpks = [mlk[n]._parameters for mlk in mlks]
             rd = _modeldict_weighted_average(mpks, p)
             for l in mlr[n]._parameters.keys():
+                if mlr[n]._parameters[l] is None: continue
                 mlr[n]._parameters[l] = rd[l]
         res.op_with_graph()
     else:
@@ -175,6 +214,7 @@ def _model_add(m1, m2):
         for n1, n2, nr in zip(ml1, ml2, mlr):
             rd = _modeldict_add(n1._parameters, n2._parameters)
             for l in nr._parameters.keys():
+                if nr._parameters[l] is None: continue
                 nr._parameters[l] = rd[l]
     else:
         _modeldict_cp(res.state_dict(), _modeldict_add(m1.state_dict(), m2.state_dict()))
@@ -191,6 +231,7 @@ def _model_sub(m1, m2):
         for n1, n2, nr in zip(ml1, ml2, mlr):
             rd = _modeldict_sub(n1._parameters, n2._parameters)
             for l in nr._parameters.keys():
+                if nr._parameters[l] is None: continue
                 nr._parameters[l] = rd[l]
     else:
         _modeldict_cp(res.state_dict(), _modeldict_sub(m1.state_dict(), m2.state_dict()))
@@ -206,6 +247,7 @@ def _model_scale(m, s):
         for n, nr in zip(ml, mlr):
             rd = _modeldict_scale(n._parameters, s)
             for l in nr._parameters.keys():
+                if nr._parameters[l] is None: continue
                 nr._parameters[l] = rd[l]
     else:
         _modeldict_cp(res.state_dict(), _modeldict_scale(m.state_dict(), s))
@@ -267,186 +309,152 @@ def get_module_from_model(model, res = None):
             get_module_from_model(model.__getattr__(name), res)
     return res
 
-def train(model, dataset, epochs=1, learning_rate=0.1, batch_size=128, momentum=0):
-    model.train()
-    if batch_size == -1:
-        # full gradient descent
-        batch_size = len(dataset)
-    ldr_train = DataLoader(dataset, batch_size= batch_size, shuffle=True)
-    optimizer = Optim(model.parameters(), lr=learning_rate, momentum=momentum)
-    epoch_loss = []
-    for iter in range(epochs):
-        batch_loss = []
-        for batch_idx, (features, labels) in enumerate(ldr_train):
-            features, labels = features.to(device), labels.to(device)
-            model.zero_grad()
-            outputs = model(features)
-            loss = lossfunc(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            batch_loss.append(loss.item()/len(labels))
-        epoch_loss.append(sum(batch_loss) / len(batch_loss))
-    return sum(epoch_loss) / len(epoch_loss)
 
-@torch.no_grad()
-def test(model, dataset):
-    model.eval()
-    loss = 0
-    correct = 0
-    data_loader = DataLoader(dataset, batch_size=64)
-    for idx, (features, labels) in enumerate(data_loader):
-        features, labels = features.to(device), labels.to(device)
-        outputs = model(features)
-        loss += (lossfunc(outputs, labels).item()*len(labels))
-        y_pred = outputs.data.max(1, keepdim=True)[1]
-        correct += y_pred.eq(labels.data.view_as(y_pred)).long().cpu().sum()
-    accuracy = float(correct) * 100.00 / len(dataset)
-    loss/=len(dataset)
-    return accuracy, loss
-
-def _modeldict_cp(wd1, wd2):
-    for layer in wd1.keys():
-        wd1[layer].data.copy_(wd2[layer])
+def _modeldict_cp(md1, md2):
+    for layer in md1.keys():
+        md1[layer].data.copy_(md2[layer])
     return
 
-def _modeldict_sum(wds):
-    if not wds: return None
-    wd_sum = {}
-    for layer in wds[0].keys():
-        wd_sum[layer] = torch.zeros_like(wds[0][layer])
-    for wid in range(len(wds)):
-        for layer in wd_sum.keys():
-            if wds[0][layer] is None:
-                wd_sum[layer] = None
-            wd_sum[layer] = wd_sum[layer] + wds[wid][layer]
-    return wd_sum
+def _modeldict_sum(mds):
+    if not mds: return None
+    md_sum = {}
+    for layer in mds[0].keys():
+        md_sum[layer] = torch.zeros_like(mds[0][layer])
+    for wid in range(len(mds)):
+        for layer in md_sum.keys():
+            if mds[0][layer] is None:
+                md_sum[layer] = None
+                continue
+            md_sum[layer] = md_sum[layer] + mds[wid][layer]
+    return md_sum
 
-def _modeldict_weighted_average(wds, weights=[]):
-    if not wds:
+def _modeldict_weighted_average(mds, weights=[]):
+    if not mds:
         return None
-    wd_avg = {}
-    for layer in wds[0].keys(): wd_avg[layer] = torch.zeros_like(wds[0][layer])
-    if len(weights) == 0: weights = [1.0 / len(wds) for _ in range(len(wds))]
-    for wid in range(len(wds)):
-        for layer in wd_avg.keys():
-            if wds[0][layer] is None:
-                wd_avg[layer] = None
+    md_avg = {}
+    for layer in mds[0].keys(): md_avg[layer] = torch.zeros_like(mds[0][layer])
+    if len(weights) == 0: weights = [1.0 / len(mds) for _ in range(len(mds))]
+    for wid in range(len(mds)):
+        for layer in md_avg.keys():
+            if mds[0][layer] is None:
+                md_avg[layer] = None
+                continue
             weight = weights[wid] if "num_batches_tracked" not in layer else 1
-            wd_avg[layer] = wd_avg[layer] + wds[wid][layer] * weight
-    return wd_avg
+            md_avg[layer] = md_avg[layer] + mds[wid][layer] * weight
+    return md_avg
 
-def _modeldict_to_device(wd, device = device):
+def _modeldict_to_device(md, device = device):
     res = {}
-    for layer in wd.keys():
-        if wd[layer] is None:
+    for layer in md.keys():
+        if md[layer] is None:
             res[layer] = None
             continue
-        res[layer] = wd[layer].to(device)
+        res[layer] = md[layer].to(device)
     return res
 
-def _modeldict_to_cpu(wd):
+def _modeldict_to_cpu(md):
     res = {}
-    for layer in wd.keys():
-        if wd[layer] is None:
+    for layer in md.keys():
+        if md[layer] is None:
             res[layer] = None
             continue
-        res[layer] = wd[layer].cpu()
+        res[layer] = md[layer].cpu()
     return res
 
-def _modeldict_zeroslike(wd):
+def _modeldict_zeroslike(md):
     res = {}
-    for layer in wd.keys():
-        if wd[layer] is None:
+    for layer in md.keys():
+        if md[layer] is None:
             res[layer] = None
             continue
-        res[layer] = wd[layer] - wd[layer]
+        res[layer] = md[layer] - md[layer]
     return res
 
-def _modeldict_add(wd1, wd2):
+def _modeldict_add(md1, md2):
     res = {}
-    for layer in wd1.keys():
-        if wd1[layer] is None:
+    for layer in md1.keys():
+        if md1[layer] is None:
             res[layer] = None
             continue
-        res[layer] = wd1[layer] + wd2[layer]
+        res[layer] = md1[layer] + md2[layer]
     return res
 
-def _modeldict_scale(wd, c):
+def _modeldict_scale(md, c):
     res = {}
-    for layer in wd.keys():
-        if wd[layer] is None:
+    for layer in md.keys():
+        if md[layer] is None:
             res[layer] = None
             continue
-        res[layer] = wd[layer] * c
+        res[layer] = md[layer] * c
     return res
 
-def _modeldict_sub(wd1, wd2):
+def _modeldict_sub(md1, md2):
     res = {}
-    for layer in wd1.keys():
-        if wd1[layer] is None:
+    for layer in md1.keys():
+        if md1[layer] is None:
             res[layer] = None
             continue
-        res[layer] = wd1[layer] - wd2[layer]
+        res[layer] = md1[layer] - md2[layer]
     return res
 
-def _modeldict_norm(wd, p=2):
-    res = torch.tensor(0.).to(wd[list(wd)[0]].device)
-    for layer in wd.keys():
-        if wd[layer] is None: continue
-        if wd[layer].dtype not in [torch.float, torch.float32, torch.float64]: continue
-        res += torch.sum(torch.pow(wd[layer], p))
+def _modeldict_norm(md, p=2):
+    res = torch.tensor(0.).to(md[list(md)[0]].device)
+    for layer in md.keys():
+        if md[layer] is None: continue
+        if md[layer].dtype not in [torch.float, torch.float32, torch.float64]: continue
+        res += torch.sum(torch.pow(md[layer], p))
     return torch.pow(res, 1.0/p)
 
-def _modeldict_to_tensor1D(wd):
-    res = torch.Tensor().type_as(wd[list(wd)[0]]).to(wd[list(wd)[0]].device)
-    for layer in wd.keys():
-        if wd[layer] is None:
+def _modeldict_to_tensor1D(md):
+    res = torch.Tensor().type_as(md[list(md)[0]]).to(md[list(md)[0]].device)
+    for layer in md.keys():
+        if md[layer] is None:
             continue
-        res = torch.cat((res, wd[layer].view(-1)))
+        res = torch.cat((res, md[layer].view(-1)))
     return res
 
-def _modeldict_dot(wd1, wd2):
-    res = torch.tensor(0.).to(wd1[list(wd1)[0]].device)
-    for layer in wd1.keys():
-        if wd1[layer] is None:
+def _modeldict_dot(md1, md2):
+    res = torch.tensor(0.).to(md1[list(md1)[0]].device)
+    for layer in md1.keys():
+        if md1[layer] is None:
             continue
-        if wd1[layer].dtype not in [torch.float, torch.float32, torch.float64]:continue
-        res += (wd1[layer].view(-1).dot(wd2[layer].view(-1)))
+        if md1[layer].dtype not in [torch.float, torch.float32, torch.float64]:continue
+        res += (md1[layer].view(-1).dot(md2[layer].view(-1)))
     return res
 
-def _modeldict_cossim(wd1, wd2):
-    res = torch.tensor(0.).to(wd1[list(wd1)[0]].device)
-    l1 = torch.tensor(0.).to(wd1[list(wd1)[0]].device)
-    l2 = torch.tensor(0.).to(wd1[list(wd1)[0]].device)
-    for layer in wd1.keys():
-        if wd1[layer] is None:
+def _modeldict_cossim(md1, md2):
+    res = torch.tensor(0.).to(md1[list(md1)[0]].device)
+    l1 = torch.tensor(0.).to(md1[list(md1)[0]].device)
+    l2 = torch.tensor(0.).to(md1[list(md1)[0]].device)
+    for layer in md1.keys():
+        if md1[layer] is None:
             continue
-        if wd1[layer].dtype not in [torch.float, torch.float32, torch.float64]: continue
-        res += (wd1[layer].view(-1).dot(wd2[layer].view(-1)))
-        l1 += torch.sum(torch.pow(wd1[layer], 2))
-        l2 += torch.sum(torch.pow(wd2[layer], 2))
+        if md1[layer].dtype not in [torch.float, torch.float32, torch.float64]: continue
+        res += (md1[layer].view(-1).dot(md2[layer].view(-1)))
+        l1 += torch.sum(torch.pow(md1[layer], 2))
+        l2 += torch.sum(torch.pow(md2[layer], 2))
     return res/(torch.pow(l1, 0.5)*torch.pow(l2, 0.5))
 
-def _modeldict_element_wise(wd, func):
+def _modeldict_element_wise(md, func):
     res = {}
-    for layer in wd.keys():
-        if wd[layer] is None:
+    for layer in md.keys():
+        if md[layer] is None:
             res[layer] = None
             continue
-        res[layer] = func(wd[layer])
+        res[layer] = func(md[layer])
     return res
 
-def _modeldict_num_parameters(wd):
+def _modeldict_num_parameters(md):
     res = 0
-    for layer in wd.keys():
-        if wd[layer] is None:
-            continue
+    for layer in md.keys():
+        if md[layer] is None: continue
         s = 1
-        for l in wd[layer].shape:
+        for l in md[layer].shape:
             s *= l
         res += s
     return res
 
-def _modeldict_print(wd):
-    for layer in wd.keys():
-        print("{}:{}".format(layer, wd[layer]))
+def _modeldict_print(md):
+    for layer in md.keys():
+        print("{}:{}".format(layer, md[layer]))
+
