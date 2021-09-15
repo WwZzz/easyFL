@@ -352,7 +352,7 @@ Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
 
 <div id='refer-anchor-11'></div>
 
-\[Karimireddy et al., 2020\] [Sai Praneeth Karimireddy, Satyen Kale, Mehryar Mohri, Sashank Reddi, Sebastian Stich, Ananda Theertha Suresh Proceedings of the 37th International Conference on Machine Learning, PMLR 119:5132-5143, 2020.](https://arxiv.org/abs/1910.06378v3)
+\[Karimireddy et al., 2020\] [Sai Praneeth Karimireddy, Satyen Kale, Mehryar Mohri, Sashank Reddi, Sebastian Stich, Ananda Theertha Suresh, SCAFFOLD: Stochastic Controlled Averaging for Federated Learning, Proceedings of the 37th International Conference on Machine Learning, PMLR 119:5132-5143, 2020.](https://arxiv.org/abs/1910.06378v3)
 
 <div id='refer-anchor-12'></div>
 
