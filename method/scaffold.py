@@ -36,23 +36,25 @@ class Server(BaseServer):
         return selected_clients
 
     def aggregate(self, dys, dcs):  # c_list is c_i^+
-        dw = fmodule.average(dys)
-        dc = fmodule.average(dcs)
+        dw = fmodule._model_average(dys)
+        dc = fmodule._model_average(dcs)
         new_model = self.model + self.eta * dw
         new_c = self.cg + 1.0 * len(dcs) / self.num_clients * dc
         return new_model, new_c
 
 
 class Client(BaseClient):
-    def __init__(self, option, name='', data_train_dict={'x': [], 'y': []}, data_val_dict={'x': [], 'y': []}, partition=0.8, drop_rate=0):
-        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, partition, drop_rate)
-        self.c = None
+    def __init__(self, option, name='', data_train_dict={'x': [], 'y': []}, data_val_dict={'x': [], 'y': []}, train_rate=0.8, drop_rate=0):
+        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, train_rate, drop_rate)
 
     def train(self, model, cg):
         if not self.c:
             self.c = model.zeros_like()
+            self.c.freeze_grad()
         # global parameters
         src_model = copy.deepcopy(model)
+        src_model.freeze_grad()
+        cg.freeze_grad()
         model.train()
         if self.batch_size == -1:
             self.batch_size = len(self.train_data)

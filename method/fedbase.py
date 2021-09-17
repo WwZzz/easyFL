@@ -179,16 +179,16 @@ class BaseServer():
         if self.agg_option == 'weighted_scale':
             K = len(ws)
             N = self.num_clients
-            return fmodule.sum([wk*pk for wk,pk in zip(ws, p)])*N/K
+            return fmodule._model_sum([wk * pk for wk, pk in zip(ws, p)]) * N / K
         elif self.agg_option == 'uniform':
-            return fmodule.sum(ws)/len(ws)
+            return fmodule._model_average(ws)
         elif self.agg_option == 'weighted_com':
-            w = fmodule.sum([wk*pk for wk,pk in zip(ws, p)])
+            w = fmodule._model_sum([wk * pk for wk, pk in zip(ws, p)])
             return (1.0-sum(p))*self.model + w
         else:
             sump = sum(p)
             p = [pk/sump for pk in p]
-            return fmodule.sum([wk * pk for wk, pk in zip(ws, p)])
+            return fmodule._model_sum([wk * pk for wk, pk in zip(ws, p)])
 
     def test_on_clients(self, round, dataflag='valid'):
         """ Validate accuracies and losses """

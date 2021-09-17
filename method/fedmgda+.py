@@ -28,7 +28,7 @@ class Server(BaseServer):
         self.dynamic_lambdas = self.optim_lambda(grads, lambda0)
         self.dynamic_lambdas = [ele[0] for ele in self.dynamic_lambdas]
         # aggregate grads
-        dt = fmodule.average(grads, self.dynamic_lambdas)
+        dt = fmodule._model_average(grads, self.dynamic_lambdas)
         # update model
         self.model = self.model - dt * self.learning_rate
         return selected_clients
@@ -38,7 +38,7 @@ class Server(BaseServer):
         n = len(grads)
         Jt = []
         for gi in grads:
-            Jt.append((copy.deepcopy(fmodule._modeldict_to_tensor1D(gi)).cpu()).numpy())
+            Jt.append((copy.deepcopy(fmodule._modeldict_to_tensor1D(gi.state_dict())).cpu()).numpy())
         Jt = np.array(Jt)
         # target function
         P = 2 * np.dot(Jt, Jt.T)

@@ -8,7 +8,10 @@ Our easyFL is a strong and reusable experimental platform for research on federa
 - [Requirements](#Requirements)
 - [QuickStart](#QuickStart)
 - [Architecture](#Architecture)
+- [Remark](#Remark)
 - [Citation](#Citation)
+- [Contacts](#Contacts)
+- [References](#References)
 
 ## Requirements
 
@@ -137,7 +140,10 @@ python result_analysis.py
 |AFL|<a href='#refer-anchor-5'>[Mohri et al., 2019]</a>|ICML' 2019|
 |FedMGDA+|<a href='#refer-anchor-6'>[Hu et al., 2020]</a>|pre-print|
 |FedFA|<a href='#refer-anchor-7'>[Huang et al., 2020]</a>|pre-print|
-|...||
+|SCAFFOLD|<a href='#refer-anchor-11'>[Karimireddy et al., 2020]</a>|ICML' 2020|
+| FedDyn      | <a href='#refer-anchor-12'>[Acar et al., 2021]</a>       | ICLR' 2021    |
+| ...         |||
+
 ### Options
 
 Basic options:
@@ -280,6 +286,10 @@ Further details of this module are described in `method/README.md`.
 ### Utils
 Utils is composed of commonly used operations: model-level operation (we convert model layers and parameters to dictionary type and apply it in the whole FL system), the flow controlling of the framework in and the supporting visualization templates to the result. To visualize the results, please run `./utils/result_analysis.py`. Further details are described in `utils/README.md`.
 
+## Remark
+
+Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project.
+
 ## Citation
 
 Please cite our paper in your publications if this code helps your research.
@@ -292,11 +302,8 @@ Please cite our paper in your publications if this code helps your research.
   year={2021}
 }te
 ```
-## Remark
-Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project.
 
-
-## Contact
+## Contacts
 Zheng Wang, zwang@stu.xmu.edu.cn
 
 Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
@@ -342,3 +349,12 @@ Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
 <div id='refer-anchor-10'></div>
 
 \[He et al., 2020\] [He, Chaoyang and Li, Songze and So, Jinhyun and Zhang, Mi and Wang, Hongyi and Wang, Xiaoyang and Vepakomma, Praneeth and Singh, Abhishek and Qiu, Hang and Shen, Li and Zhao, Peilin and Kang, Yan and Liu, Yang and Raskar, Ramesh and Yang, Qiang and Annavaram, Murali and Avestimehr, Salman. FedML: A Research Library and Benchmark for Federated Machine Learning. arXiv preprint arXiv:2007.13518, 2020.](https://arxiv.org/abs/2007.13518)
+
+<div id='refer-anchor-11'></div>
+
+\[Karimireddy et al., 2020\] [Sai Praneeth Karimireddy, Satyen Kale, Mehryar Mohri, Sashank Reddi, Sebastian Stich, Ananda Theertha Suresh, SCAFFOLD: Stochastic Controlled Averaging for Federated Learning, Proceedings of the 37th International Conference on Machine Learning, PMLR 119:5132-5143, 2020.](https://arxiv.org/abs/1910.06378v3)
+
+<div id='refer-anchor-12'></div>
+
+[Acar et al., 2021] [Durmus Alp Emre Acar, Yue Zhao, Ramon Matas, Matthew Mattina, Paul Whatmough, Venkatesh Saligrama. Federated Learning Based on Dynamic Regularization. International Conference on Learning Representations (ICLR), 2021](https://openreview.net/forum?id=B7v4QMR6Z9w)
+

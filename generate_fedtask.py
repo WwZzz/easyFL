@@ -33,8 +33,8 @@ if __name__ == '__main__':
     # shk_gen = Shakespeare_TaskGenerator(dist = 5, num_clients=31, beta = 6)
     # shk_gen.generate()
 
-    # # generating synthetic-iid dataset of 30 clients (synthetic_iid, balance)
-    # synthetic_iid_gen = Synthetic_TaskGenerator(dist=0, num_clients=30, beta=(0,0))
+    # generating synthetic-iid dataset of 30 clients (synthetic_iid, balance)
+    # synthetic_iid_gen = Synthetic_TaskGenerator(dist=0, num_clients=10, beta=(0,0))
     # synthetic_iid_gen.generate()
 
     # generating synthetic-iid dataset of 30 clients (synthetic_iid, imbalance)
