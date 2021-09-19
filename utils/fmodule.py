@@ -269,21 +269,20 @@ def _model_norm(m, power=2):
 
 def _model_dot(m1, m2):
     op_with_graph = m1.ingraph or m2.ingraph
-    res = torch.tensor(0.).to(m1.get_device())
     if op_with_graph:
+        res = torch.tensor(0.).to(m1.get_device())
         ml1 = get_module_from_model(m1)
         ml2 = get_module_from_model(m2)
         for n1, n2 in zip(ml1, ml2):
             res += _modeldict_dot(n1._parameters, n2._parameters)
         return res
     else:
-        _modeldict_cp(res.state_dict(), _modeldict_dot(m1.state_dict(), m2.state_dict()))
-    return res
+        return _modeldict_dot(m1.state_dict(), m2.state_dict())
 
 def _model_cossim(m1, m2):
     op_with_graph = m1.ingraph or m2.ingraph
-    res = torch.tensor(0.).to(m1.get_device())
     if op_with_graph:
+        res = torch.tensor(0.).to(m1.get_device())
         ml1 = get_module_from_model(m1)
         ml2 = get_module_from_model(m2)
         l1 = torch.tensor(0.).to(m1.device)
@@ -295,8 +294,7 @@ def _model_cossim(m1, m2):
                 l2 += torch.sum(torch.pow(n2._parameters[l], 2))
         return (res / torch.pow(l1, 0.5) * torch(l2, 0.5))
     else:
-        _modeldict_cp(res.state_dict(), _modeldict_cossim(m1.state_dict(), m2.state_dict()))
-        return res
+        return _modeldict_cossim(m1.state_dict(), m2.state_dict())
 
 def get_module_from_model(model, res = None):
     if res==None: res = []
