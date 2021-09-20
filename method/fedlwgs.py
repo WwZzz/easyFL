@@ -4,6 +4,7 @@ import numpy as np
 import copy
 import cvxopt
 
+
 class Server(BaseServer):
     def __init__(self, option, model, clients, dtest = None):
         super(Server, self).__init__(option, model, clients, dtest)
