@@ -50,7 +50,7 @@ class Server(BaseServer):
         # target function
         # P = 2 * np.multiply(Jf.reshape(-1, 1).T, Jf.reshape(-1, 1))
         P = 2 * np.dot(Jf, Jf.T)
-        q = np.array([[0] for i in range(n)])
+        q = np.array([[0] for _ in range(n)])
         # equality constraint λ∈Δ
         A = np.ones(n).T
         b = np.array([1])
