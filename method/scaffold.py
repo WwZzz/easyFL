@@ -46,6 +46,7 @@ class Server(BaseServer):
 class Client(BaseClient):
     def __init__(self, option, name='', data_train_dict={'x': [], 'y': []}, data_val_dict={'x': [], 'y': []}, train_rate=0.8, drop_rate=0):
         super(Client, self).__init__(option, name, data_train_dict, data_val_dict, train_rate, drop_rate)
+        self.c = None
 
     def train(self, model, cg):
         if not self.c:
@@ -81,7 +82,7 @@ class Client(BaseClient):
         dy = model - src_model
         dc = -1.0 / (K * self.learning_rate) * dy - cg
         self.c = self.c + dc
-        return dy,dc
+        return dy, dc
 
     def reply(self, svr_pkg):
         model, c_g = self.unpack(svr_pkg)

@@ -7,7 +7,7 @@ from benchmark.generator import Shakespeare_TaskGenerator
 
 if __name__ == '__main__':
     # generating the dataset of mnist-iid of 100 clients
-    mnist_gen = MNIST_TaskGenerator(dist=0, num_clients=100, beta=0)
+    mnist_gen = MNIST_TaskGenerator(dist=1, num_clients=100, beta=1)
     mnist_gen.generate()
 
     # # generating the dataset of mnist-niid of 100 clients

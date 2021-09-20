@@ -35,7 +35,7 @@ def draw_curve(dicts, curve='train_losses', legends = []):
         else:
             y = dict[curve]
         plt.plot(x, y, label=legends[i], linewidth=1)
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=1)
+    plt.legend(loc='upper center', bbox_to_anchor=(0.8, 0.5), ncol=1)
     return
 
 def filename_filter(fnames=[], filter={}):
@@ -110,15 +110,19 @@ def print_table(records, dicts):
 
 if __name__ == '__main__':
     # task+record
-    task = 'mnist_client100_dist0_beta0_noise0'
+    task = 'mnist_client100_dist1_beta1_noise0'
     headers = [
         'fedavg',
-        # 'fedprox',
+        'fedmgda+',
+        'fedlwgs',
+        'fedprox',
+        'fedfv',
+        'scaffold',
     ]
     flt = {
         # 'e': '5',
         # 'b': '10',
-        # 'lr': '>0.15',
+        'lr': '0.1',
         # 'r': '30',
         # 'p': '0.0',
         # 'seed': '0',
