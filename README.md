@@ -134,7 +134,7 @@ python result_analysis.py
 |Method|Reference|Publication|
 |---|---|---|
 |FedAvg|<a href='#refer-anchor-1'>[McMahan et al., 2017]</a>|AISTATS' 2017|
-|FedProx|<a href='#refer-anchor-2'>[Li et al., 2020]</a>|MySys' 2020|
+|FedProx|<a href='#refer-anchor-2'>[Li et al., 2020]</a>|MLSys' 2020|
 |FedFV|<a href='#refer-anchor-3'>[Wang et al., 2021]</a>|IJCAI' 2021|
 |qFFL|<a href='#refer-anchor-4'>[Li et al., 2019]</a>|ICLR' 2020|
 |AFL|<a href='#refer-anchor-5'>[Mohri et al., 2019]</a>|ICML' 2019|
