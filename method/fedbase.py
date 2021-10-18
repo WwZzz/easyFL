@@ -149,9 +149,6 @@ class BaseServer():
             self.lr*=self.decay_rate
             for c in self.clients:
                 c.set_learning_rate(self.lr)
-        elif self.lr_scheduler_type == 1:
-            """eta_{t+1} = DecayRate * eta_{t}"""
-            self.lr = float(self.lr * np.power(self.decay_rate, self.option['num_epochs']))
 
     def sample(self, replacement=False):
         cids = [i for i in range(self.num_clients)]
