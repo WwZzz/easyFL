@@ -98,6 +98,7 @@ class FModule(nn.Module):
     def get_device(self):
         return next(self.parameters()).device
 
+
 def train(model, dataset, epochs=1, learning_rate=0.1, batch_size=128, momentum=0):
     model.train()
     if batch_size == -1:
@@ -414,9 +415,8 @@ def _modeldict_to_tensor1D(md):
 def _modeldict_dot(md1, md2):
     res = torch.tensor(0.).to(md1[list(md1)[0]].device)
     for layer in md1.keys():
-        if md1[layer] is None:
+        if md1[layer] is None or md1[layer].requires_grad==False:
             continue
-        if md1[layer].dtype not in [torch.float, torch.float32, torch.float64]:continue
         res += (md1[layer].view(-1).dot(md2[layer].view(-1)))
     return res
 
@@ -425,9 +425,8 @@ def _modeldict_cossim(md1, md2):
     l1 = torch.tensor(0.).to(md1[list(md1)[0]].device)
     l2 = torch.tensor(0.).to(md1[list(md1)[0]].device)
     for layer in md1.keys():
-        if md1[layer] is None:
+        if md1[layer] is None or md1[layer].requires_grad==False:
             continue
-        if md1[layer].dtype not in [torch.float, torch.float32, torch.float64]: continue
         res += (md1[layer].view(-1).dot(md2[layer].view(-1)))
         l1 += torch.sum(torch.pow(md1[layer], 2))
         l2 += torch.sum(torch.pow(md2[layer], 2))
@@ -445,14 +444,16 @@ def _modeldict_element_wise(md, func):
 def _modeldict_num_parameters(md):
     res = 0
     for layer in md.keys():
-        if md[layer] is None: continue
+        if md[layer] is None or md[layer].requires_grad==False: continue
         s = 1
         for l in md[layer].shape:
             s *= l
         res += s
     return res
 
-def _modeldict_print(md):
+def _modeldict_print(md, only_requires_grad = False):
     for layer in md.keys():
+        if md[layer] is None or (only_requires_grad == False and md[layer].requires_grad==False):
+            continue
         print("{}:{}".format(layer, md[layer]))
 

@@ -3,7 +3,7 @@ from utils import fmodule
 import copy
 from torch.utils.data import DataLoader
 from utils.fmodule import device,lossfunc,Optim
-from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing import Pool as ThreadPool
 import time
 
 class BaseServer():

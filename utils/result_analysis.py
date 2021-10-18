@@ -1,3 +1,17 @@
+"""
+the rules of naming records
+M: model
+R: communication round
+B: batch size
+E: local epoch
+LR: learning rate (step size)
+P: the proportion of selected clients in each round
+S: random seed
+T: the proportion of training part of clients' data
+LD: learning rate scheduler + learning rate decay
+WD: weight decay
+DR: the degree of dropout of clients
+"""
 # import matplotlib
 # matplotlib.rcParams['pdf.fonttype'] = 42
 # matplotlib.rcParams['ps.fonttype'] = 42
@@ -48,7 +62,7 @@ def filename_filter(fnames=[], filter={}):
                 con = '==' + con
             elif 'a'<=con[0]<='z' or 'A'<=con[0]<='Z':
                 con = "'"+con+"'"
-            fnames = [f for f in fnames if eval(f[f.find(key)+len(key):f.find('_',f.find(key)+1)]+' '+con)]
+            fnames = [f for f in fnames if eval(f[f.find('_'+key)+len(key)+1:f.find('_',f.find(key)+1)]+' '+con)]
     return fnames
 
 def round_to_achieve_test_acc(records, dicts, target=0):
@@ -116,17 +130,17 @@ if __name__ == '__main__':
         # 'fedprox',
     ]
     flt = {
-        # 'e': '5',
-        # 'b': '10',
-        # 'lr': '>0.15',
-        # 'r': '30',
-        # 'p': '0.0',
-        # 'seed': '0',
+        # 'E': '5',
+        # 'B': '10',
+        # 'LR': '>0.15',
+        # 'R': '30',
+        # 'P': '0.0',
+        # 'S': '0',
     }
     # read and filter the filenames
     records = set()
     for h in headers:
-        records=records.union(set(scan_records(task, h, flt)))
+        records = records.union(set(scan_records(task, h, flt)))
     records = list(records)
     # read the selected files into dicts
     dicts = read_data_into_dicts(task, records)

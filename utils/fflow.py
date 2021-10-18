@@ -102,9 +102,10 @@ def initialize(option):
     return server
 
 def output_filename(option, server):
-    header = "{}".format(option["method"])
-    for para in server.paras_name: header = header + "_" + para + "{}".format(option[para])
-    output_name = header + "_r{}_b{}_e{}_lr{}_p{}_seed{}_ptrain{}_lrdecay{}_wdecay{}_drop{}_.json".format(
+    header = "{}_".format(option["method"])
+    for para in server.paras_name: header = header + para + "{}_".format(option[para])
+    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_T{:.2f}_LD{:.3f}_WD{:.3f}_DR{:.2f}_.json".format(
+        option['model'],
         option['num_rounds'],
         option['batch_size'],
         option['num_epochs'],

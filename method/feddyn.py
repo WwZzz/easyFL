@@ -40,8 +40,6 @@ class Client(BaseClient):
             self.gradL = model.zeros_like()
         # global parameters
         src_model = copy.deepcopy(model)
-        src_model.freeze_grad()
-        self.gradL.freeze_grad()
         model.train()
         if self.batch_size == -1:
             self.batch_size = len(self.train_data)
