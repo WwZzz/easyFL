@@ -1,30 +1,10 @@
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 import torch
 from torch import nn
 
 device=None
-lossfunc=None
-Optim = None
+TaskCalculator=None
 Model = None
-
-def get_optimizer(name="SGD", model = None, lr = 0.1, weight_decay = 0, momentum = 0):
-    if name.lower() == 'sgd':
-        return Optim(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
-    elif name.lower() == 'adam':
-        return Optim(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
-    else:
-        return None
-
-class XYDataset(Dataset):
-    def __init__(self, xs=[], ys=[]):
-        self.xs = torch.tensor(xs)
-        self.ys = torch.tensor(ys)
-
-    def __len__(self):
-        return len(self.xs)
-
-    def __getitem__(self, item):
-        return self.xs[item], self.ys[item]
 
 class FModule(nn.Module):
     def __init__(self):
@@ -97,28 +77,6 @@ class FModule(nn.Module):
 
     def get_device(self):
         return next(self.parameters()).device
-
-
-def train(model, dataset, epochs=1, learning_rate=0.1, batch_size=128, momentum=0):
-    model.train()
-    if batch_size == -1:
-        # full gradient descent
-        batch_size = len(dataset)
-    ldr_train = DataLoader(dataset, batch_size= batch_size, shuffle=True)
-    optimizer = Optim(model.parameters(), lr=learning_rate, momentum=momentum)
-    epoch_loss = []
-    for iter in range(epochs):
-        batch_loss = []
-        for batch_idx, (features, labels) in enumerate(ldr_train):
-            features, labels = features.to(device), labels.to(device)
-            model.zero_grad()
-            outputs = model(features)
-            loss = lossfunc(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            batch_loss.append(loss.item()/len(labels))
-        epoch_loss.append(sum(batch_loss) / len(batch_loss))
-    return sum(epoch_loss) / len(epoch_loss)
 
 @torch.no_grad()
 def test(model, dataset):

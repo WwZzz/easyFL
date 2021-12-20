@@ -1,20 +1,20 @@
 import torch
 
-from .fedbase import BaseServer, BaseClient
-from torch.utils.data import DataLoader
+from .fedbase import BasicServer, BasicClient
+from torch.utils.data import get_data_loader
 from utils.fmodule import device, lossfunc, Optim
 import copy
 from utils import fmodule
 
 
-class Server(BaseServer):
-    def __init__(self, option, model, clients, dtest=None):
-        super(Server, self).__init__(option, model, clients, dtest)
+class Server(BasicServer):
+    def __init__(self, option, model, clients, test_data=None):
+        super(Server, self).__init__(option, model, clients, test_data)
         self.eta = option['eta']
         self.cg = self.model.zeros_like()
         self.paras_name = ['eta']
 
-    def pack(self, cid):
+    def pack(self, client_id):
         return {
             "model": copy.deepcopy(self.model),
             "cg": self.cg,
@@ -43,12 +43,13 @@ class Server(BaseServer):
         return new_model, new_c
 
 
-class Client(BaseClient):
-    def __init__(self, option, name='', data_train_dict={'x': [], 'y': []}, data_val_dict={'x': [], 'y': []}, train_rate=0.8, drop_rate=0):
-        super(Client, self).__init__(option, name, data_train_dict, data_val_dict, train_rate, drop_rate)
+class Client(BasicClient):
+    def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
+        super(Client, self).__init__(option, name, train_data, valid_data, drop_rate)
         self.c = None
         
     def train(self, model, cg):
+        model.train()
         if not self.c:
             self.c = model.zeros_like()
             self.c.freeze_grad()
@@ -56,33 +57,24 @@ class Client(BaseClient):
         src_model = copy.deepcopy(model)
         src_model.freeze_grad()
         cg.freeze_grad()
-        model.train()
-        if self.batch_size == -1:
-            self.batch_size = len(self.train_data)
-        ldr_train = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
-        optimizer = Optim(model.parameters(), lr=self.learning_rate, momentum=self.momentum)
-        epoch_loss = []
+        data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, shuffle=True)
+        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         num_batches = 0
         for iter in range(self.epochs):
-            batch_loss = []
-            for batch_idx, (images, labels) in enumerate(ldr_train):
-                images, labels = images.to(device), labels.to(device)
+            for batch_idx, batch_data in enumerate(data_loader):
                 model.zero_grad()
-                outputs = model(images)
-                loss = lossfunc(outputs, labels)
+                loss = self.calculator.get_loss(model, batch_data)
                 loss.backward()
                 for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()):
                     pm.grad = pm.grad - pc + pcg
                 optimizer.step()
-                batch_loss.append(loss.item() / len(labels))
                 num_batches += 1
-            epoch_loss.append(sum(batch_loss) / len(batch_loss))
         # update local control variate c
         K = self.epochs * num_batches
         dy = model - src_model
         dc = -1.0 / (K * self.learning_rate) * dy - cg
         self.c = self.c + dc
-        return dy,dc
+        return dy, dc
 
     def reply(self, svr_pkg):
         model, c_g = self.unpack(svr_pkg)

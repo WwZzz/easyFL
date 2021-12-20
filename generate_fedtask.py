@@ -1,15 +1,20 @@
-from benchmark.generator import MNIST_TaskGenerator
-from benchmark.generator import CIFAR100_TaskGenerator
-from benchmark.generator import CIFAR10_TaskGenerator
-from benchmark.generator import Synthetic_TaskGenerator
-from benchmark.generator import FashionMNIST_TaskGenerator
-from benchmark.generator import Shakespeare_TaskGenerator
+import benchmark.cifar10.core as TCIFAR10
+import benchmark.mnist.core as TMNIST
+import benchmark.fashion_mnist as TFASHION
+import benchmark.cifar100 as TCIFAR100
+import benchmark.shakespeare as TSHAKESPEARE
+
 
 if __name__ == '__main__':
-    # generating the dataset of mnist-iid of 100 clients
-    mnist_gen = MNIST_TaskGenerator(dist=0, num_clients=100, beta=0)
-    mnist_gen.generate()
-
+    MG = TMNIST.TaskGen
+    g0 = MG(dist_id=0, skewness=0.5, num_clients=100)
+    g1 = MG(dist_id=1, skewness=0.5, num_clients=100)
+    g2 = MG(dist_id=2, skewness=0.5, num_clients=100)
+    g3 = MG(dist_id=3, skewness=0.5, num_clients=100)
+    g0.run()
+    g1.run()
+    g2.run()
+    g3.run()
     # # generating the dataset of mnist-niid of 100 clients
     # mnist_niid_gen = MNIST_TaskGenerator(dist=3, num_clients=100, beta=2)
     # mnist_niid_gen.generate()

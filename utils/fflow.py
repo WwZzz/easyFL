@@ -5,7 +5,6 @@ import torch
 import os.path
 import importlib
 import os
-import ujson
 import utils.fmodule
 
 sample_list=['uniform', 'md']
@@ -16,7 +15,7 @@ def read_option():
     parser = argparse.ArgumentParser()
     # basic settings
     parser.add_argument('--task', help='name of fedtask;', type=str, default='mnist_client100_dist0_beta0_noise0')
-    parser.add_argument('--method', help='name of method;', type=str, default='fedavg')
+    parser.add_argument('--algorithm', help='name of algorithm;', type=str, default='fedavg')
     parser.add_argument('--model', help='name of model;', type=str, default='cnn')
     # methods of server side for sampling and aggregating
     parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='md')
@@ -29,8 +28,8 @@ def read_option():
     parser.add_argument('--proportion', help='proportion of clients sampled per round', type=float, default=0.2)
     # hyper-parameters of local training
     parser.add_argument('--num_epochs', help='number of epochs when clients trainset on data;', type=int, default=5)
-    parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.2)
-    parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=int, default=10)
+    parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.1)
+    parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=int, default=64)
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
     parser.add_argument('--momentum', help='momentum of local update', type=float, default=0)
     # controlling
@@ -64,45 +63,37 @@ def setup_seed(seed):
 def initialize(option):
     # init fedtask
     print("init fedtask...", end='')
-    bmk = option['task'][:option['task'].find('_')]
-    model_path = '%s.%s.%s.%s' % ('benchmark', bmk, 'model', option['model'])
+    # dynamical initializing the configuration with the benchmark
+    bmk_name = option['task'][:option['task'].find('|')].lower()
+    bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
+    bmk_tools_path = '.'.join(['benchmark', bmk_name, 'tools'])
     utils.fmodule.device = torch.device('cuda:{}'.format(option['gpu']) if torch.cuda.is_available() and option['gpu'] != -1 else 'cpu')
-    utils.fmodule.lossfunc = getattr(importlib.import_module(model_path), 'Loss')()
-    utils.fmodule.Optim = getattr(importlib.import_module('torch.optim'), option['optimizer'])
-    utils.fmodule.Model = getattr(importlib.import_module(model_path), 'Model')
-    task_path = os.path.join('fedtask', option['task'], 'task.json')
-    try:
-        with open(task_path, 'r') as taskfile:
-            task = ujson.load(taskfile)
-    except FileNotFoundError:
-        print("Task {} not found.".format(option['task']))
-        exit()
-
-    meta = task['meta']
-    client_names = [name for name in task['clients'].keys()]
-    train_data = [task['clients'][key]['dtrain'] for key in task['clients'].keys()]
-    valid_data = [task['clients'][key]['dvalid'] for key in task['clients'].keys()]
-    test_data = task['dtest']
+    utils.fmodule.TaskCalculator = getattr(importlib.import_module(bmk_tools_path), 'TaskCalculator')
+    utils.fmodule.TaskCalculator.setOP(getattr(importlib.import_module('torch.optim'), option['optimizer']))
+    utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
+    task_reader = getattr(importlib.import_module(bmk_tools_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
+    train_datas, valid_datas, test_data, client_names = task_reader.read_data()
+    num_clients = len(client_names)
     print("done")
 
     # init client
     print('init clients...', end='')
-    client_path = '%s.%s' % ('method', option['method'])
+    client_path = '%s.%s' % ('algorithm', option['algorithm'])
     Client=getattr(importlib.import_module(client_path), 'Client')
     # the probability of dropout obey distribution beta(drop, 1). The larger 'drop' is, the more possible for a device to drop
-    client_drop_rates = np.random.beta(option['drop']+0.00001,1,meta['num_clients'])
-    clients = [Client(option, name = client_names[cid], data_train_dict = train_data[cid], data_val_dict = valid_data[cid], train_rate = option['train_rate'], drop_rate = client_drop_rates[cid]) for cid in range(meta['num_clients'])]
+    client_drop_rates = np.random.beta(option['drop']+0.00001,1,num_clients)
+    clients = [Client(option, name = client_names[cid], train_data = train_datas[cid], valid_data = valid_datas[cid], drop_rate = client_drop_rates[cid]) for cid in range(num_clients)]
     print('done')
 
     # init server
     print("init server...", end='')
-    server_path = '%s.%s' % ('method', option['method'])
-    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model().to(utils.fmodule.device), clients, dtest = test_data)
+    server_path = '%s.%s' % ('algorithm', option['algorithm'])
+    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model().to(utils.fmodule.device), clients, test_data = test_data)
     print('done')
     return server
 
 def output_filename(option, server):
-    header = "{}_".format(option["method"])
+    header = "{}_".format(option["algorithm"])
     for para in server.paras_name: header = header + para + "{}_".format(option[para])
     output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_T{:.2f}_LD{:.3f}_WD{:.3f}_DR{:.2f}_.json".format(
         option['model'],

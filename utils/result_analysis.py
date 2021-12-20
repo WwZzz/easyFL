@@ -36,7 +36,7 @@ def read_data_into_dicts(task, records):
 
 def draw_curve(dicts, curve='train_losses', legends = []):
     # plt.figure(figsize=(100,100), dpi=100)
-    if not legends: legends = [d['meta']['method'] for d in dicts]
+    if not legends: legends = [d['meta']['algorithm'] for d in dicts]
     for i,dict in enumerate(dicts):
         num_rounds = dict['meta']['num_rounds']
         eval_interval = dict['meta']['eval_interval']

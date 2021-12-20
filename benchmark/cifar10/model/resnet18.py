@@ -129,7 +129,6 @@ class Model(FModule):
         output = self.fc(output)
         return output
 
-
 class Loss(nn.Module):
     def __init__(self):
         super(Loss, self).__init__()
