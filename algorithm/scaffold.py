@@ -1,8 +1,5 @@
-import torch
-
 from .fedbase import BasicServer, BasicClient
-from torch.utils.data import get_data_loader
-from utils.fmodule import device, lossfunc, Optim
+
 import copy
 from utils import fmodule
 

@@ -2,7 +2,6 @@ from utils import fmodule
 from .fedbase import BasicServer, BasicClient
 import numpy as np
 import copy
-from torch.utils.data import DataLoader
 
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
@@ -54,7 +53,7 @@ class Server(BasicServer):
             self.result_model.model.eval()
             loss = 0
             eval_metric = 0
-            data_loader = self.calculator.DataLoader(self.test_data, batch_size=64)
+            data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
             for batch_id, batch_data in enumerate(data_loader):
                 bmean_eval_metric, bmean_loss = self.calculator.test(self.model, batch_data)
                 loss += bmean_loss * len(batch_data[1])

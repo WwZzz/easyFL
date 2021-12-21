@@ -3,6 +3,7 @@ from utils import fmodule
 import copy
 from multiprocessing import Pool as ThreadPool
 import time
+from main import logger
 
 class BasicServer():
     def __init__(self, option, model, clients, test_data = None):
@@ -36,79 +37,36 @@ class BasicServer():
         self.calculator = fmodule.TaskCalculator(fmodule.device)
 
     def run(self):
-        accs = []
-        c_accs = []
-        train_losses = []
-        test_losses = []
-        std_c_accs = []
-        mean_c_accs = []
-        valid_accs = []
-        test_accs = []
-        time_costs = []
-        temp = "{:<30s}{:.4f}"
         global_timestamp_start = time.time()
         for round in range(self.num_rounds+1):
             print("--------------Round {}--------------".format(round))
-            self.current_round+=1
-            timestamp_start = time.time()
-            # train
+
+            logger.start_timer()
+            # federated train
             selected_clients = self.iterate(round)
+
             # decay learning rate
             self.global_lr_scheduler(round)
-            timestamp_end = time.time()
-            time_costs.append(timestamp_end - timestamp_start)
-            print(temp.format("Time Cost:",time_costs[-1])+'s')
+
+            print("{:<30s}{:.4f}".format("Time Cost:",logger.end_timer())+'s')
+
             # free the cache of gpu
             # torch.cuda.empty_cache()
-            if self.eval_interval>0 and (round==0 or round%self.eval_interval==0 or round== self.num_rounds):
-                # train
-                _, train_loss = self.test_on_clients(round, dataflag='train')
-                # validate
-                accs, _ = self.test_on_clients(round, dataflag='valid')
-                # test
-                test_acc, test_loss = self.test()
-                # record
-                train_losses.append(1.0*sum([ck * closs for ck, closs in zip(self.client_vols, train_loss)])/self.data_vol)
-                c_accs.append(accs)
-                test_losses.append(test_loss)
-                test_accs.append(test_acc)
-                valid_accs.append(1.0*sum([ck * acc for ck, acc in zip(self.client_vols, accs)])/self.data_vol)
-                mean_c_accs.append(np.mean(accs))
-                std_c_accs.append(np.std(accs))
-                # print
-                print(temp.format("Training Loss:", train_losses[-1]))
-                print(temp.format("Testing Loss:", test_losses[-1]))
-                print(temp.format("Testing Accuracy:", test_accs[-1]))
-                print(temp.format("Validating Accuracy:",valid_accs[-1]))
-                print(temp.format("Mean of Client Accuracy:", mean_c_accs[-1]))
-                print(temp.format("Std of Client Accuracy:", std_c_accs[-1]))
+            if logger.check_if_log(round, self.eval_interval):
+                logger.log()
+
         global_timestamp_end = time.time()
         print("=================End==================")
-        print(temp.format("Total Time Cost", global_timestamp_end-global_timestamp_start) + 's')
-        print(temp.format("Mean Time Cost Of Each Round", float(np.mean(time_costs))) + 's')
-        # create_outdict
-        outdict={
-            "meta":self.option,
-            "acc_dist":accs,
-            "mean_curve":mean_c_accs,
-            "var_curve":std_c_accs,
-            "train_losses":train_losses,
-            "test_accs":test_accs,
-            "test_losses":test_losses,
-            "valid_accs":valid_accs,
-            "client_accs":{},
-            }
-        for cid in range(self.num_clients):
-            outdict['client_accs'][self.clients[cid].name]=[c_accs[i][cid] for i in range(len(c_accs))]
-        return outdict
+        print("{:<30s}{:.4f}".format("Total Time Cost", global_timestamp_end-global_timestamp_start) + 's')
+        return
 
     def iterate(self, t):
         # sample clients
         selected_clients = self.sample()
         # training
         models, train_losses = self.communicate(selected_clients)
-        # aggregate: pk = nk/n as default
-        self.model = self.aggregate(models, p=[1.0*self.client_vols[id]/self.data_vol for id in selected_clients])
+        # aggregate: pk = 1/K as default where K=len(selected_clients)
+        self.model = self.aggregate(models)
         # output info
         return selected_clients
 
@@ -162,8 +120,8 @@ class BasicServer():
         selected_cids = [cid for cid in selected_cids if self.clients[cid].is_available()]
         return selected_cids
 
-    def aggregate(self, ws, p=[]):
-        if not ws: return self.model
+    def aggregate(self, models, p=[]):
+        if not models: return self.model
         """
         pk = nk/n where n=self.data_vol
         K = |S_t|
@@ -171,21 +129,21 @@ class BasicServer():
         -------------------------------------------------------------------------------------------------------------------------
          weighted_scale                 |uniform (default)          |weighted_com (original fedavg)   |other
         ==============================================================================================|============================
-        N/K * Σpk * wk                 |1/K * Σwk                  |(1-Σpk) * w_old + Σpk * wk     |Σ(pk/Σpk) * wk
+        N/K * Σpk * model_k                 |1/K * Σmodel_k                  |(1-Σpk) * w_old + Σpk * model_k     |Σ(pk/Σpk) * model_k
         """
         if self.agg_option == 'weighted_scale':
-            K = len(ws)
+            K = len(models)
             N = self.num_clients
-            return fmodule._model_sum([wk * pk for wk, pk in zip(ws, p)]) * N / K
+            return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)]) * N / K
         elif self.agg_option == 'uniform':
-            return fmodule._model_average(ws)
+            return fmodule._model_average(models)
         elif self.agg_option == 'weighted_com':
-            w = fmodule._model_sum([wk * pk for wk, pk in zip(ws, p)])
+            w = fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
             return (1.0-sum(p))*self.model + w
         else:
             sump = sum(p)
             p = [pk/sump for pk in p]
-            return fmodule._model_sum([wk * pk for wk, pk in zip(ws, p)])
+            return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
 
     def test_on_clients(self, round, dataflag='valid'):
         """ Validate accuracies and losses """

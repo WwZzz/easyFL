@@ -21,10 +21,9 @@ class Server(BasicServer):
         return selected_clients
 
     def aggregate(self, models):
-        self.h = self.h - self.alpha/self.num_clients*(fmodule._model_sum(models) - self.model)
+        self.h = self.h - self.alpha * (1.0 / self.num_clients * fmodule._model_sum(models) - self.model)
         new_model = fmodule._model_average(models) - 1.0 / self.alpha * self.h
         return new_model
-
 
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
