@@ -57,7 +57,7 @@ class Client(BasicClient):
         src_model = copy.deepcopy(model)
         src_model.freeze_grad()
         cg.freeze_grad()
-        data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, shuffle=True)
+        data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         num_batches = 0
         for iter in range(self.epochs):

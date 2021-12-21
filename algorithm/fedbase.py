@@ -246,7 +246,7 @@ class BasicClient():
 
     def train(self, model):
         model.train()
-        data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, shuffle=True)
+        data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         for iter in range(self.epochs):
             for batch_id, batch_data in enumerate(data_loader):

@@ -39,7 +39,7 @@ def read_option():
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
     parser.add_argument('--train_rate', help="the validtion dataset rate of each client's dataet", type=float, default=1)
     parser.add_argument('--drop', help="controlling the dropout of clients after being selected in each communication round according to distribution Beta(drop,1)", type=float, default=0)
-    # hyper-parameters of different methods
+    # hyper-parameters of different algorithms
     parser.add_argument('--learning_rate_lambda', help='η for λ in afl', type=float, default=0)
     parser.add_argument('--q', help='q in q-fedavg', type=float, default='0.0')
     parser.add_argument('--epsilon', help='ε in fedmgda+', type=float, default='0.0')
@@ -70,6 +70,7 @@ def initialize(option):
     utils.fmodule.device = torch.device('cuda:{}'.format(option['gpu']) if torch.cuda.is_available() and option['gpu'] != -1 else 'cpu')
     utils.fmodule.TaskCalculator = getattr(importlib.import_module(bmk_core_path), 'TaskCalculator')
     utils.fmodule.TaskCalculator.setOP(getattr(importlib.import_module('torch.optim'), option['optimizer']))
+    utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
     utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
     task_reader = getattr(importlib.import_module(bmk_core_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
     train_datas, valid_datas, test_data, client_names = task_reader.read_data()
