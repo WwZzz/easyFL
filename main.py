@@ -4,32 +4,29 @@ import numpy as np
 import time
 import os
 
-logger = None
-
 class Logger:
     def __init__(self):
         self.output = {}
         self.current_round = -1
         self.temp = "{:<30s}{:.4f}"
-        self.start_timestamp = None
         self.time_costs = []
+        self.time_buf={}
 
     def check_if_log(self, round, eval_interval=-1):
         self.current_round = round
         return eval_interval > 0 and (round == 0 or round % eval_interval == 0)
 
-    def start_timer(self):
-        self.start_timestamp = time.time()
+    def time_start(self, key = ''):
+        if key not in [k for k in self.time_buf.keys()]:
+            self.time_buf[key] = []
+        self.time_buf[key].append(time.time())
 
-    def end_timer(self):
-        if self.start_timestamp == None:
-            self.end_timestamp = None
-            return None
+    def time_end(self, key = ''):
+        if key not in [k for k in self.time_buf.keys()]:
+            raise RuntimeError("Timer end before start.")
         else:
-            end = time.time()
-            self.time_costs.append(end - self.start_timestamp)
-            self.start_timestamp = None
-            return self.time_costs[-1]
+            self.time_buf[key][-1] =  time.time() - self.time_buf[key][-1]
+            print("{:<30s}{:.4f}".format(key+":", self.time_buf[key][-1]) + 's')
 
     def save(self, filepath):
         with open(filepath, 'w') as outf:
@@ -47,6 +44,7 @@ class Logger:
                 "test_losses":[],
                 "valid_accs":[],
                 "client_accs":{},
+                "mean_valid_accs":[],
             }
         test_metric, test_loss = server.test()
         valid_metrics, valid_losses = server.test_on_clients(self.current_round, 'valid')
@@ -59,7 +57,7 @@ class Logger:
         self.output['mean_curve'].append(np.mean(valid_metrics))
         self.output['var_curve'].append(np.std(valid_metrics))
         for cid in range(server.num_clients):
-            self.output['client_accs'][server.clients[cid].name]=[valid_metrics[i][cid] for i in range(len(self.output['valid_accs']))]
+            self.output['client_accs'][server.clients[cid].name]=[self.output['valid_accs'][i][cid] for i in range(len(self.output['valid_accs']))]
         print(self.temp.format("Training Loss:", self.output['train_losses'][-1]))
         print(self.temp.format("Testing Loss:", self.output['test_losses'][-1]))
         print(self.temp.format("Testing Accuracy:", self.output['test_accs'][-1]))
@@ -67,13 +65,13 @@ class Logger:
         print(self.temp.format("Mean of Client Accuracy:", self.output['mean_curve'][-1]))
         print(self.temp.format("Std of Client Accuracy:", self.output['var_curve'][-1]))
 
+logger = Logger()
+
 def main():
     # read options
     option = flw.read_option()
     # set random seed
     flw.setup_seed(option['seed'])
-    # init logger
-    logger = Logger()
     # initialize server
     server = flw.initialize(option)
     # start federated optimization
@@ -82,6 +80,7 @@ def main():
     logger.save(os.path.join('fedtask', option['task'], 'record', flw.output_filename(option, server)))
 
 if __name__ == '__main__':
+    logger = Logger()
     main()
 
 

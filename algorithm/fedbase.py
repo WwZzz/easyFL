@@ -2,7 +2,6 @@ import numpy as np
 from utils import fmodule
 import copy
 from multiprocessing import Pool as ThreadPool
-import time
 from main import logger
 
 class BasicServer():
@@ -37,27 +36,22 @@ class BasicServer():
         self.calculator = fmodule.TaskCalculator(fmodule.device)
 
     def run(self):
-        global_timestamp_start = time.time()
+        logger.time_start('Total Time Cost')
         for round in range(self.num_rounds+1):
             print("--------------Round {}--------------".format(round))
+            logger.time_start('Time Cost')
 
-            logger.start_timer()
             # federated train
             selected_clients = self.iterate(round)
 
             # decay learning rate
             self.global_lr_scheduler(round)
 
-            print("{:<30s}{:.4f}".format("Time Cost:",logger.end_timer())+'s')
+            logger.time_end('Time Cost')
+            if logger.check_if_log(round, self.eval_interval): logger.log(self)
 
-            # free the cache of gpu
-            # torch.cuda.empty_cache()
-            if logger.check_if_log(round, self.eval_interval):
-                logger.log()
-
-        global_timestamp_end = time.time()
         print("=================End==================")
-        print("{:<30s}{:.4f}".format("Total Time Cost", global_timestamp_end-global_timestamp_start) + 's')
+        logger.time_end('Total Time Cost')
         return
 
     def iterate(self, t):
