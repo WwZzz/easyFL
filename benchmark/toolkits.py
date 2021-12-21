@@ -458,7 +458,7 @@ class XYTaskReader(BasicTaskReader):
 
 class IDXTaskReader(BasicTaskReader):
     def __init__(self, taskpath=''):
-        super(XYTaskReader, self).__init__(taskpath)
+        super(IDXTaskReader, self).__init__(taskpath)
 
     def read_data(self):
         with open(os.path.join(self.taskpath, 'data.json'), 'r') as inf:

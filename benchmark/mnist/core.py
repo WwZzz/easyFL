@@ -32,3 +32,4 @@ class TaskReader(XYTaskReader):
 class TaskCalculator(ClassifyCalculator):
     def __init__(self, device):
         super(TaskCalculator, self).__init__(device)
+

@@ -1,8 +1,5 @@
 from torchvision import datasets, transforms
 from benchmark.toolkits import ClassifyCalculator, DefaultTaskGen, XYTaskReader
-from torch.nn import CrossEntropyLoss
-import torch
-from torch.utils.data import DataLoader
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, skewness = 0.5):
