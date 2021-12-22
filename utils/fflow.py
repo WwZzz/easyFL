@@ -6,6 +6,8 @@ import os.path
 import importlib
 import os
 import utils.fmodule
+import ujson
+import time
 
 sample_list=['uniform', 'md']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
@@ -109,6 +111,34 @@ def output_filename(option, server):
         option['drop'])
     return output_name
 
+class Logger:
+    def __init__(self):
+        self.output = {}
+        self.current_round = -1
+        self.temp = "{:<30s}{:.4f}"
+        self.time_costs = []
+        self.time_buf={}
 
+    def check_if_log(self, round, eval_interval=-1):
+        self.current_round = round
+        return eval_interval > 0 and (round == 0 or round % eval_interval == 0)
 
+    def time_start(self, key = ''):
+        if key not in [k for k in self.time_buf.keys()]:
+            self.time_buf[key] = []
+        self.time_buf[key].append(time.time())
 
+    def time_end(self, key = ''):
+        if key not in [k for k in self.time_buf.keys()]:
+            raise RuntimeError("Timer end before start.")
+        else:
+            self.time_buf[key][-1] =  time.time() - self.time_buf[key][-1]
+            print("{:<30s}{:.4f}".format(key+":", self.time_buf[key][-1]) + 's')
+
+    def save(self, filepath):
+        if self.output=={}: return
+        with open(filepath, 'w') as outf:
+            ujson.dump(self.output, outf)
+
+    def log(self, sever=None):
+        pass

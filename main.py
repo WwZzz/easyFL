@@ -1,38 +1,10 @@
 import utils.fflow as flw
-import ujson
 import numpy as np
-import time
 import os
 
-class Logger:
-    def __init__(self):
-        self.output = {}
-        self.current_round = -1
-        self.temp = "{:<30s}{:.4f}"
-        self.time_costs = []
-        self.time_buf={}
-
-    def check_if_log(self, round, eval_interval=-1):
-        self.current_round = round
-        return eval_interval > 0 and (round == 0 or round % eval_interval == 0)
-
-    def time_start(self, key = ''):
-        if key not in [k for k in self.time_buf.keys()]:
-            self.time_buf[key] = []
-        self.time_buf[key].append(time.time())
-
-    def time_end(self, key = ''):
-        if key not in [k for k in self.time_buf.keys()]:
-            raise RuntimeError("Timer end before start.")
-        else:
-            self.time_buf[key][-1] =  time.time() - self.time_buf[key][-1]
-            print("{:<30s}{:.4f}".format(key+":", self.time_buf[key][-1]) + 's')
-
-    def save(self, filepath):
-        with open(filepath, 'w') as outf:
-            ujson.dump(self.output, outf)
-
-    def log(self, server):
+class MyLogger(flw.Logger):
+    def log(self, server=None):
+        if server==None: return
         if self.output == {}:
             self.output = {
                 "meta":server.option,
@@ -65,7 +37,7 @@ class Logger:
         print(self.temp.format("Mean of Client Accuracy:", self.output['mean_curve'][-1]))
         print(self.temp.format("Std of Client Accuracy:", self.output['var_curve'][-1]))
 
-logger = Logger()
+logger = MyLogger()
 
 def main():
     # read options

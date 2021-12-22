@@ -1,7 +1,6 @@
 from .fedbase import BasicServer, BasicClient
 import numpy as np
 
-
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
