@@ -22,12 +22,12 @@ class Client(BasicClient):
         for iter in range(self.epochs):
             for batch_idx, batch_data in enumerate(data_loader):
                 model.zero_grad()
-                l1 = self.calculator.get_loss(model, batch_data)
-                # prox. item
-                l2 = 0
+                original_loss = self.calculator.get_loss(model, batch_data)
+                # proximal term
+                loss_proximal = 0
                 for pm, ps in zip(model.parameters(), src_model.parameters()):
-                    l2 += torch.sum(torch.pow(pm-ps,2))
-                loss = l1 + 0.5 * self.mu * l2
+                    loss_proximal += torch.sum(torch.pow(pm-ps,2))
+                loss = original_loss + 0.5 * self.mu * loss_proximal                #
                 loss.backward()
                 optimizer.step()
         return

@@ -52,7 +52,6 @@ def main():
     logger.save(os.path.join('fedtask', option['task'], 'record', flw.output_filename(option, server)))
 
 if __name__ == '__main__':
-    logger = Logger()
     main()
 
 

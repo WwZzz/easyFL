@@ -1,8 +1,6 @@
 from .fedbase import BasicServer, BasicClient
-
 import copy
 from utils import fmodule
-
 
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):

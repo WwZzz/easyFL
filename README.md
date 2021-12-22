@@ -15,7 +15,7 @@ Our easyFL is a strong and reusable experimental platform for research on federa
 
 ## Requirements
 
-The model is implemented using Python3 with dependencies below:
+The project is implemented using Python3 with dependencies below:
 
 ```
 numpy>=1.17.2
