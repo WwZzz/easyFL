@@ -16,7 +16,7 @@ optimizer_list=['SGD', 'Adam']
 def read_option():
     parser = argparse.ArgumentParser()
     # basic settings
-    parser.add_argument('--task', help='name of fedtask;', type=str, default='mnist_client100_dist0_beta0_noise0')
+    parser.add_argument('--task', help='name of fedtask;', type=str, default='mnist|cnum100|dist0|skew0|seed0')
     parser.add_argument('--algorithm', help='name of algorithm;', type=str, default='fedavg')
     parser.add_argument('--model', help='name of model;', type=str, default='cnn')
     # methods of server side for sampling and aggregating
