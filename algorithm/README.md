@@ -2,8 +2,8 @@
 Either you want to quickly experiment your own federated algorithms, 
 or you want to reproducing the experimental results of others' papers, 
 please carefully read this part as is almost created for this purpose. 
-To show how quick one can use this module to reproduce a popular federated algorithm, 
-we take FedProx and Scaffold as Examples and compare our 
+To show how easily one can use this module to reproduce a popular federated algorithm, 
+we take FedProx and Scaffold as the examples and compare our 
 implemention with their pseudo codes in papers.
 ## Example 1: FedProx
 Now we show how we realize FedProx with 5 lines.
@@ -62,4 +62,6 @@ def train(self, model):
  (the line #2 is for efficiency by avoiding backward propagation of the parameter of the global model.)
  to realize FedProx.
  
- Now we take a look on the results of our implemention of FedProx.
+ Now let's take a look on the results of our implemention of FedProx.
+ 
+ ## Example 2 : Scaffold
