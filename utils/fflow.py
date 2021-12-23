@@ -16,7 +16,7 @@ optimizer_list=['SGD', 'Adam']
 def read_option():
     parser = argparse.ArgumentParser()
     # basic settings
-    parser.add_argument('--task', help='name of fedtask;', type=str, default='mnist|cnum100|dist0|skew0|seed0')
+    parser.add_argument('--task', help='name of fedtask;', type=str, default='mnist_cnum100_dist0_skew0_seed0')
     parser.add_argument('--algorithm', help='name of algorithm;', type=str, default='fedavg')
     parser.add_argument('--model', help='name of model;', type=str, default='cnn')
     # methods of server side for sampling and aggregating
@@ -66,7 +66,7 @@ def initialize(option):
     # init fedtask
     print("init fedtask...", end='')
     # dynamical initializing the configuration with the benchmark
-    bmk_name = option['task'][:option['task'].find('_')].lower()
+    bmk_name = option['task'][:option['task'].find('cnum')-1].lower()
     bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
     bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
     utils.fmodule.device = torch.device('cuda:{}'.format(option['gpu']) if torch.cuda.is_available() and option['gpu'] != -1 else 'cpu')
