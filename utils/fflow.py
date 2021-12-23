@@ -66,7 +66,7 @@ def initialize(option):
     # init fedtask
     print("init fedtask...", end='')
     # dynamical initializing the configuration with the benchmark
-    bmk_name = option['task'][:option['task'].find('|')].lower()
+    bmk_name = option['task'][:option['task'].find('_')].lower()
     bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
     bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
     utils.fmodule.device = torch.device('cuda:{}'.format(option['gpu']) if torch.cuda.is_available() and option['gpu'] != -1 else 'cpu')
