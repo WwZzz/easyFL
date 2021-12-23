@@ -194,7 +194,7 @@ class BasicClient():
 
     def is_available(self):
         if self.drop_rate==0: return True
-        else: return (np.random.rand() < self.drop_rate)
+        else: return (np.random.rand() >= self.drop_rate)
 
     def train(self, model):
         model.train()
