@@ -109,7 +109,7 @@ class BasicTaskGen:
 
     def get_taskname(self):
         """Create task name and return it."""
-        taskname = '|'.join([self.benchmark, 'cnum' +  str(self.num_clients), 'dist' + str(self.dist_id), 'skew' + str(self.skewness).replace(" ", ""), 'seed'+str(self.seed)])
+        taskname = '_'.join([self.benchmark, 'cnum' +  str(self.num_clients), 'dist' + str(self.dist_id), 'skew' + str(self.skewness).replace(" ", ""), 'seed'+str(self.seed)])
         return taskname
 
     def get_client_names(self):
