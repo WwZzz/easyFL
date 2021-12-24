@@ -210,7 +210,7 @@ We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and 
 │  │  ├─ model                   //the corresponding model
 │  |  └─ core.py                 //the core supporting for the dataset 							
 │  ├─ ...
-│  └─ generator.py						//fedtask generator implementation
+│  └─ toolkits.py						//the basic tools for generating federated dataset
 ├─ fedtask
 │  ├─ mnist_client100_dist0_beta0_noise0//IID(beta=0) MNIST for 100 clients with not predefined noise
 │  │  ├─ record							//record of result
