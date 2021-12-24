@@ -3,8 +3,8 @@ Either you want to quickly experiment your own federated algorithms,
 or you want to reproducing the experimental results of others' papers, 
 please carefully read this part as is almost created for this purpose. 
 To show how easily one can use this module to reproduce a popular federated algorithm, 
-we take FedProx and Scaffold as the examples and compare our 
-implemention with their pseudo codes in papers.
+we take FedProx and Scaffold as the examples and detail their
+implemention.
 ## Example 1: FedProx
 Now we show how we realize FedProx with 5 lines.
 
