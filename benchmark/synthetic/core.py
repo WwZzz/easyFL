@@ -28,14 +28,16 @@ The details of this dataset is described as below:
        ------------------------------------------------------------------
         ('dist_id','skewness')                  (alpha, beta)
        ------------------------------------------------------------------
-                (0, 0)              i.i.d., model, data global
-                (5, x)              alpha=x, model global
-                (6, x)              data global, model glabal, imbalance
-                (8, x)              data global, beta=x
-                (9, x)              alpha=x, beta=x
+                ( 0, 0)              IID: model, data global, balance
+                ( 5, x)              alpha=x, model global, balance
+                ( 6, x)              data global, model glabal, imbalance
+                ( 8, x)              data global, beta=x, balance
+                ( 9, x)              alpha=x, beta=x, balance
+                (10, x)              alpha=x, beta=x, imbalance
       -------------------------------------------------------------------
     For example, the corresponding setup in our implemention is
-    (dist_id, skewness) in {(9, 0), (9, 0.5), (9, 1.0)} as the setup of (alpha, beta) of FedProx.
+    (dist_id, skewness) in {(6, 0), (10, 0), (10, 0.5), (10, 1.0)} as the orininal setup
+    IID or (alpha, beta) in {(0,0), (0.5, 0.5), (1, 1)}.
 """
 from benchmark.toolkits import BasicTaskGen, XYTaskReader, ClassifyCalculator
 from scipy.special import softmax
@@ -43,7 +45,7 @@ import numpy as np
 import os.path
 import ujson
 class TaskGen(BasicTaskGen):
-    def __init__(self, num_classes=10, dimension=60, dist_id = 0, num_clients = 30, skewness = 0.5, minvol=10, rawdata_path ='./benchmark/synthetic/data'):
+    def __init__(self, num_classes=10, dimension=60, dist_id = 0, num_clients = 30, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/synthetic/data'):
         super(TaskGen, self).__init__(benchmark='synthetic',
                                       dist_id=dist_id,
                                       skewness=skewness,
@@ -153,6 +155,14 @@ class TaskGen(BasicTaskGen):
             B = np.random.normal(0, self.skewness, num_clients)
             for k in range(num_clients): V[k] = np.random.normal(B[k], 1, self.dimension)
             samples_per_user = [40 * self.minvol for _ in range(self.num_clients)]
+        elif self.dist_id == 10:
+            """Concept skew && Feature skew && Imbalance"""
+            Us = np.random.normal(0, self.skewness, num_clients)
+            W = [np.random.normal(Us[k], 1, (self.dimension, self.num_classes)) for k in range(num_clients)]
+            b = [np.random.normal(Us[k], 1, self.num_classes) for k in range(num_clients)]
+            B = np.random.normal(0, self.skewness, num_clients)
+            for k in range(num_clients): V[k] = np.random.normal(B[k], 1, self.dimension)
+            samples_per_user = np.random.lognormal(4, 2, (num_clients)).astype(int) + self.minvol
 
         X_split = [[] for _ in range(num_clients)]
         y_split = [[] for _ in range(num_clients)]
