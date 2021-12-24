@@ -63,8 +63,11 @@ def train(self, model):
  to realize FedProx.
  
  Now let's take a look on the results of our implemention of FedProx.
+ 
  ![image](https://github.com/WwZzz/myfigs/blob/master/fig01_testacc_for_synthetic_0505_fedprox.png)
+ 
 To get the results, run the commands below:
+
 '''
 python generated_fedtask.py --dataset synthetic --dist 10 --skew 0.5 --num_clients 30
 
