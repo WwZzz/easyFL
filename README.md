@@ -40,7 +40,7 @@ python generate_fedtask.py
 **Second**, run the command below to quickly get a result of the basic algorithm FedAvg on MNIST with a simple CNN:
 
 ```sh
-python main.py --task mnist_cnum100_dist0_skew0_seed0 --model cnn --method fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --train_rate 1 --eval_interval 1
+python main.py --task mnist_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --eval_interval 1
 ```
 
 The result will be stored in ` ./fedtask/mnist_cnum100_dist0_skew0_seed0/record/`.
@@ -150,7 +150,7 @@ Basic options:
 
 * `task` is to choose the task of splited dataset. Options: name of fedtask (e.g. `mnist_client100_dist0_beta0_noise0`).
 
-* `method ` is to choose the FL algorithm. Options: `fedfv`, `fedavg`, `fedprox`, …
+* `algorithm` is to choose the FL algorithm. Options: `fedfv`, `fedavg`, `fedprox`, …
 
 * `model` should be the corresponding model of the dataset. Options: `mlp`, `cnn`, `resnet18.`
 
@@ -188,8 +188,6 @@ Other options:
 
 * `eval_interval ` controls the interval between every two evaluations. 
 
-* `train_rate` is the proportion of the train set and validation set in local dataset.
-
 * `drop` controls the dropout of clients after being selected in each communication round according to distribution Beta(drop,1). The larger this term is, the more possible for clients to drop.
 
 * `num_threads` is the number of threads in the clients computing session that aims to accelarate the training process.
@@ -209,13 +207,15 @@ We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and 
 ├─ benchmark
 │  ├─ mnist							//mnist dataset
 │  │  ├─ data							//data
-│  |  └─ model							//the corresponding model
+│  │  ├─ model                   //the corresponding model
+│  |  └─ core.py                 //the core supporting for the dataset 							
 │  ├─ ...
 │  └─ generator.py						//fedtask generator implementation
 ├─ fedtask
 │  ├─ mnist_client100_dist0_beta0_noise0//IID(beta=0) MNIST for 100 clients with not predefined noise
 │  │  ├─ record							//record of result
-│  |  └─ task.json						//the splitted federated dataset (fedtask)
+│  │  ├─ info.json						//basic infomation of the task
+│  |  └─ data.json						//the splitted federated dataset (fedtask)
 |  └─ ...
 ├─ method
 │  ├─ fedavg.py							//FL algorithm implementation inherit fedbase.py
@@ -236,29 +236,21 @@ We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and 
 This module is to generate `fedtask` by partitioning the particular distribution data through `generate_fedtask.py`. To generate different `fedtask`, there are three parameters: `dist`, `num_clients `, `beta`. `dist` denotes the distribution type (e.g. `0` denotes iid and balanced distribution, `1` denotes niid-label-quantity and balanced distribution). `num_clients` is the number of clients participate in FL system, and `beta` controls the degree of non-iid for different  `dist`. Each dataset can correspond to differrent models (mlp, cnn, resnet18, …). We refer to <a href='#refer-anchor-1'>[McMahan et al., 2017]</a>, <a href='#refer-anchor-2'>[Li et al., 2020]</a>, <a href='#refer-anchor-8'>[Li et al., 2021]</a>, <a href='#refer-anchor-4'>[Li et al., 2019]</a>, <a href='#refer-anchor-9'>[Caldas et al., 2018]</a>, <a href='#refer-anchor-10'>[He et al., 2020]</a> when realizing this module. Further details are described in `benchmark/README.md`.
 
 ### Fedtask
-We define each task as a combination of the federated dataset of a particular distribution and the experimental results on it. The raw dataset is processed into .json file, following LEAF (https://github.com/TalwalkarLab/leaf). The architecture of the .json file is described as below:  
+We define each task as a combination of the federated dataset of a particular distribution and the experimental results on it. The raw dataset is processed into .json file, following LEAF (https://github.com/TalwalkarLab/leaf). The architecture of the data.json file is described as below:  
 
 ```python
 """
 {
-    'meta':{
-        'benchmark': 'mnist',						//dataset name
-        'num_clients': 100,							//the number of clients
-        'dist': 0,									//the distribution of data
-        'beta': 0,									//the parameter of distribution
-    },
-    'clients': {
-        'user0': {
-            'dtrain': {'x': [...], 'y': [...]},
-            'dvalid': {'x': [...], 'y': [...]},
-            'dvol': 600,
-        },...,
-        'user99': {
-            'dtrain': {'x': [...], 'y': [...]},
-            'dvalid': {'x': [...], 'y': [...]},
-            'dvol': 600,
-        },
-    },
+    'store': 'XY'
+    'client_names': ['user0', ..., 'user99']
+    'user0': {
+       'dtrain': {'x': [...], 'y': [...]},
+       'dvalid': {'x': [...], 'y': [...]},
+     },...,
+    'user99': {
+       'dtrain': {'x': [...], 'y': [...]},
+       'dvalid': {'x': [...], 'y': [...]},
+     },
     'dtest': {'x':[...], 'y':[...]}
 }
 """
