@@ -78,22 +78,6 @@ class FModule(nn.Module):
     def get_device(self):
         return next(self.parameters()).device
 
-@torch.no_grad()
-def test(model, dataset):
-    model.eval()
-    loss = 0
-    correct = 0
-    data_loader = DataLoader(dataset, batch_size=64)
-    for idx, (features, labels) in enumerate(data_loader):
-        features, labels = features.to(device), labels.to(device)
-        outputs = model(features)
-        loss += (lossfunc(outputs, labels).item()*len(labels))
-        y_pred = outputs.data.max(1, keepdim=True)[1]
-        correct += y_pred.eq(labels.data.view_as(y_pred)).long().cpu().sum()
-    accuracy = float(correct) * 100.00 / len(dataset)
-    loss/=len(dataset)
-    return accuracy, loss
-
 def normalize(m):
     return m/(m**2)
 
