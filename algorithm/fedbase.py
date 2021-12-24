@@ -3,6 +3,8 @@ from utils import fmodule
 import copy
 from multiprocessing import Pool as ThreadPool
 from main import logger
+import os
+import utils.fflow as flw
 
 class BasicServer():
     def __init__(self, option, model, clients, test_data = None):
@@ -52,10 +54,12 @@ class BasicServer():
 
         print("=================End==================")
         logger.time_end('Total Time Cost')
+        # save results as .json file
+        logger.save(os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)))
         return
 
     def iterate(self, t):
-        # sample clients
+        # sample clients: MD sampling as default but with replacement=False
         selected_clients = self.sample()
         # training
         models, train_losses = self.communicate(selected_clients)

@@ -1,6 +1,5 @@
 import utils.fflow as flw
 import numpy as np
-import os
 
 class MyLogger(flw.Logger):
     def log(self, server=None):
@@ -48,11 +47,10 @@ def main():
     server = flw.initialize(option)
     # start federated optimization
     server.run()
-    # save results as .json file
-    logger.save(os.path.join('fedtask', option['task'], 'record', flw.output_filename(option, server)))
 
 if __name__ == '__main__':
     main()
+
 
 
 

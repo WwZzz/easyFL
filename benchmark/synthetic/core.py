@@ -36,9 +36,10 @@ class TaskGen(BasicTaskGen):
         self.num_classes = num_classes
         self.num_clients = num_clients
         self.minvol = minvol
+        self.skewness = (skewness, skewness)
         self.taskname = self.get_taskname()
         self.taskpath = os.path.join(self.rootpath, self.taskname)
-        self.skewness = (skewness, skewness)
+
 
     def run(self):
         if not self._check_task_exist():
