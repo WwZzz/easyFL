@@ -40,10 +40,10 @@ python generate_fedtask.py
 **Second**, run the command below to quickly get a result of the basic algorithm FedAvg on MNIST with a simple CNN:
 
 ```sh
-python main.py --task mnist_client100_dist0_beta0_noise0 --model cnn --method fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --train_rate 1 --eval_interval 1
+python main.py --task mnist_cnum100_dist0_skew0_seed0 --model cnn --method fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --train_rate 1 --eval_interval 1
 ```
 
-The result will be stored in ` ./fedtask/mnist_client100_dist0_beta0_noise0/record/`.
+The result will be stored in ` ./fedtask/mnist_cnum100_dist0_skew0_seed0/record/`.
 
 **Third**, run the command below to get a visualization of the result.
 
