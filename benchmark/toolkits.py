@@ -70,6 +70,8 @@ class BasicTaskGen:
         5: 'feature_skew_id',
         6: 'iid_volumn_skew',
         7: 'niid_volumn_skew',
+        8: 'concept skew',
+        9: 'concept and feature skew',
     }
     _TYPE_DATASET = ['2DImage', '3DImage', 'Text', 'Sequential', 'Graph', 'Tabular']
 

@@ -73,8 +73,8 @@ class BasicServer():
         if self.num_threads <= 1:
             # computing iteratively
             for client_id in client_ids:
-                rp = self.communicate_with(client_id)
-                packages_received_from_clients.append(rp)
+                response_from_client_id = self.communicate_with(client_id)
+                packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel
             pool = ThreadPool(min(self.num_threads, len(client_ids)))
