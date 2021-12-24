@@ -7,7 +7,6 @@ class MyLogger(flw.Logger):
         if self.output == {}:
             self.output = {
                 "meta":server.option,
-                "acc_dist":[],
                 "mean_curve":[],
                 "var_curve":[],
                 "train_losses":[],

@@ -113,10 +113,10 @@ def print_table(records, dicts):
             if d['test_accs'][i]>bestacc:
                 bestacc = d['test_accs'][i]
                 idx = i*d['meta']['eval_interval']
-        highest = float(np.max(d['acc_dist']))
-        lowest = float(np.min(d['acc_dist']))
-        mean_valid = float(np.mean(d['acc_dist']))
-        var_valid = float(np.std(d['acc_dist']))
+        highest = float(np.max(d['valid_accs'][-1]))
+        lowest = float(np.min(d['valid_accs'][-1]))
+        mean_valid = float(np.mean(d['valid_accs'][-1]))
+        var_valid = float(np.std(d['valid_accs'][-1]))
         tb.add_row([rec, testacc, validacc, trainloss, testloss, str(bestacc)+'/'+str(idx), highest, lowest, mean_valid, var_valid])
     tb.sortby = 'Test-Acc.'
     tb.reversesort = True
@@ -124,10 +124,10 @@ def print_table(records, dicts):
 
 if __name__ == '__main__':
     # task+record
-    task = 'mnist_client100_dist0_beta0_noise0'
+    task = 'synthetic_cnum30_dist10_skew0.0_seed0'
     headers = [
         'fedavg',
-        # 'fedprox',
+        'fedprox',
     ]
     flt = {
         # 'E': '5',
@@ -155,7 +155,7 @@ if __name__ == '__main__':
         'test_accs',
     ]
     # create legends
-    legends = [records[i] for i in range(len(records))]
+    legends = [records[i][:15] for i in range(len(records))]
     for curve in curve_names:
         draw_curve(dicts, curve, legends)
         plt.title(task)
