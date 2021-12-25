@@ -65,7 +65,7 @@ class Client(BasicClient):
                 optimizer.step()
                 num_batches += 1
         # update local control variate c
-        K = self.epochs * num_batches
+        K = num_batches
         dy = model - src_model
         dc = -1.0 / (K * self.learning_rate) * dy - cg
         self.c = self.c + dc
