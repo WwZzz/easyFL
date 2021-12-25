@@ -1,10 +1,9 @@
 # How to realize federated algorithms by easyFL?
-Either you want to quickly experiment your own federated algorithms, 
-or you want to reproducing the experimental results of others' papers, 
+Either you want to quickly implement your own federated algorithms, 
+or you want to reproducing the experimental results of other papers, 
 please carefully read this part as is almost created for this purpose. 
 To show how easily one can use this module to reproduce a popular federated algorithm, 
-we take FedProx and Scaffold as the examples and compare our 
-implemention with their pseudo codes in papers.
+we take FedProx and Scaffold as the examples and detail their implemention.
 ## Example 1: FedProx
 Now we show how we realize FedProx with 5 lines.
 
@@ -35,7 +34,7 @@ def train(self, model):
     """the '"' hightlight additional lines of train() in fedprox compared to fedavg"""
     # 1
     """src_model = copy.deepcopy(model)"""
-    # 2 (only for efficiency and can be removed)                  
+    # 2 (only for efficiency and can be removed)   
     """src_model.freeze_grad()"""
     model.train()
     data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
@@ -64,4 +63,24 @@ def train(self, model):
  
  Now let's take a look on the results of our implemention of FedProx.
  
+ ![image](https://github.com/WwZzz/myfigs/blob/master/fig01_testacc_for_synthetic_0505_fedprox.png)
+ 
+To get the results, run the commands below:
+
+```
+# generate federated synthetic(0.5, 0.5) data
+python generated_fedtask.py --dataset synthetic --dist 10 --skew 0.5 --num_clients 30
+
+# run fedavg
+python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedavg --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0 --gpu 0 
+
+# run fedprox with mu = 0.1
+python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 0.1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0 --gpu 0 
+
+# run fedprox with mu = 0.5
+python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 0.5 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0 --gpu 0 
+
+# run fedprox with mu = 1
+python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0 --gpu 0
+```
  ## Example 2 : Scaffold
