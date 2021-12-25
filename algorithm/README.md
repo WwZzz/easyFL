@@ -35,7 +35,7 @@ def train(self, model):
     # 1
     """src_model = copy.deepcopy(model)"""
     # 2 (only for efficiency and can be removed)                  
-    """src_model.freeze_grad()"""
+    +src_model.freeze_grad()
     model.train()
     data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
     optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
