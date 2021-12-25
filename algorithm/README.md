@@ -29,13 +29,13 @@ add hyper-parameter `mu` as an attribute of `fedprox.Client`, and append the nam
 
 calculate and add the proximal loss to the original loss before backward propagation.
 
-```diff
+```python
 def train(self, model):
     """the '"' hightlight additional lines of train() in fedprox compared to fedavg"""
     # 1
     """src_model = copy.deepcopy(model)"""
     # 2 (only for efficiency and can be removed)   
-    + src_model.freeze_grad()
+    """src_model.freeze_grad()"""
     model.train()
     data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
     optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
