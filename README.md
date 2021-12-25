@@ -144,6 +144,8 @@ python result_analysis.py
 | FedDyn      | <a href='#refer-anchor-12'>[Acar et al., 2021]</a>       | ICLR' 2021    |
 | ...         |||
 
+For those who want to realize their own federaed algorithms or reproduce others, please see `algorithms/readme.md`, where we take two simple examples to show how to use easyFL for the popurse.
+
 ### Options
 
 Basic options:
