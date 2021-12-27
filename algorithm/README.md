@@ -62,8 +62,11 @@ def train(self, model):
  to realize FedProx.
  
  Now let's take a look on the results of our implemention of FedProx.
- 
- ![image](https://github.com/WwZzz/myfigs/blob/master/fig01_trainloss_for_synthetic_0505_fedprox.png) ![image](https://github.com/WwZzz/myfigs/blob/master/fig01_testacc_for_synthetic_0505_fedprox.png)
+
+<p float="left">
+  <img src="https://github.com/WwZzz/myfigs/blob/master/fig01_trainloss_for_synthetic_0505_fedprox.png" width="200" />
+  <img src="https://github.com/WwZzz/myfigs/blob/master/fig02_testacc_for_synthetic_0505_fedprox.png" width="200" /> 
+</p>
  
 To get the results, run the commands below:
 
