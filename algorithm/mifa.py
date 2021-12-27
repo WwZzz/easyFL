@@ -1,0 +1,47 @@
+from .fedbase import BasicServer, BasicClient
+from utils import fmodule
+
+class Server(BasicServer):
+    def __init__(self, option, model, clients, test_data=None):
+        super(Server, self).__init__(option, model, clients, test_data)
+        self.update_table = [None for _ in range(self.num_clients)]
+        self.initflag = False
+
+    def check_if_init(self):
+        """Check whether the update_table is initialized"""
+        for i in range(self.num_clients):
+            if self.update_table[i]==None:
+                return False
+        return True
+
+    def sample(self):
+        return [cid for cid in range(self.num_clients) if self.clients[cid].is_available()]
+
+    def iterate(self, t):
+        # sample all the active clients
+        selected_clients = self.sample()
+        # training
+        models, train_losses = self.communicate(selected_clients)
+        # update G
+        for client_id in range(len(selected_clients)):
+            self.update_table[selected_clients[client_id]] = 1.0 / self.lr * (self.model - models[client_id])
+        # wait for initialization of update_table before aggregation
+        if not self.initflag:
+            self.initflag = self.check_if_init()
+            return selected_clients
+        # aggregate: w = w - eta_t * 1/N * sum(G_i)
+        self.model = self.aggregate()
+        return selected_clients
+
+    def aggregate(self):
+        return self.model-self.lr * fmodule._model_average(self.update_table)
+
+
+class Client(BasicClient):
+    def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
+        super(Client, self).__init__(option, name, train_data, valid_data, drop_rate)
+
+
+
+
+
