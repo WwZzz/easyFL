@@ -34,7 +34,7 @@ ujson>=4.0.2
 
 ```sh
 # generate the splited dataset
-python generate_fedtask.py
+python generate_fedtask. --dataset mnist --dist 0 --skew 0 --num_clients 100
 ```
 
 **Second**, run the command below to quickly get a result of the basic algorithm FedAvg on MNIST with a simple CNN:
