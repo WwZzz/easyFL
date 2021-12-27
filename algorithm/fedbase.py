@@ -152,14 +152,15 @@ class BasicServer():
             losses.append(loss)
         return evals, losses
 
-    def test(self):
+    def test(self, model=None):
+        if model==None: model=self.model
         if self.test_data:
-            self.model.eval()
+            model.eval()
             loss = 0
             eval_metric = 0
             data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
             for batch_id, batch_data in enumerate(data_loader):
-                bmean_eval_metric, bmean_loss = self.calculator.test(self.model, batch_data)
+                bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data)
                 loss += bmean_loss * len(batch_data[1])
                 eval_metric += bmean_eval_metric * len(batch_data[1])
             eval_metric /= len(self.test_data)
