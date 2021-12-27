@@ -86,7 +86,7 @@ class TaskGen(DefaultTaskGen):
         test_users = []
         all_users = list(set(all_users) - set(train_users))
         num_test = min(max(int(0.2 * len(train_users)), 10), len(all_users))
-        test_dict = {}
+        test_dict = {'x':[], 'y':[]}
         while (len(test_users) < num_test and all_users):
             user = np.random.choice(all_users)
             if user in test_users: continue

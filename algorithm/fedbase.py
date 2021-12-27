@@ -64,7 +64,7 @@ class BasicServer():
         # training
         models, train_losses = self.communicate(selected_clients)
         # aggregate: pk = 1/K as default where K=len(selected_clients)
-        self.model = self.aggregate(models)
+        self.model = self.aggregate(models, p = [1.0 * self.client_vols[cid]/self.data_vol for cid in selected_clients])
         # output info
         return selected_clients
 
@@ -109,9 +109,9 @@ class BasicServer():
     def sample(self, replacement=False):
         cids = [i for i in range(self.num_clients)]
         selected_cids = []
-        if self.sample_option == 'uniform': # original sample
+        if self.sample_option == 'uniform': # original sample proposed by fedavg
             selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=False))
-        elif self.sample_option =='md': # default
+        elif self.sample_option =='md': # the default setting that is introduced by FedProx
             selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=False, p=[nk / self.data_vol for nk in self.client_vols]))
             # selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=True, p=[nk/self.data_vol for nk in self.client_vols]))
         # client dropout
