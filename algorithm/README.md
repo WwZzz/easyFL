@@ -63,7 +63,7 @@ def train(self, model):
  
  Now let's take a look on the results of our implemention of FedProx.
  
- ![image](https://github.com/WwZzz/myfigs/blob/master/fig01_testacc_for_synthetic_0505_fedprox.png)
+ ![image](https://github.com/WwZzz/myfigs/blob/master/fig01_trainloss_for_synthetic_0505_fedprox.png) ![image](https://github.com/WwZzz/myfigs/blob/master/fig01_testacc_for_synthetic_0505_fedprox.png)
  
 To get the results, run the commands below:
 
@@ -71,7 +71,7 @@ To get the results, run the commands below:
 # generate federated synthetic(0.5, 0.5) data
 python generated_fedtask.py --dataset synthetic --dist 10 --skew 0.5 --num_clients 30
 
-# run fedavg
+# run fedavg (default), weighted sample and uniform average
 python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedavg --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 
 # run fedprox with mu = 0.1
@@ -82,5 +82,8 @@ python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --al
 
 # run fedprox with mu = 1
 python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
+
+# run fedavg (origin), uniform sample and weighted average
+python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedavg --aggregate weighted_com --sample uniform --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 ```
  ## Example 2 : Scaffold
