@@ -124,8 +124,11 @@ class BasicServer():
             # original sample proposed by fedavg
             selected_clients = list(np.random.choice(active_clients, self.clients_per_round, replace=False))
         elif self.sample_option =='md':
+            # reweight the probability of being sampled according to the data volumn of the active clients
+            active_client_vols = [self.client_vols[cid] for cid in active_clients]
+            sum_acv = sum(active_client_vols)
             # the default setting that is introduced by FedProx
-            selected_clients = list(np.random.choice(active_clients, self.clients_per_round, replace=False, p=[nk / self.data_vol for nk in self.client_vols]))
+            selected_clients = list(np.random.choice(active_clients, self.clients_per_round, replace=False, p=[nk / sum_acv for nk in active_client_vols]))
             # selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=True, p=[nk/self.data_vol for nk in self.client_vols]))
         return selected_clients
 

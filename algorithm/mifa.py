@@ -12,6 +12,7 @@ class Server(BasicServer):
         for i in range(self.num_clients):
             if self.update_table[i]==None:
                 return False
+        print("G_i Initialized For All The Clients.")
         return True
 
     def sample(self):

@@ -41,13 +41,12 @@ def draw_curve(dicts, curve='train_losses', legends = []):
         num_rounds = dict['meta']['num_rounds']
         eval_interval = dict['meta']['eval_interval']
         x = []
-        for round in range(num_rounds + 1):
-            if eval_interval > 0 and (round == 0 or round % eval_interval == 0 or round == num_rounds):
+        for round in range(num_rounds+1):
+            if eval_interval > 0 and (round == 0 or round % eval_interval == 0):
                 x.append(round)
-        if curve == 'train_losses':
-            y = [dict[curve][round] for round in range(num_rounds + 1) if (round == 0 or round % eval_interval == 0 or round == num_rounds)]
-        else:
-            y = dict[curve]
+        print(len(x))
+        y = dict[curve]
+        print(len(y))
         plt.plot(x, y, label=legends[i], linewidth=1)
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=1)
     return
@@ -124,10 +123,11 @@ def print_table(records, dicts):
 
 if __name__ == '__main__':
     # task+record
-    task = 'synthetic_cnum30_dist10_skew0.0_seed0'
+    task = 'mnist_cnum100_dist0_skew0_seed0'
     headers = [
         'fedavg',
-        'fedprox',
+        'fedprox'
+        'mifa',
     ]
     flt = {
         # 'E': '5',
