@@ -68,17 +68,17 @@ class BasicServer():
         # output info
         return selected_clients
 
-    def communicate(self, client_ids):
+    def communicate(self, selected_clients):
         packages_received_from_clients = []
         if self.num_threads <= 1:
             # computing iteratively
-            for client_id in client_ids:
+            for client_id in selected_clients:
                 response_from_client_id = self.communicate_with(client_id)
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel
-            pool = ThreadPool(min(self.num_threads, len(client_ids)))
-            packages_received_from_clients = pool.map(self.communicate_with, client_ids)
+            pool = ThreadPool(min(self.num_threads, len(selected_clients)))
+            packages_received_from_clients = pool.map(self.communicate_with, selected_clients)
             pool.close()
             pool.join()
         return self.unpack(packages_received_from_clients)
@@ -105,18 +105,29 @@ class BasicServer():
             self.lr*=self.decay_rate
             for c in self.clients:
                 c.set_learning_rate(self.lr)
+        elif self.lr_scheduler_type == 1:
+            """eta_{round+1} = eta_0/(round+1)"""
+            self.lr = self.option['learning_rate']*1.0/(round+1)
+            for c in self.clients:
+                c.set_learning_rate(self.lr)
 
     def sample(self, replacement=False):
-        cids = [i for i in range(self.num_clients)]
-        selected_cids = []
-        if self.sample_option == 'uniform': # original sample proposed by fedavg
-            selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=False))
-        elif self.sample_option =='md': # the default setting that is introduced by FedProx
-            selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=False, p=[nk / self.data_vol for nk in self.client_vols]))
+        # Wait for at least one client is active and check all the active clients at the current round
+        active_clients = []
+        while(len(active_clients)<1):
+            active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_available()]
+        # Sample clients from active_clients
+        if len(active_clients)<self.clients_per_round:
+            # select all the active clients without sampling due to num_active_clients < proportion*num_clients
+            selected_clients = active_clients
+        if self.sample_option == 'uniform':
+            # original sample proposed by fedavg
+            selected_clients = list(np.random.choice(active_clients, self.clients_per_round, replace=False))
+        elif self.sample_option =='md':
+            # the default setting that is introduced by FedProx
+            selected_clients = list(np.random.choice(active_clients, self.clients_per_round, replace=False, p=[nk / self.data_vol for nk in self.client_vols]))
             # selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=True, p=[nk/self.data_vol for nk in self.client_vols]))
-        # client dropout
-        selected_cids = [cid for cid in selected_cids if self.clients[cid].is_available()]
-        return selected_cids
+        return selected_clients
 
     def aggregate(self, models, p=[]):
         if not models: return self.model
