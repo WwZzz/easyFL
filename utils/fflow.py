@@ -120,15 +120,18 @@ class Logger:
         self.time_buf={}
 
     def check_if_log(self, round, eval_interval=-1):
+        """For evaluating every 'eval_interval' rounds, check whether to log at 'round'."""
         self.current_round = round
         return eval_interval > 0 and (round == 0 or round % eval_interval == 0)
 
     def time_start(self, key = ''):
+        """Create a timestamp of the event 'key' starting"""
         if key not in [k for k in self.time_buf.keys()]:
             self.time_buf[key] = []
         self.time_buf[key].append(time.time())
 
     def time_end(self, key = ''):
+        """Create a timestamp that ends the event 'key' and print the time interval of the event."""
         if key not in [k for k in self.time_buf.keys()]:
             raise RuntimeError("Timer end before start.")
         else:
@@ -136,9 +139,18 @@ class Logger:
             print("{:<30s}{:.4f}".format(key+":", self.time_buf[key][-1]) + 's')
 
     def save(self, filepath):
+        """Save the self.output as .json file"""
         if self.output=={}: return
         with open(filepath, 'w') as outf:
             ujson.dump(self.output, outf)
+            
+    def write(self, var_name=None, var_value=None):
+        """Add variable 'var_name' and its value var_value to logger"""
+        if var_name==None: raise RuntimeError("Missing the name of the variable to be logged.")
+        if var_name in [key for key in self.output.keys()]:
+            self.output[var_name] = []
+        self.output[var_name].append(var_value)
+        return
 
     def log(self, sever=None):
         pass
