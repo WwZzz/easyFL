@@ -103,7 +103,7 @@ def initialize(option):
 def output_filename(option, server):
     header = "{}_".format(option["algorithm"])
     for para in server.paras_name: header = header + para + "{}_".format(option[para])
-    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_T{:.2f}_LD{:.3f}_WD{:.3f}_DR{:.2f}_.json".format(
+    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}.json".format(
         option['model'],
         option['num_rounds'],
         option['batch_size'],
@@ -111,10 +111,10 @@ def output_filename(option, server):
         option['learning_rate'],
         option['proportion'],
         option['seed'],
-        option['train_rate'],
         option['lr_scheduler']+option['learning_rate_decay'],
         option['weight_decay'],
-        option['drop'])
+        option['net_drop'],
+        option['net_active'])
     return output_name
 
 class Logger:
