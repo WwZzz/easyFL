@@ -64,7 +64,7 @@ class BasicServer():
     def iterate(self, t):
         """
         The standard iteration of each federated round that contains three
-        necessary procedure in FL: client selection, communicaion and model aggregate.
+        necessary procedure in FL: client selection, communication and model aggregation.
         :param
             t: the number of current round
         """
@@ -284,13 +284,13 @@ class BasicClient():
         self.drop_rate = 0 if option['net_drop']<0.01 else np.random.beta(option['net_drop'], 1, 1).item()
         self.active_rate = 1 if option['net_active']>99998 else np.random.beta(option['net_active'], 1, 1).item()
 
-    def set_model(self, model):
-        self.model = model
-
-    def set_learning_rate(self, lr = 0):
-        self.learning_rate = lr if lr else self.learning_rate
-
     def train(self, model):
+        """
+        Standard local training procedure. Train the transmitted model with local training dataset.
+        :param
+            model: the global model
+        :return
+        """
         model.train()
         data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
@@ -303,6 +303,15 @@ class BasicClient():
         return
 
     def test(self, model, dataflag='valid'):
+        """
+        Evaluate the model with local data (e.g. training data or validating data).
+        :param
+            model:
+            dataflag: choose the dataset to be evaluated on
+        :return:
+            eval_metric: task specified evaluation metric
+            loss: task specified loss
+        """
         dataset = self.train_data if dataflag=='train' else self.valid_data
         model.eval()
         loss = 0
@@ -316,12 +325,6 @@ class BasicClient():
         loss = 1.0 * loss / len(dataset)
         return eval_metric, loss
 
-    def train_loss(self, model):
-        return self.test(model,'train')[1]
-
-    def valid_loss(self, model):
-        return self.test(model)[1]
-
     def unpack(self, received_pkg):
         """
         Unpack the package received from the server
@@ -334,6 +337,18 @@ class BasicClient():
         return received_pkg['model']
 
     def reply(self, svr_pkg):
+        """
+        Reply to server with the transmitted package.
+        The whole local procedure should be planned here.
+        The standard form consists of three procedure:
+        unpacking the server_package to obtain the global model,
+        training the global model, and finally packing the improved
+        model into client_package.
+        :param
+            svr_pkg: the package received from the server
+        :return:
+            client_pkg: the package to be send to the server
+        """
         model = self.unpack(svr_pkg)
         loss = self.train_loss(model)
         self.train(model)
@@ -344,10 +359,10 @@ class BasicClient():
         """
         Packing the package to be send to the server. The operations of compression
         of encryption of the package should be done here.
-        Args:
+        :param
             model: the locally trained model
             loss: the loss of the global model on the local training dataset
-        Return:
+        :return
             package: a dict that contains the necessary information for the server
         """
         return {
@@ -356,14 +371,35 @@ class BasicClient():
         }
 
     def is_active(self):
-        """Check if the client is active to participate training"""
+        """
+        Check if the client is active to participate training.
+        :param
+        :return
+            True if the client is active according to the active_rate else False
+        """
         if self.active_rate==1: return True
         else: return (np.random.rand() <= self.active_rate)
 
     def is_drop(self):
-        """Check if the client drops out during communicating"""
+        """
+        Check if the client drops out during communicating.
+        :param
+        :return
+            True if the client drops out according to the drop_rate else False
+        """
         if self.drop_rate==0: return False
         else: return (np.random.rand() < self.drop_rate)
 
+    def train_loss(self, model):
+        return self.test(model,'train')[1]
+
+    def valid_loss(self, model):
+        return self.test(model)[1]
+
+    def set_model(self, model):
+        self.model = model
+
+    def set_learning_rate(self, lr = 0):
+        self.learning_rate = lr if lr else self.learning_rate
 
 
