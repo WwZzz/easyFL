@@ -391,15 +391,33 @@ class BasicClient():
         else: return (np.random.rand() < self.drop_rate)
 
     def train_loss(self, model):
+        """
+        Get the task specified loss of the model on local training data
+        :param model:
+        :return:
+        """
         return self.test(model,'train')[1]
 
     def valid_loss(self, model):
+        """
+        Get the task specified loss of the model on local validating data
+        :param model:
+        :return:
+        """
         return self.test(model)[1]
 
     def set_model(self, model):
+        """
+        set self.model
+        :param model:
+        :return:
+        """
         self.model = model
 
     def set_learning_rate(self, lr = 0):
+        """
+        set the learning rate of local training
+        :param lr:
+        :return:
+        """
         self.learning_rate = lr if lr else self.learning_rate
-
-
