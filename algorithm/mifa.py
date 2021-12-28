@@ -19,12 +19,12 @@ class Server(BasicServer):
 
     def iterate(self, t):
         # sample all the active clients
-        selected_clients = self.sample()
+        self.selected_clients = self.sample()
         # training
-        models, train_losses = self.communicate(selected_clients)
+        models, train_losses = self.communicate(self.selected_clients)
         # update G
-        for client_id in range(len(selected_clients)):
-            self.update_table[selected_clients[client_id]] = 1.0 / self.lr * (self.model - models[client_id])
+        for client_id in range(len(self.selected_clients)):
+            self.update_table[self.selected_clients[client_id]] = 1.0 / self.lr * (self.model - models[client_id])
         # wait for initialization of update_table before aggregation
         if not self.initflag:
             self.initflag = self.check_if_init()
