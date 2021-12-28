@@ -19,6 +19,7 @@ class Server(BasicServer):
         self.selected_clients = self.sample()
         # training locally
         ws, losses = self.communicate(self.selected_clients)
+        if self.selected_clients == []: return
         grads = [self.model - w for w in ws]
         # update GH
         for cid, gi in zip(self.selected_clients, grads):

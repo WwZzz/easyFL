@@ -17,6 +17,7 @@ class Server(BasicServer):
         self.selected_clients = self.sample()
         # training
         models, losses = self.communicate(self.selected_clients)
+        if self.selected_clients == []: return
         grads = [self.model-w for w in models]
         # clip grads
         for gi in grads: gi.normalize()

@@ -21,9 +21,10 @@ class Server(BasicServer):
 
     def iterate(self, t):
         # sample clients
-        selected_clients = self.sample()
+        self.selected_clients = self.sample()
         # training
-        ws, losses, ACC, F = self.communicate(selected_clients)
+        ws, losses, ACC, F = self.communicate(self.selected_clients)
+        if self.selected_clients == []: return
         # aggregate
         # calculate ACCi_inf, fi_inf
         sum_acc = np.sum(ACC)
@@ -41,7 +42,7 @@ class Server(BasicServer):
         # calculate m = γm+(1-γ)dw
         self.m = self.gamma*self.m, self.gamma + (1 - self.gamma)*dw
         self.model = wnew - self.m * self.eta
-        return selected_clients
+        return
 
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):

@@ -13,6 +13,7 @@ class Server(BasicServer):
         self.selected_clients = self.sample()
         # training
         models, train_losses = self.communicate(self.selected_clients)
+        if self.selected_clients == []: return
         # plug in the weight updates into the gradient
         grads = [(self.model- model) / self.lr for model in models]
         Deltas = [gi*np.float_power(li + 1e-10, self.q) for gi,li in zip(grads,train_losses)]

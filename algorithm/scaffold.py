@@ -25,6 +25,7 @@ class Server(BasicServer):
         self.selected_clients = self.sample()
         # local training
         dys, dcs = self.communicate(self.selected_clients)
+        if self.selected_clients == []: return
         # aggregate
         self.model, self.cg = self.aggregate(dys, dcs)
         return

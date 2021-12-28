@@ -26,7 +26,7 @@ class Server(BasicServer):
         self.dynamic_lambdas = self.project(self.dynamic_lambdas)
         # record resulting model
         self.result_model = (t*self.result_model + self.model)/(t+1)
-        return [c for c in range(self.num_clients)]
+        return
 
     def project(self, p):
         u = sorted(p, reverse=True)
