@@ -11,9 +11,9 @@ class Server(BasicServer):
 
     def iterate(self, t):
         # sample clients
-        selected_clients = self.sample()
+        self.selected_clients = self.sample()
         # training
-        models, train_losses = self.communicate(selected_clients)
+        models, train_losses = self.communicate(self.selected_clients)
         # plug in the weight updates into the gradient
         grads = [(self.model- model)/self.learning_rate for model in models]
         Deltas = [gi*np.float_power(li + 1e-10, self.q) for gi,li in zip(grads,train_losses)]
@@ -21,7 +21,7 @@ class Server(BasicServer):
         hs = [self.q * np.float_power(li + 1e-10, (self.q - 1)) * (gi.norm() ** 2) + self.L * np.float_power(li + 1e-10, self.q) for gi,li in zip(grads,train_losses)]
         # aggregate
         self.model = self.aggregate(Deltas, hs)
-        return selected_clients
+        return
 
     def aggregate(self, Deltas, hs):
         demominator = np.sum(np.asarray(hs))
@@ -31,5 +31,5 @@ class Server(BasicServer):
         return w_new
 
 class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
-        super(Client, self).__init__(option, name, train_data, valid_data, drop_rate)
+    def __init__(self, option, name='', train_data=None, valid_data=None):
+        super(Client, self).__init__(option, name, train_data, valid_data)

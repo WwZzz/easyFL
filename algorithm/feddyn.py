@@ -10,24 +10,14 @@ class Server(BasicServer):
         self.alpha = option['alpha']
         self.h  = self.model.zeros_like()
 
-    def iterate(self, t):
-        # sample clients
-        selected_clients = self.sample()
-        # local training
-        models, train_losses = self.communicate(selected_clients)
-        # aggregate
-        self.model = self.aggregate(models)
-        # output info
-        return selected_clients
-
     def aggregate(self, models):
         self.h = self.h - self.alpha * (1.0 / self.num_clients * fmodule._model_sum(models) - self.model)
         new_model = fmodule._model_average(models) - 1.0 / self.alpha * self.h
         return new_model
 
 class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
-        super(Client, self).__init__(option, name, train_data, valid_data, drop_rate)
+    def __init__(self, option, name='', train_data=None, valid_data=None):
+        super(Client, self).__init__(option, name, train_data, valid_data)
         self.gradL = None
         self.alpha = option['alpha']
 

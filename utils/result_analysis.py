@@ -126,7 +126,7 @@ if __name__ == '__main__':
     task = 'mnist_cnum100_dist0_skew0_seed0'
     headers = [
         'fedavg',
-        'fedprox'
+        'fedprox',
         'mifa',
     ]
     flt = {

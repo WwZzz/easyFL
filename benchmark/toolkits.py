@@ -498,6 +498,7 @@ class XYDataset(Dataset):
         else:
             self.X = X
             self.Y = Y
+        self.all_labels = list(set(self.tolist()[1]))
 
     def __len__(self):
         return len(self.Y)
@@ -512,6 +513,9 @@ class XYDataset(Dataset):
 
     def _check_equal_length(self, X, Y):
         return len(X)==len(Y)
+
+    def get_all_labels(self):
+        return self.all_labels
 
 class IDXDataset(Dataset):
     # The source dataset that can be indexed by IDXDataset

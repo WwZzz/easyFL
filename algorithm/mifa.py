@@ -6,6 +6,8 @@ class Server(BasicServer):
         super(Server, self).__init__(option, model, clients, test_data)
         self.update_table = [None for _ in range(self.num_clients)]
         self.initflag = False
+        self.sample_option = 'active'
+        self.waiting = True
 
     def check_if_init(self):
         """Check whether the update_table is initialized"""
@@ -14,9 +16,6 @@ class Server(BasicServer):
                 return False
         print("G_i Initialized For All The Clients.")
         return True
-
-    def sample(self):
-        return [cid for cid in range(self.num_clients) if self.clients[cid].is_available()]
 
     def iterate(self, t):
         # sample all the active clients
@@ -29,10 +28,10 @@ class Server(BasicServer):
         # wait for initialization of update_table before aggregation
         if not self.initflag:
             self.initflag = self.check_if_init()
-            return selected_clients
+            return
         # aggregate: w = w - eta_t * 1/N * sum(G_i)
         self.model = self.aggregate()
-        return selected_clients
+        return
 
     def aggregate(self):
         return self.model-self.lr * fmodule._model_average(self.update_table)

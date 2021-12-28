@@ -9,7 +9,7 @@ import utils.fmodule
 import ujson
 import time
 
-sample_list=['uniform', 'md']
+sample_list=['uniform', 'md', 'active']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
 optimizer_list=['SGD', 'Adam']
 
@@ -39,8 +39,9 @@ def read_option():
     parser.add_argument('--gpu', help='GPU ID, -1 for CPU', type=int, default=-1)
     parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
-    parser.add_argument('--train_rate', help="the validtion dataset rate of each client's dataet", type=float, default=1)
-    parser.add_argument('--drop', help="controlling the dropout of clients after being selected in each communication round according to distribution Beta(drop,1)", type=float, default=0)
+    # the system setting of clients
+    parser.add_argument('--net_drop', help="controlling the dropout of clients after being selected in each communication round according to distribution Beta(drop,1)", type=float, default=0)
+    parser.add_argument('--net_active', help="controlling the probability of clients being active and obey distribution Beta(active,1)", type=float, default=99999)
     # hyper-parameters of different algorithms
     parser.add_argument('--learning_rate_lambda', help='η for λ in afl', type=float, default=0)
     parser.add_argument('--q', help='q in q-fedavg', type=float, default='0.0')
@@ -82,9 +83,7 @@ def initialize(option):
     print('init clients...', end='')
     client_path = '%s.%s' % ('algorithm', option['algorithm'])
     Client=getattr(importlib.import_module(client_path), 'Client')
-    # the probability of dropout obey distribution beta(drop, 1). The larger 'drop' is, the more possible for a device to drop
-    client_drop_rates = np.random.beta(option['drop']+0.00001,1,num_clients)
-    clients = [Client(option, name = client_names[cid], train_data = train_datas[cid], valid_data = valid_datas[cid], drop_rate = client_drop_rates[cid]) for cid in range(num_clients)]
+    clients = [Client(option, name = client_names[cid], train_data = train_datas[cid], valid_data = valid_datas[cid]) for cid in range(num_clients)]
     print('done')
 
     # init server

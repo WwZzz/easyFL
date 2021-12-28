@@ -14,14 +14,14 @@ class Server(BasicServer):
         self.paras_name = ['epsilon','eta']
 
     def iterate(self, t):
-        selected_clients = self.sample()
+        self.selected_clients = self.sample()
         # training
-        models, losses = self.communicate(selected_clients)
+        models, losses = self.communicate(self.selected_clients)
         grads = [self.model-w for w in models]
         # clip grads
         for gi in grads: gi.normalize()
         # calculate λ0
-        nks = [self.client_vols[cid] for cid in selected_clients]
+        nks = [self.client_vols[cid] for cid in self.selected_clients]
         nt = sum(nks)
         lambda0 = [1.0*nk/nt for nk in nks]
         # optimize lambdas to minimize ||λ'g||² s.t. λ∈Δ, ||λ - λ0||∞ <= ε
@@ -31,7 +31,7 @@ class Server(BasicServer):
         dt = fmodule._model_average(grads, self.dynamic_lambdas)
         # update model
         self.model = self.model - dt * self.learning_rate
-        return selected_clients
+        return
 
     def optim_lambda(self, grads, lambda0):
         # create H_m*m = 2J'J where J=[grad_i]_n*m
@@ -77,5 +77,5 @@ class Server(BasicServer):
 
 
 class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
-        super(Client, self).__init__(option, name, train_data, valid_data, drop_rate)
+    def __init__(self, option, name='', train_data=None, valid_data=None):
+        super(Client, self).__init__(option, name, train_data, valid_data)

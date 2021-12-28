@@ -21,6 +21,7 @@ class BasicServer():
         self.client_vols = [c.datavol for c in self.clients]
         self.data_vol = sum(self.client_vols)
         self.clients_buffer = [{} for _ in range(self.num_clients)]
+        self.selected_clients = []
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
         self.decay_rate = option['learning_rate_decay']
@@ -38,14 +39,16 @@ class BasicServer():
         self.calculator = fmodule.TaskCalculator(fmodule.device)
 
     def run(self):
+        """
+        Start the federated learning symtem where the global model is trained iteratively.
+        """
         logger.time_start('Total Time Cost')
         for round in range(self.num_rounds+1):
             print("--------------Round {}--------------".format(round))
             logger.time_start('Time Cost')
 
             # federated train
-            selected_clients = self.iterate(round)
-
+            self.iterate(round)
             # decay learning rate
             self.global_lr_scheduler(round)
 
@@ -59,16 +62,29 @@ class BasicServer():
         return
 
     def iterate(self, t):
+        """
+        The standard iteration of each federated round that contains three
+        necessary procedure in FL: client selection, communicaion and model aggregate.
+        :param
+            t: the number of current round
+        """
         # sample clients: MD sampling as default but with replacement=False
-        selected_clients = self.sample()
+        self.selected_clients = self.sample()
         # training
-        models, train_losses = self.communicate(selected_clients)
+        models, train_losses = self.communicate(self.selected_clients)
         # aggregate: pk = 1/K as default where K=len(selected_clients)
-        self.model = self.aggregate(models, p = [1.0 * self.client_vols[cid]/self.data_vol for cid in selected_clients])
-        # output info
-        return selected_clients
+        self.model = self.aggregate(models, p = [1.0 * self.client_vols[cid]/self.data_vol for cid in self.selected_clients])
+        return
 
     def communicate(self, selected_clients):
+        """
+        The whole simulating communication procedure with the selected clients.
+        This part supports for simulating the client dropping out.
+        :param
+            selected_clients: the clients to communicate with
+        :return
+            :the unpacked response from clients that is created ny self.unpack()
+        """
         packages_received_from_clients = []
         if self.num_threads <= 1:
             # computing iteratively
@@ -81,23 +97,57 @@ class BasicServer():
             packages_received_from_clients = pool.map(self.communicate_with, selected_clients)
             pool.close()
             pool.join()
+        # count the clients not dropping
+        self.selected_clients = [selected_clients[i] for i in range(len(selected_clients)) if packages_received_from_clients[i]]
+        packages_received_from_clients = [pi for pi in packages_received_from_clients if pi]
         return self.unpack(packages_received_from_clients)
 
     def communicate_with(self, client_id):
+        """
+        Pack the information that is needed for client_id to improve the global model
+        :param
+            client_id: the id of the client to communicate with
+        :return
+            client_package: the reply from the client and will be 'None' if losing connection
+        """
+        # package the necessary information
         svr_pkg = self.pack(client_id)
+        # listen for the client's response and return None if the client drops out
+        if self.clients[client_id].is_drop(): return None
         return self.clients[client_id].reply(svr_pkg)
 
     def pack(self, client_id):
+        """
+        Pack the necessary information for the client's local training.
+        Any operations of compression or encryption should be done here.
+        :param
+            client_id: the id of the client to communicate with
+        :return
+            a dict that only contains the global model as default.
+        """
         return {
             "model" : copy.deepcopy(self.model),
         }
 
     def unpack(self, packages_received_from_clients):
+        """
+        Unpack the information from the received packages. Return models and losses as default.
+        :param
+            packages_received_from_clients:
+        :return:
+            models: a list of the locally improved model
+            losses: a list of the losses of the global model on each training dataset
+        """
         models = [cp["model"] for cp in packages_received_from_clients]
         train_losses = [cp["train_loss"] for cp in packages_received_from_clients]
         return models, train_losses
 
     def global_lr_scheduler(self, current_round):
+        """
+        Control the step size (i.e. learning rate) of local training
+        :param
+            current_round: the current communication round
+        """
         if self.lr_scheduler_type == -1:
             return
         elif self.lr_scheduler_type == 0:
@@ -107,34 +157,47 @@ class BasicServer():
                 c.set_learning_rate(self.lr)
         elif self.lr_scheduler_type == 1:
             """eta_{round+1} = eta_0/(round+1)"""
-            self.lr = self.option['learning_rate']*1.0/(round+1)
+            self.lr = self.option['learning_rate']*1.0/(current_round+1)
             for c in self.clients:
                 c.set_learning_rate(self.lr)
 
     def sample(self, replacement=False):
-        # Wait for at least one client is active and check all the active clients at the current round
+        """Sample the clients.
+        :param
+            replacement: sample with replacement or not
+        :return
+            a list of the ids of the selected clients
+        """
+        all_clients = [cid for cid in range(self.num_clients)]
+        selected_clients = []
+        # collect all the active clients at this round and wait for at least one client is active and
         active_clients = []
         while(len(active_clients)<1):
-            active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_available()]
-        # Sample clients from active_clients
-        if len(active_clients)<self.clients_per_round:
-            # select all the active clients without sampling due to num_active_clients < proportion*num_clients
+            active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active()]
+        # sample clients
+        if self.sample_option == 'active':
+            # select all the active clients without sampling
             selected_clients = active_clients
         if self.sample_option == 'uniform':
             # original sample proposed by fedavg
-            selected_clients = list(np.random.choice(active_clients, self.clients_per_round, replace=False))
+            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=False))
         elif self.sample_option =='md':
-            # reweight the probability of being sampled according to the data volumn of the active clients
-            active_client_vols = [self.client_vols[cid] for cid in active_clients]
-            sum_acv = sum(active_client_vols)
             # the default setting that is introduced by FedProx
-            selected_clients = list(np.random.choice(active_clients, self.clients_per_round, replace=False, p=[nk / sum_acv for nk in active_client_vols]))
+            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=False, p=[nk / self.data_vol for nk in self.client_vols]))
             # selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=True, p=[nk/self.data_vol for nk in self.client_vols]))
+        # drop the selected but inactive clients
+        selected_clients = list(set(active_clients).intersection(selected_clients))
         return selected_clients
 
     def aggregate(self, models, p=[]):
-        if not models: return self.model
         """
+        Aggregate the locally improved models.
+        :param
+            models: a list of local models
+            p: a list of weights for aggregating
+        :return
+            the averaged result
+
         pk = nk/n where n=self.data_vol
         K = |S_t|
         N = |S|
@@ -143,6 +206,7 @@ class BasicServer():
         ==============================================================================================|============================
         N/K * Σpk * model_k                 |1/K * Σmodel_k                  |(1-Σpk) * w_old + Σpk * model_k     |Σ(pk/Σpk) * model_k
         """
+        if not models: return self.model
         if self.agg_option == 'weighted_scale':
             K = len(models)
             N = self.num_clients
@@ -158,7 +222,15 @@ class BasicServer():
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
 
     def test_on_clients(self, round, dataflag='valid'):
-        """ Validate accuracies and losses """
+        """
+        Validate accuracies and losses on clients' local datasets
+        :param
+            round: the current communication round
+            dataflag: choose train data or valid data to evaluate
+        :return
+            evals: the evaluation metrics of the global model on each client's dataset
+            loss: the loss of the global model on each client's dataset
+        """
         evals, losses = [], []
         for c in self.clients:
             eval_value, loss = c.test(self.model, dataflag)
@@ -167,6 +239,13 @@ class BasicServer():
         return evals, losses
 
     def test(self, model=None):
+        """
+        Evaluate the model on the test dataset owned by the server.
+        :param
+            model: the model need to be evaluated
+        :return:
+            the metric and loss of the model on the test data
+        """
         if model==None: model=self.model
         if self.test_data:
             model.eval()
@@ -183,17 +262,13 @@ class BasicServer():
         else: return -1,-1
 
 class BasicClient():
-    def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
+    def __init__(self, option, name='', train_data=None, valid_data=None):
         self.name = name
         self.frequency = 0
         # create local dataset
         self.train_data = train_data
         self.valid_data = valid_data
         self.datavol = len(self.train_data)
-
-        # system setting
-        self.drop_rate = drop_rate if drop_rate>0.01 else 0
-
         # local calculator
         self.calculator = fmodule.TaskCalculator(device=fmodule.device)
         # hyper-parameters for training
@@ -204,16 +279,16 @@ class BasicClient():
         self.momentum = option['momentum']
         self.weight_decay = option['weight_decay']
         self.model = None
+        # system setting
+        # the probability of dropout obey distribution beta(drop, 1). The larger 'drop' is, the more possible for a device to drop
+        self.drop_rate = 0 if option['net_drop']<0.01 else np.random.beta(option['net_drop'], 1, 1).item()
+        self.active_rate = 1 if option['net_active']>99998 else np.random.beta(option['net_active'], 1, 1).item()
 
     def set_model(self, model):
         self.model = model
 
     def set_learning_rate(self, lr = 0):
         self.learning_rate = lr if lr else self.learning_rate
-
-    def is_available(self):
-        if self.drop_rate==0: return True
-        else: return (np.random.rand() >= self.drop_rate)
 
     def train(self, model):
         model.train()
@@ -248,6 +323,13 @@ class BasicClient():
         return self.test(model)[1]
 
     def unpack(self, received_pkg):
+        """
+        Unpack the package received from the server
+        :param
+            received_pkg: a dict contains the global model as default
+        :return:
+            the unpacked information that can be rewritten
+        """
         # unpack the received package
         return received_pkg['model']
 
@@ -259,7 +341,29 @@ class BasicClient():
         return cpkg
 
     def pack(self, model, loss):
+        """
+        Packing the package to be send to the server. The operations of compression
+        of encryption of the package should be done here.
+        Args:
+            model: the locally trained model
+            loss: the loss of the global model on the local training dataset
+        Return:
+            package: a dict that contains the necessary information for the server
+        """
         return {
             "model" : model,
             "train_loss": loss,
         }
+
+    def is_active(self):
+        """Check if the client is active to participate training"""
+        if self.active_rate==1: return True
+        else: return (np.random.rand() <= self.active_rate)
+
+    def is_drop(self):
+        """Check if the client drops out during communicating"""
+        if self.drop_rate==0: return False
+        else: return (np.random.rand() > self.drop_rate)
+
+
+

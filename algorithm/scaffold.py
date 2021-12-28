@@ -22,13 +22,12 @@ class Server(BasicServer):
 
     def iterate(self, t):
         # sample clients
-        selected_clients = self.sample()
+        self.selected_clients = self.sample()
         # local training
-        dys, dcs = self.communicate(selected_clients)
+        dys, dcs = self.communicate(self.selected_clients)
         # aggregate
         self.model, self.cg = self.aggregate(dys, dcs)
-        # output info
-        return selected_clients
+        return
 
     def aggregate(self, dys, dcs):  # c_list is c_i^+
         dw = fmodule._model_average(dys)
@@ -39,8 +38,8 @@ class Server(BasicServer):
 
 
 class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
-        super(Client, self).__init__(option, name, train_data, valid_data, drop_rate)
+    def __init__(self, option, name='', train_data=None, valid_data=None):
+        super(Client, self).__init__(option, name, train_data, valid_data)
         self.c = None
         
     def train(self, model, cg):

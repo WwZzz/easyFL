@@ -16,12 +16,12 @@ class Server(BasicServer):
 
     def iterate(self, t):
         # sampling
-        selected_clients = self.sample()
+        self.selected_clients = self.sample()
         # training locally
-        ws, losses = self.communicate(selected_clients)
+        ws, losses = self.communicate(self.selected_clients)
         grads = [self.model - w for w in ws]
         # update GH
-        for cid, gi in zip(selected_clients, grads):
+        for cid, gi in zip(self.selected_clients, grads):
             self.client_grads_history[cid] = gi
             self.client_last_sample_round[cid] = t
 
@@ -68,8 +68,8 @@ class Server(BasicServer):
         gt = gt/gt.norm()*gnorm
 
         self.model = self.model-gt
-        return selected_clients
+        return
 
 class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
-        super(Client, self).__init__(option, name, train_data, valid_data, drop_rate)
+    def __init__(self, option, name='', train_data=None, valid_data=None):
+        super(Client, self).__init__(option, name, train_data, valid_data)

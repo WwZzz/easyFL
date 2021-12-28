@@ -48,8 +48,8 @@ class Server(BasicServer):
         return [packages_received_from_clients[cid]['model'] for cid in range(self.num_clients)]
 
 class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None, drop_rate=-1):
-        super(Client, self).__init__(option, name, train_data, valid_data, drop_rate)
+    def __init__(self, option, name='', train_data=None, valid_data=None):
+        super(Client, self).__init__(option, name, train_data, valid_data)
 
     def reply(self, svr_pkg):
         model = self.unpack(svr_pkg)
