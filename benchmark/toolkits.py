@@ -26,20 +26,8 @@ import os
 import ssl
 from torch.utils.data import Dataset, DataLoader
 import torch
-import torch.nn as nn
 ssl._create_default_https_context = ssl._create_unverified_context
 import importlib
-
-data_dist = {
-    0: 'iid',
-    1: 'label_skew_quantity',
-    2: 'label_skew_dirichlet',
-    3: 'label_skew_shard',
-    4: 'feature_skew_noise',
-    5: 'feature_skew_id',
-    6: 'iid_volumn_skew',
-    7: 'niid_volumn_skew',
-}
 
 def set_random_seed(seed=0):
     """Set random seed"""

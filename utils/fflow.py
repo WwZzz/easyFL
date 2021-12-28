@@ -19,6 +19,7 @@ def read_option():
     parser.add_argument('--task', help='name of fedtask;', type=str, default='mnist_cnum100_dist0_skew0_seed0')
     parser.add_argument('--algorithm', help='name of algorithm;', type=str, default='fedavg')
     parser.add_argument('--model', help='name of model;', type=str, default='cnn')
+
     # methods of server side for sampling and aggregating
     parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='md')
     parser.add_argument('--aggregate', help='methods for aggregating models', type=str, choices=agg_list, default='uniform')
@@ -34,14 +35,20 @@ def read_option():
     parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=int, default=64)
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
     parser.add_argument('--momentum', help='momentum of local update', type=float, default=0)
-    # controlling
+
+    # machine environment settings
     parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
     parser.add_argument('--gpu', help='GPU ID, -1 for CPU', type=int, default=-1)
     parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
-    # the system setting of clients
+
+    # the simulating system settings of clients
+    # constructing the heterogeity of the network
     parser.add_argument('--net_drop', help="controlling the dropout of clients after being selected in each communication round according to distribution Beta(drop,1)", type=float, default=0)
     parser.add_argument('--net_active', help="controlling the probability of clients being active and obey distribution Beta(active,1)", type=float, default=99999)
+    # constructing the heterogeity of computing capability
+    parser.add_argument('--capability', help="controlling the difference of local computing capability of each client", type=float, default=0)
+
     # hyper-parameters of different algorithms
     parser.add_argument('--learning_rate_lambda', help='η for λ in afl', type=float, default=0)
     parser.add_argument('--q', help='q in q-fedavg', type=float, default='0.0')
