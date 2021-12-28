@@ -363,7 +363,7 @@ class BasicClient():
     def is_drop(self):
         """Check if the client drops out during communicating"""
         if self.drop_rate==0: return False
-        else: return (np.random.rand() > self.drop_rate)
+        else: return (np.random.rand() < self.drop_rate)
 
 
 
