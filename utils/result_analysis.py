@@ -7,10 +7,10 @@ E: local epoch
 LR: learning rate (step size)
 P: the proportion of selected clients in each round
 S: random seed
-T: the proportion of training part of clients' data
 LD: learning rate scheduler + learning rate decay
 WD: weight decay
 DR: the degree of dropout of clients
+AC: the active rate of clients
 """
 # import matplotlib
 # matplotlib.rcParams['pdf.fonttype'] = 42
@@ -41,12 +41,13 @@ def draw_curve(dicts, curve='train_losses', legends = []):
         num_rounds = dict['meta']['num_rounds']
         eval_interval = dict['meta']['eval_interval']
         x = []
-        for round in range(num_rounds+1):
-            if eval_interval > 0 and (round == 0 or round % eval_interval == 0):
+        for round in range(num_rounds + 1):
+            if eval_interval > 0 and (round == 0 or round % eval_interval == 0 or round == num_rounds):
                 x.append(round)
-        print(len(x))
-        y = dict[curve]
-        print(len(y))
+        if curve == 'train_losses':
+            y = [dict[curve][round] for round in range(num_rounds + 1) if (round == 0 or round % eval_interval == 0 or round == num_rounds)]
+        else:
+            y = dict[curve]
         plt.plot(x, y, label=legends[i], linewidth=1)
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=1)
     return
@@ -121,13 +122,28 @@ def print_table(records, dicts):
     tb.reversesort = True
     print(tb)
 
+def get_key_from_filename(record, key = ''):
+    if key=='': return ''
+    value_start = record.find('_'+key)+len(key)+1
+    value_end = record.find('_',value_start)
+    return record[value_start:value_end]
+
+def create_legend(records=[], keys=[]):
+    if records==[] or keys==[]:
+        return records
+    res = []
+    for rec in records:
+        s = [rec[:rec.find('_M')]]
+        values = [k+get_key_from_filename(rec, k) for k in keys]
+        s.extend(values)
+        res.append(" ".join(s))
+    return res
+
 if __name__ == '__main__':
     # task+record
     task = 'mnist_cnum100_dist0_skew0_seed0'
     headers = [
         'fedavg',
-        'fedprox',
-        'mifa',
     ]
     flt = {
         # 'E': '5',
@@ -155,7 +171,7 @@ if __name__ == '__main__':
         'test_accs',
     ]
     # create legends
-    legends = [records[i][:15] for i in range(len(records))]
+    legends = create_legend(records, ['LD'])
     for curve in curve_names:
         draw_curve(dicts, curve, legends)
         plt.title(task)
