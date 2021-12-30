@@ -190,7 +190,9 @@ Other options:
 
 * `eval_interval ` controls the interval between every two evaluations. 
 
-* `drop` controls the dropout of clients after being selected in each communication round according to distribution Beta(drop,1). The larger this term is, the more possible for clients to drop.
+* `net_drop` controls the dropout of clients after being selected in each communication round according to distribution Beta(net_drop,1). The larger this term is, the more possible for clients to drop.
+
+* `net_active` controls the active rate of clients before being selected in each communication round according to distribution Beta(net_active,1). The larger this term is, the more possible for clients to be active.
 
 * `num_threads` is the number of threads in the clients computing session that aims to accelarate the training process.
 
@@ -210,7 +212,7 @@ We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and 
 │  ├─ mnist							//mnist dataset
 │  │  ├─ data							//data
 │  │  ├─ model                   //the corresponding model
-│  |  └─ core.py                 //the core supporting for the dataset 							
+│  |  └─ core.py                 //the core supporting for the dataset, and each contains three necessary classes(e.g. TaskGen, TaskReader, TaskCalculator)							
 │  ├─ ...
 │  └─ toolkits.py						//the basic tools for generating federated dataset
 ├─ fedtask
