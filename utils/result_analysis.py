@@ -34,7 +34,7 @@ def read_data_into_dicts(task, records):
             res.append(rec)
     return res
 
-def draw_curve(dicts, curve='train_losses', legends = []):
+def draw_curve(dicts, curve='train_losses', legends = [], final_round = -1):
     # plt.figure(figsize=(100,100), dpi=100)
     if not legends: legends = [d['meta']['algorithm'] for d in dicts]
     for i,dict in enumerate(dicts):
@@ -49,6 +49,7 @@ def draw_curve(dicts, curve='train_losses', legends = []):
         else:
             y = dict[curve]
         plt.plot(x, y, label=legends[i], linewidth=1)
+        if final_round>0: plt.xlim((0, final_round))
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=1)
     return
 
@@ -148,9 +149,9 @@ if __name__ == '__main__':
     flt = {
         # 'E': '5',
         # 'B': '10',
-        # 'LR': '>0.15',
+        # 'LR': '0.01',
         # 'R': '30',
-        # 'P': '0.0',
+        # 'P': '0.01',
         # 'S': '0',
     }
     # read and filter the filenames
@@ -171,9 +172,9 @@ if __name__ == '__main__':
         'test_accs',
     ]
     # create legends
-    legends = create_legend(records, ['LD'])
+    legends = create_legend(records, ['P','LR'])
     for curve in curve_names:
-        draw_curve(dicts, curve, legends)
+        draw_curve(dicts, curve, legends, 200)
         plt.title(task)
         plt.xlabel("communication rounds")
         plt.ylabel(curve)
