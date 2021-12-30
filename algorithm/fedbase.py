@@ -163,7 +163,7 @@ class BasicServer():
             for c in self.clients:
                 c.set_learning_rate(self.lr)
 
-    def sample(self, replacement=False):
+    def sample(self):
         """Sample the clients.
         :param
             replacement: sample with replacement or not
@@ -185,8 +185,7 @@ class BasicServer():
             selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=False))
         elif self.sample_option =='md':
             # the default setting that is introduced by FedProx
-            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=False, p=[nk / self.data_vol for nk in self.client_vols]))
-            # selected_cids = list(np.random.choice(cids, self.clients_per_round, replace=True, p=[nk/self.data_vol for nk in self.client_vols]))
+            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=[nk / self.data_vol for nk in self.client_vols]))
         # drop the selected but inactive clients
         selected_clients = list(set(active_clients).intersection(selected_clients))
         return selected_clients
