@@ -264,7 +264,7 @@ Run the file `./generate_fedtask.py` to get the splited dataset (.json file).
 
 Since the task-specified models are usually orthogonal to the FL algorithms, we don't consider it an important part in this system. And the model and the basic loss function are defined in `./task/dataset_name/model_name.py`. Further details are described in `fedtask/README.md`.
 
-### Method
+### Algorithm
 ![image](https://github.com/WwZzz/myfigs/blob/master/fig0.png)
 This module is the specific federated learning algorithm implementation. Each method contains two classes: the `Server` and the `Client`. 
 
@@ -277,7 +277,7 @@ The whole FL system starts with the `main.py`, which runs `server.run()` after i
 
 The clients reponse to the server after the server `communicate_with()` them, who first `unpack()` the received package and then train the model with their local dataset by `train()`. After training the model, the clients `pack()` send package (e.g. parameters, loss, gradient,... ) to the server through `reply()`.     
 
-Further details of this module are described in `method/README.md`.
+Further details of this module are described in `algorithm/README.md`.
 
 ### Utils
 Utils is composed of commonly used operations: model-level operation (we convert model layers and parameters to dictionary type and apply it in the whole FL system), the flow controlling of the framework in and the supporting visualization templates to the result. To visualize the results, please run `./utils/result_analysis.py`. Further details are described in `utils/README.md`.
