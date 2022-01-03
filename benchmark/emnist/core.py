@@ -13,8 +13,8 @@ class TaskGen(DefaultTaskGen):
         self.save_data = self.XYData_to_json
 
     def load_data(self):
-        self.train_data = datasets.EMNIST(self.rawdata_path, split='byclass', train=True, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]))
-        self.test_data = datasets.EMNIST(self.rawdata_path, split='byclass', train=False, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]))
+        self.train_data = datasets.EMNIST(self.rawdata_path, split='letters', train=True, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]))
+        self.test_data = datasets.EMNIST(self.rawdata_path, split='letters', train=False, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]))
 
     def convert_data_for_saving(self):
         train_x = [self.train_data[did][0].tolist() for did in range(len(self.train_data))]
