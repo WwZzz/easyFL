@@ -8,7 +8,7 @@ class Model(FModule):
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, padding=2)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5, padding=2)
         self.fc1 = nn.Linear(3136, 512)
-        self.fc2 = nn.Linear(512, 62)
+        self.fc2 = nn.Linear(512, 26)
 
     def forward(self, x):
         x = self.encoder(x)
