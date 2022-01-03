@@ -9,7 +9,7 @@ class TaskGen(DefaultTaskGen):
                                       skewness=skewness,
                                       rawdata_path='./benchmark/emnist/data',
                                       )
-        self.num_classes = 62
+        self.num_classes = 37
         self.save_data = self.XYData_to_json
 
     def load_data(self):
