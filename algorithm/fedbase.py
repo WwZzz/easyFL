@@ -73,7 +73,7 @@ class BasicServer():
         # training
         models, train_losses = self.communicate(self.selected_clients)
         # check whether all the clients have dropped out, because the dropped clients will be deleted from self.selected_clients
-        if self.selected_clients == []: return
+        if not self.selected_clients: return
         # aggregate: pk = 1/K as default where K=len(selected_clients)
         self.model = self.aggregate(models, p = [1.0 * self.client_vols[cid]/self.data_vol for cid in self.selected_clients])
         return
