@@ -45,9 +45,9 @@ def draw_partition():
 
 
 if __name__ == '__main__':
-    task = 'emnist_cnum100_dist2_skew0.3_seed0'
+    task = 'mnist_cnum100_dist0_skew0_seed0'
     partition_on = 'train'
     # partition_on = 'valid'
     # partition_on = 'test'
-    num_class = 37
+    num_class = 10
     draw_partition()
