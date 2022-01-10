@@ -158,5 +158,5 @@ class Logger:
         self.output[var_name].append(var_value)
         return
 
-    def log(self, sever=None):
+    def log(self, server=None):
         pass
