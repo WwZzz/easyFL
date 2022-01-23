@@ -83,20 +83,20 @@ class Server(BasicServer):
 
             n_clients, n_clusters = len(clusters), len(set(clusters))
 
-            # Associate each cluster to its number of clients in the cluster
+            # calculate the data volumn of each cluster
             pop_clusters = np.zeros((n_clusters, 2)).astype(int)
             for i in range(n_clusters):
                 pop_clusters[i, 0] = i + 1
                 for client in np.where(clusters == i + 1)[0]:
                     pop_clusters[i, 1] += int(weights[client] * epsilon * m)
-
+            # sort the clusters according to the data volumn
             pop_clusters = pop_clusters[pop_clusters[:, 1].argsort()]
 
             distri_clusters = np.zeros((m, n_clients)).astype(int)
 
             # m biggest clusters that will remain unchanged
             kept_clusters = pop_clusters[n_clusters - m:, 0]
-
+            # allocate weights for the clients in the kept clusters
             for idx, cluster in enumerate(kept_clusters):
                 for client in np.where(clusters == cluster)[0]:
                     distri_clusters[idx, client] = int(weights[client] * m * epsilon)
@@ -117,7 +117,7 @@ class Server(BasicServer):
             distri_clusters = distri_clusters.astype(float)
             for l in range(m):
                 distri_clusters[l] /= np.sum(distri_clusters[l])
-            return distri_clusters
+            return distri_clusters.tolist()
 
     def sample(self):
         self.W = self.update_w(self.clients_per_round, self.data_vol, self.client_vols, self.alg)
