@@ -6,15 +6,18 @@ class Server(BasicServer):
         super(Server, self).__init__(option, model, clients, test_data)
         self.update_table = [None for _ in range(self.num_clients)]
         self.initflag = False
-        self.sample_option = 'active'
-        self.waiting = True
+        self.c = option['c']
+        self.paras_name = ['c']
+        # choose all the clients that are active
+        self.clients_per_round = self.num_clients
 
     def check_if_init(self):
         """Check whether the update_table is initialized"""
-        for i in range(self.num_clients):
-            if self.update_table[i]==None:
-                return False
-        print("G_i Initialized For All The Clients.")
+        s = len([u for u in self.update_table if u])
+        # c==0 infers that updating starts immediately
+        if s < self.c*self.num_clients: return False
+        print("G_i Initialized For {}/{} The Clients.".format(s,self.num_clients))
+        self.initflag = True
         return True
 
     def iterate(self, t):
@@ -23,18 +26,18 @@ class Server(BasicServer):
         # training
         models, train_losses = self.communicate(self.selected_clients)
         # update G
-        for client_id in range(len(self.selected_clients)):
-            self.update_table[self.selected_clients[client_id]] = 1.0 / self.lr * (self.model - models[client_id])
-        # wait for initialization of update_table before aggregation
+        for k in range(len(self.selected_clients)):
+            self.update_table[self.selected_clients[k]] = 1.0 / self.lr * (self.model - models[k])
+        # check if the update_table being initialized
         if not self.initflag:
-            self.initflag = self.check_if_init()
-            return
+            if not self.check_if_init():
+                return
         # aggregate: w = w - eta_t * 1/N * sum(G_i)
         self.model = self.aggregate()
         return
 
     def aggregate(self):
-        return self.model-self.lr * fmodule._model_average(self.update_table)
+        return self.model - self.lr * fmodule._model_average([update_i for update_i in self.update_table if update_i])
 
 
 class Client(BasicClient):
