@@ -108,6 +108,21 @@ def element_wise_func(m, func):
         _modeldict_cp(res.state_dict(), _modeldict_element_wise(m.state_dict(), func))
     return res
 
+def _model_to_tensor(m):
+    return torch.cat([mi.data.view(-1) for mi in m.parameters()])
+
+def _model_from_tensor(mt):
+    res = Model().to(device)
+    cnt = 0
+    end = 0
+    with torch.no_grad():
+        for i, p in enumerate(res.parameters()):
+            beg = 0 if cnt == 0 else end
+            end = end + p.view(-1).size()[0]
+            p.data = mt[beg:end].contiguous().view(p.data.size())
+            cnt += 1
+    return res
+
 def _model_sum(ms):
     if not ms: return None
     op_with_graph = sum([mi.ingraph for mi in ms]) > 0
@@ -356,7 +371,7 @@ def _modeldict_to_tensor1D(md):
 def _modeldict_dot(md1, md2):
     res = torch.tensor(0.).to(md1[list(md1)[0]].device)
     for layer in md1.keys():
-        if md1[layer] is None or md1[layer].requires_grad==False:
+        if md1[layer] is None:
             continue
         res += (md1[layer].view(-1).dot(md2[layer].view(-1)))
     return res
@@ -385,16 +400,16 @@ def _modeldict_element_wise(md, func):
 def _modeldict_num_parameters(md):
     res = 0
     for layer in md.keys():
-        if md[layer] is None or md[layer].requires_grad==False: continue
+        if md[layer] is None: continue
         s = 1
         for l in md[layer].shape:
             s *= l
         res += s
     return res
 
-def _modeldict_print(md, only_requires_grad = False):
+def _modeldict_print(md):
     for layer in md.keys():
-        if md[layer] is None or (only_requires_grad == False and md[layer].requires_grad==False):
+        if md[layer] is None:
             continue
         print("{}:{}".format(layer, md[layer]))
 

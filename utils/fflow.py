@@ -9,7 +9,7 @@ import utils.fmodule
 import ujson
 import time
 
-sample_list=['uniform', 'md', 'active']
+sample_list=['uniform', 'md']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
 optimizer_list=['SGD', 'Adam']
 
@@ -46,6 +46,7 @@ def read_option():
     # constructing the heterogeity of the network
     parser.add_argument('--net_drop', help="controlling the dropout of clients after being selected in each communication round according to distribution Beta(drop,1)", type=float, default=0)
     parser.add_argument('--net_active', help="controlling the probability of clients being active and obey distribution Beta(active,1)", type=float, default=99999)
+    parser.add_argument('--net_latency', help="controlling the variance of network conditions for different clients. The larger it is, the more differences of the network latency there are.", type=float, default=0)
     # constructing the heterogeity of computing capability
     parser.add_argument('--capability', help="controlling the difference of local computing capability of each client", type=float, default=0)
 
@@ -59,6 +60,9 @@ def read_option():
     parser.add_argument('--beta', help='beta in FedFA',type=float, default='1.0')
     parser.add_argument('--gamma', help='gamma in FedFA', type=float, default='0')
     parser.add_argument('--mu', help='mu in fedprox', type=float, default='0.1')
+    parser.add_argument('--alg', help='clustered sampling', type=int, default=1)
+    parser.add_argument('--w', help='whether to wait for all updates being initialized before aggregation', type=int, default=1)
+    parser.add_argument('--c', help='proportion of clients keeping original direction in FedFV/alpha in fedFA', type=float, default='0.0')
     try: option = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
     return option
@@ -103,7 +107,7 @@ def initialize(option):
 def output_filename(option, server):
     header = "{}_".format(option["algorithm"])
     for para in server.paras_name: header = header + para + "{}_".format(option[para])
-    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}.json".format(
+    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_.json".format(
         option['model'],
         option['num_rounds'],
         option['batch_size'],

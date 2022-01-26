@@ -5,8 +5,9 @@ from multiprocessing import Pool as ThreadPool
 from main import logger
 import os
 import utils.fflow as flw
+import utils.network_simulator as ns
 
-class BasicServer():
+class BasicServer:
     def __init__(self, option, model, clients, test_data = None):
         # basic setting
         self.task = option['task']
@@ -37,6 +38,9 @@ class BasicServer():
         self.option = option
         # server calculator
         self.calculator = fmodule.TaskCalculator(fmodule.device)
+        # virtual clock
+        self._max_waiting_time = 10
+        self.virtual_clock = []
 
     def run(self):
         """
@@ -46,15 +50,12 @@ class BasicServer():
         for round in range(self.num_rounds+1):
             print("--------------Round {}--------------".format(round))
             logger.time_start('Time Cost')
-
+            if logger.check_if_log(round, self.eval_interval): logger.log(self)
             # federated train
             self.iterate(round)
             # decay learning rate
             self.global_lr_scheduler(round)
-
             logger.time_end('Time Cost')
-            if logger.check_if_log(round, self.eval_interval): logger.log(self)
-
         print("=================End==================")
         logger.time_end('Total Time Cost')
         # save results as .json file
@@ -68,16 +69,15 @@ class BasicServer():
         :param
             t: the number of current round
         """
-        # sample clients: MD sampling as default but with replacement=False
+        # sample clients: MD sampling as default
         self.selected_clients = self.sample()
         # training
         models, train_losses = self.communicate(self.selected_clients)
-        # check whether all the clients have dropped out, because the dropped clients will be deleted from self.selected_clients
-        if not self.selected_clients: return
         # aggregate: pk = 1/K as default where K=len(selected_clients)
         self.model = self.aggregate(models, p = [1.0 * self.client_vols[cid]/self.data_vol for cid in self.selected_clients])
         return
 
+    @ns.under_network_latency
     def communicate(self, selected_clients):
         """
         The whole simulating communication procedure with the selected clients.
@@ -99,11 +99,11 @@ class BasicServer():
             packages_received_from_clients = pool.map(self.communicate_with, selected_clients)
             pool.close()
             pool.join()
-        # count the clients not dropping
-        self.selected_clients = [selected_clients[i] for i in range(len(selected_clients)) if packages_received_from_clients[i]]
-        packages_received_from_clients = [pi for pi in packages_received_from_clients if pi]
+        self.selected_clients = [selected_clients[k] for k in range(len(selected_clients)) if packages_received_from_clients[k]]
+        packages_received_from_clients = [pk for pk in packages_received_from_clients if pk]
         return self.unpack(packages_received_from_clients)
 
+    @ns.drop_client
     def communicate_with(self, client_id):
         """
         Pack the information that is needed for client_id to improve the global model
@@ -114,8 +114,7 @@ class BasicServer():
         """
         # package the necessary information
         svr_pkg = self.pack(client_id)
-        # listen for the client's response and return None if the client drops out
-        if self.clients[client_id].is_drop(): return None
+        # listen for the client's response
         return self.clients[client_id].reply(svr_pkg)
 
     def pack(self, client_id):
@@ -163,31 +162,21 @@ class BasicServer():
             for c in self.clients:
                 c.set_learning_rate(self.lr)
 
+    @ns.deactivate_client
     def sample(self):
         """Sample the clients.
         :param
-            replacement: sample with replacement or not
         :return
             a list of the ids of the selected clients
         """
         all_clients = [cid for cid in range(self.num_clients)]
-        selected_clients = []
-        # collect all the active clients at this round and wait for at least one client is active and
-        active_clients = []
-        while(len(active_clients)<1):
-            active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active()]
         # sample clients
-        if self.sample_option == 'active':
-            # select all the active clients without sampling
-            selected_clients = active_clients
         if self.sample_option == 'uniform':
             # original sample proposed by fedavg
             selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=False))
         elif self.sample_option =='md':
             # the default setting that is introduced by FedProx
             selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=[nk / self.data_vol for nk in self.client_vols]))
-        # drop the selected but inactive clients
-        selected_clients = list(set(active_clients).intersection(selected_clients))
         return selected_clients
 
     def aggregate(self, models, p=[]):
@@ -255,8 +244,8 @@ class BasicServer():
             data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
             for batch_id, batch_data in enumerate(data_loader):
                 bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data)
-                loss += bmean_loss * len(batch_data[1])
-                eval_metric += bmean_eval_metric * len(batch_data[1])
+                loss += bmean_loss * len(batch_data[0])
+                eval_metric += bmean_eval_metric * len(batch_data[0])
             eval_metric /= len(self.test_data)
             loss /= len(self.test_data)
             return eval_metric, loss
@@ -282,8 +271,25 @@ class BasicClient():
         self.model = None
         # system setting
         # the probability of dropout obey distribution beta(drop, 1). The larger 'drop' is, the more possible for a device to drop
-        self.drop_rate = 0 if option['net_drop']<0.01 else np.random.beta(option['net_drop'], 1, 1).item()
-        self.active_rate = 1 if option['net_active']>99998 else np.random.beta(option['net_active'], 1, 1).item()
+        if option['net_active']>99998:
+            self.active_rate = 1
+        elif option['net_active']>=100:
+            rho = 1.0 * option['net_active']/1000
+            miny = min(self.train_data.get_all_labels())
+            self.active_rate = (1-rho)*miny/9.0+rho
+        else:
+            self.active_rate =  np.random.beta(option['net_active'], 1, 1).item()
+        if option['net_drop'] >=100:
+            rho = 1.0 * option['net_drop'] / 1000
+            miny = min(self.train_data.get_all_labels())
+            self.drop_rate = (1-rho)*miny/9.0 + rho
+        elif option['net_drop'] <=0.01:
+            self.drop_rate=0
+        else:
+            self.drop_rate =np.random.beta(option['net_drop'], 1, 1).item()
+
+        self.latency_amount = np.random.normal(0, option['net_latency'], 1)
+        self.latency_amount = 1.0/(1.0-self.latency_amount) if self.latency_amount<0 else 1.0*(1.0+self.latency_amount)
 
     def train(self, model):
         """
@@ -320,8 +326,8 @@ class BasicClient():
         data_loader = self.calculator.get_data_loader(dataset, batch_size=64)
         for batch_id, batch_data in enumerate(data_loader):
             bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data)
-            loss += bmean_loss * len(batch_data[1])
-            eval_metric += bmean_eval_metric * len(batch_data[1])
+            loss += bmean_loss * len(batch_data[0])
+            eval_metric += bmean_eval_metric * len(batch_data[0])
         eval_metric =1.0 * eval_metric / len(dataset)
         loss = 1.0 * loss / len(dataset)
         return eval_metric, loss
@@ -415,10 +421,17 @@ class BasicClient():
         """
         self.model = model
 
-    def set_learning_rate(self, lr = 0):
+    def set_learning_rate(self, lr = None):
         """
         set the learning rate of local training
         :param lr:
         :return:
         """
         self.learning_rate = lr if lr else self.learning_rate
+
+    def get_network_latency(self):
+        """
+        Get the latency amount of the client
+        :return: self.latency_amount
+        """
+        return self.latency_amount
