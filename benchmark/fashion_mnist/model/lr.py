@@ -11,11 +11,3 @@ class Model(FModule):
         x = x.view(-1, x.shape[1] * x.shape[-2] * x.shape[-1])
         x = self.layer(x)
         return x
-
-class Loss(nn.Module):
-    def __init__(self):
-        super(Loss, self).__init__()
-        self.cross_entropy = nn.CrossEntropyLoss()
-
-    def forward(self, output, target):
-        return self.cross_entropy(output, target)

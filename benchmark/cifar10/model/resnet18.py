@@ -128,11 +128,3 @@ class Model(FModule):
         output = output.view(output.size(0), -1)
         output = self.fc(output)
         return output
-
-class Loss(nn.Module):
-    def __init__(self):
-        super(Loss, self).__init__()
-        self.cross_entropy = nn.CrossEntropyLoss()
-
-    def forward(self, output, target):
-        return self.cross_entropy(output, target)
