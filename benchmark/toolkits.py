@@ -170,6 +170,7 @@ class DefaultTaskGen(BasicTaskGen):
             """IID"""
             d_idxs = np.random.permutation(len(self.train_data))
             local_datas = np.array_split(d_idxs, self.num_clients)
+            local_datas = local_datas.tolist()
 
         elif self.dist_id == 1:
             """label_skew_quantity"""
