@@ -212,6 +212,7 @@ class DefaultTaskGen(BasicTaskGen):
 
         elif self.dist_id == 2:
             """label_skew_dirichlet"""
+            """alpha = 1.0-skewness"""
             min_size = 0
             dpairs = [[did, self.train_data[did][-1]] for did in range(len(self.train_data))]
             local_datas = [[] for _ in range(self.num_clients)]
@@ -220,7 +221,7 @@ class DefaultTaskGen(BasicTaskGen):
                 for k in range(self.num_classes):
                     idx_k = [p[0] for p in dpairs if p[1]==k]
                     np.random.shuffle(idx_k)
-                    proportions = np.random.dirichlet(np.repeat(self.skewness, self.num_clients))
+                    proportions = np.random.dirichlet(np.repeat(1-self.skewness, self.num_clients))
                     ## Balance
                     proportions = np.array([p * (len(idx_j) < len(self.train_data)/ self.num_clients) for p, idx_j in zip(proportions, idx_batch)])
                     proportions = proportions / proportions.sum()
