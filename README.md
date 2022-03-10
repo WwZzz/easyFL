@@ -1,6 +1,6 @@
 # easyFL: A Lightning Framework for Federated Learning
 
-This repository is PyTorch implementation for paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/) which is accepted by IJCAI-21 Conference.
+This repository is PyTorch implementation for the IJCAI-21 paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/).
 
 Our easyFL is a strong and reusable experimental platform for research on federated learning (FL) algorithm. It is easy for FL-researchers to quickly realize and compare popular centralized federated learning algorithms. 
 
