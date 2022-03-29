@@ -135,13 +135,15 @@ class BasicServer:
         Unpack the information from the received packages. Return models and losses as default.
         :param
             packages_received_from_clients:
-        :return:
+        :return: a list of local computing results [models, losses, ...] where
             models: a list of the locally improved model
             losses: a list of the losses of the global model on each training dataset
         """
-        models = [cp["model"] for cp in packages_received_from_clients]
-        train_losses = [cp["train_loss"] for cp in packages_received_from_clients]
-        return models, train_losses
+        res = []
+        if len(packages_received_from_clients)==0: return res
+        for key in packages_received_from_clients[0]:
+            res.append([cp[key] for cp in packages_received_from_clients])
+        return res
 
     def global_lr_scheduler(self, current_round):
         """
@@ -193,8 +195,8 @@ class BasicServer:
         N = |S|
         -------------------------------------------------------------------------------------------------------------------------
          weighted_scale                 |uniform (default)          |weighted_com (original fedavg)   |other
-        ==============================================================================================|============================
-        N/K * Σpk * model_k                 |1/K * Σmodel_k                  |(1-Σpk) * w_old + Σpk * model_k     |Σ(pk/Σpk) * model_k
+        ==========================================================================================================================
+        N/K * Σpk * model_k             |1/K * Σmodel_k             |(1-Σpk) * w_old + Σpk * model_k  |Σ(pk/Σpk) * model_k
         """
         if not models: return self.model
         if self.agg_option == 'weighted_scale':
