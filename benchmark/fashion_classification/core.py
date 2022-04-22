@@ -1,13 +1,13 @@
 from torchvision import datasets, transforms
-from benchmark.toolkits import ClassifyCalculator, DefaultTaskGen, XYTaskReader, XYDataset
+from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, XYTaskReader, XYDataset
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, skewness = 0.5, selected_labels = [0,2,6]):
-        super(TaskGen, self).__init__(benchmark='fashion_mnist',
+        super(TaskGen, self).__init__(benchmark='fashion_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
-                                      rawdata_path='./benchmark/fashion_mnist/data',
+                                      rawdata_path='./benchmark/RAW_DATA/FASHION',
                                       )
         self.num_classes = len(selected_labels)
         self.save_data = self.XYData_to_json
@@ -38,6 +38,6 @@ class TaskReader(XYTaskReader):
     def __init__(self, taskpath=''):
         super(TaskReader, self).__init__(taskpath)
 
-class TaskCalculator(ClassifyCalculator):
+class TaskCalculator(ClassificationCalculator):
     def __init__(self, device):
         super(TaskCalculator, self).__init__(device)

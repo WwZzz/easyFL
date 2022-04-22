@@ -8,6 +8,8 @@ import os
 import utils.fmodule
 import ujson
 import time
+import collections
+import utils.network_simulator as ns
 
 sample_list=['uniform', 'md']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
@@ -31,6 +33,7 @@ def read_option():
     parser.add_argument('--proportion', help='proportion of clients sampled per round', type=float, default=0.2)
     # hyper-parameters of local training
     parser.add_argument('--num_epochs', help='number of epochs when clients trainset on data;', type=int, default=5)
+    parser.add_argument('--num_steps', help='the number of local steps, which dominate num_epochs when setting num_steps>0', type=int, default=-1)
     parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.1)
     parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=int, default=64)
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
@@ -101,6 +104,8 @@ def initialize(option):
     print("init server...", end='')
     server_path = '%s.%s' % ('algorithm', option['algorithm'])
     server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model().to(utils.fmodule.device), clients, test_data = test_data)
+    # init virtual network environment
+    ns.init_network_environment(server)
     print('done')
     return server
 
@@ -123,7 +128,7 @@ def output_filename(option, server):
 
 class Logger:
     def __init__(self):
-        self.output = {}
+        self.output = collections.defaultdict(list)
         self.current_round = -1
         self.temp = "{:<30s}{:.4f}"
         self.time_costs = []
@@ -150,15 +155,13 @@ class Logger:
 
     def save(self, filepath):
         """Save the self.output as .json file"""
-        if self.output=={}: return
+        if len(self.output)==0: return
         with open(filepath, 'w') as outf:
-            ujson.dump(self.output, outf)
+            ujson.dump(dict(self.output), outf)
             
     def write(self, var_name=None, var_value=None):
         """Add variable 'var_name' and its value var_value to logger"""
         if var_name==None: raise RuntimeError("Missing the name of the variable to be logged.")
-        if var_name in [key for key in self.output.keys()]:
-            self.output[var_name] = []
         self.output[var_name].append(var_value)
         return
 

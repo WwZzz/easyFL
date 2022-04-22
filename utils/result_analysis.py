@@ -104,20 +104,20 @@ def print_table(records, dicts):
         'Var-Valid-Acc.',
     ]
     for rec,d in zip(records, dicts):
-        testacc  = d['test_accs'][-1]
-        validacc = d['mean_curve'][-1]
-        trainloss = d['train_losses'][-1]
-        testloss = d['test_losses'][-1]
+        testacc  = d['test_accuracy'][-1]
+        validacc = d['mean_valid_accuracy'][-1]
+        trainloss = d['train_loss'][-1]
+        testloss = d['test_loss'][-1]
         bestacc = 0
         idx = -1
-        for i in range(len(d['test_accs'])):
-            if d['test_accs'][i]>bestacc:
-                bestacc = d['test_accs'][i]
+        for i in range(len(d['test_accuracy'])):
+            if d['test_accuracy'][i]>bestacc:
+                bestacc = d['test_accuracy'][i]
                 idx = i*d['meta']['eval_interval']
-        highest = float(np.max(d['valid_accs'][-1]))
-        lowest = float(np.min(d['valid_accs'][-1]))
-        mean_valid = float(np.mean(d['valid_accs'][-1]))
-        var_valid = float(np.std(d['valid_accs'][-1]))
+        highest = float(np.max(d['valid_accuracy'][-1]))
+        lowest = float(np.min(d['valid_accuracy'][-1]))
+        mean_valid = float(np.mean(d['valid_accuracy'][-1]))
+        var_valid = float(np.std(d['valid_accuracy'][-1]))
         tb.add_row([rec, testacc, validacc, trainloss, testloss, str(bestacc)+'/'+str(idx), highest, lowest, mean_valid, var_valid])
     tb.sortby = 'Test-Acc.'
     tb.reversesort = True
@@ -142,7 +142,7 @@ def create_legend(records=[], keys=[]):
 
 if __name__ == '__main__':
     # task+record
-    task = 'mnist_cnum100_dist0_skew0_seed0'
+    task = 'mnist_classification_cnum100_dist0_skew0_seed0'
     headers = [
         'fedavg',
     ]
@@ -167,9 +167,9 @@ if __name__ == '__main__':
 
     # draw curves
     curve_names = [
-        'train_losses',
-        'test_losses',
-        'test_accs',
+        'train_loss',
+        'test_loss',
+        'test_accuracy',
     ]
     # create legends
     legends = create_legend(records, ['P','LR'])

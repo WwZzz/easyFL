@@ -1,5 +1,5 @@
 """
-The synthetic dataset is generated following the setup in 'Federated Optimization in Heterogeneous Networks'.
+The synthetic_classification dataset is generated following the setup in 'Federated Optimization in Heterogeneous Networks'.
 (The link for this paper is https://arxiv.org/abs/1812.06127).
 The details of this dataset is described as below:
 
@@ -39,14 +39,14 @@ The details of this dataset is described as below:
     (dist_id, skewness) in {(6, 0), (10, 0), (10, 0.5), (10, 1.0)} as the orininal setup
     IID or (alpha, beta) in {(0,0), (0.5, 0.5), (1, 1)}.
 """
-from benchmark.toolkits import BasicTaskGen, XYTaskReader, ClassifyCalculator
+from benchmark.toolkits import BasicTaskGen, XYTaskReader, ClassificationCalculator
 from scipy.special import softmax
 import numpy as np
 import os.path
 import ujson
 class TaskGen(BasicTaskGen):
-    def __init__(self, num_classes=10, dimension=60, dist_id = 0, num_clients = 30, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/synthetic/data'):
-        super(TaskGen, self).__init__(benchmark='synthetic',
+    def __init__(self, num_classes=10, dimension=60, dist_id = 0, num_clients = 30, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/RAW_DATA/SYNTHETIC'):
+        super(TaskGen, self).__init__(benchmark='synthetic_classification',
                                       dist_id=dist_id,
                                       skewness=skewness,
                                       rawdata_path=rawdata_path)
@@ -55,7 +55,7 @@ class TaskGen(BasicTaskGen):
         self.num_clients = num_clients
         self.minvol = minvol
         self.taskname = self.get_taskname()
-        self.taskpath = os.path.join(self.rootpath, self.taskname)
+        self.taskpath = os.path.join(self.task_rootpath, self.taskname)
 
 
     def run(self):
@@ -182,6 +182,6 @@ class TaskReader(XYTaskReader):
     def __init__(self, taskpath=''):
         super(TaskReader, self).__init__(taskpath)
 
-class TaskCalculator(ClassifyCalculator):
+class TaskCalculator(ClassificationCalculator):
     def __init__(self, device):
         super(TaskCalculator, self).__init__(device)

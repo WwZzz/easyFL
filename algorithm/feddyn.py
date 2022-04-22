@@ -22,26 +22,24 @@ class Client(BasicClient):
         self.alpha = option['alpha']
 
     def train(self, model):
-        if self.gradL == None:
-            self.gradL = model.zeros_like()
+        if self.gradL == None:self.gradL = model.zeros_like()
         # global parameters
         src_model = copy.deepcopy(model)
         src_model.freeze_grad()
         model.train()
-        data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        for iter in range(self.epochs):
-            for batch_idx, batch_data in enumerate(data_loader):
-                model.zero_grad()
-                l1 = self.calculator.get_loss(model, batch_data)
-                l2 = 0
-                l3 = 0
-                for pgl, pm, ps in zip(self.gradL.parameters(), model.parameters(), src_model.parameters()):
-                    l2 += torch.dot(pgl.view(-1), pm.view(-1))
-                    l3 += torch.sum(torch.pow(pm-ps,2))
-                loss = l1 - l2 + 0.5 * self.alpha * l3
-                loss.backward()
-                optimizer.step()
+        for iter in range(self.num_steps):
+            batch_data = self.get_batch_data()
+            model.zero_grad()
+            l1 = self.calculator.train(model, batch_data)
+            l2 = 0
+            l3 = 0
+            for pgl, pm, ps in zip(self.gradL.parameters(), model.parameters(), src_model.parameters()):
+                l2 += torch.dot(pgl.view(-1), pm.view(-1))
+                l3 += torch.sum(torch.pow(pm - ps, 2))
+            loss = l1 - l2 + 0.5 * self.alpha * l3
+            loss.backward()
+            optimizer.step()
         # update grad_L
         self.gradL = self.gradL - self.alpha * (model-src_model)
         return

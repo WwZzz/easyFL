@@ -15,17 +15,12 @@ class Server(BasicServer):
             "cg": self.cg,
         }
 
-    def unpack(self, pkgs):
-        dys = [p["dy"] for p in pkgs]
-        dcs = [p["dc"] for p in pkgs]
-        return dys, dcs
-
     def iterate(self, t):
         # sample clients
         self.selected_clients = self.sample()
         # local training
-        dys, dcs = self.communicate(self.selected_clients)
-        if self.selected_clients == []: return
+        res = self.communicate(self.selected_clients)
+        dys, dcs = res['dy'], res['dc']
         # aggregate
         self.model, self.cg = self.aggregate(dys, dcs)
         return
@@ -52,20 +47,17 @@ class Client(BasicClient):
         src_model = copy.deepcopy(model)
         src_model.freeze_grad()
         cg.freeze_grad()
-        data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        num_batches = 0
-        for iter in range(self.epochs):
-            for batch_idx, batch_data in enumerate(data_loader):
-                model.zero_grad()
-                loss = self.calculator.get_loss(model, batch_data)
-                loss.backward()
-                for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()):
-                    pm.grad = pm.grad - pc + pcg
-                optimizer.step()
-                num_batches += 1
+        for iter in range(self.num_steps):
+            batch_data = self.get_batch_data()
+            model.zero_grad()
+            loss = self.calculator.train(model, batch_data)
+            loss.backward()
+            for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()):
+                pm.grad = pm.grad - pc + pcg
+            optimizer.step()
         # update local control variate c
-        K = num_batches
+        K = self.num_steps
         dy = model - src_model
         dc = -1.0 / (K * self.learning_rate) * dy - cg
         self.c = self.c + dc

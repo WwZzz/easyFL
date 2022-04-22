@@ -2,45 +2,29 @@ import utils.fflow as flw
 import numpy as np
 
 class MyLogger(flw.Logger):
+    def __init__(self):
+        super(MyLogger, self).__init__()
+
     def log(self, server=None):
-        if self.output == {}:
-            self.output = {
-                "meta": server.option,
-                "mean_curve": [],
-                "var_curve": [],
-                "train_losses": [],
-                "test_accs": [],
-                "test_losses": [],
-                "valid_accs": [],
-                "client_accs": {},
-                "mean_valid_accs": [],
-                "drop_rates": [],
-                "ac_rates":[]
-            }
-            for c in server.clients:
-                self.output['drop_rates'].append(c.drop_rate)
-                self.output['ac_rates'].append(c.active_rate)
-        test_metric, test_loss = server.test()
-        valid_metrics, valid_losses = server.test_on_clients(self.current_round, 'valid')
-        train_metrics, train_losses = server.test_on_clients(self.current_round, 'train')
-        self.output['train_losses'].append(
-            1.0 * sum([ck * closs for ck, closs in zip(server.client_vols, train_losses)]) / server.data_vol)
-        self.output['valid_accs'].append(valid_metrics)
-        self.output['test_accs'].append(test_metric)
-        self.output['test_losses'].append(test_loss)
-        self.output['mean_valid_accs'].append(
-            1.0 * sum([ck * acc for ck, acc in zip(server.client_vols, valid_metrics)]) / server.data_vol)
-        self.output['mean_curve'].append(np.mean(valid_metrics))
-        self.output['var_curve'].append(np.std(valid_metrics))
-        for cid in range(server.num_clients):
-            self.output['client_accs'][server.clients[cid].name] = [self.output['valid_accs'][i][cid] for i in
-                                                                    range(len(self.output['valid_accs']))]
-        print(self.temp.format("Training Loss:", self.output['train_losses'][-1]))
-        print(self.temp.format("Testing Loss:", self.output['test_losses'][-1]))
-        print(self.temp.format("Testing Accuracy:", self.output['test_accs'][-1]))
-        print(self.temp.format("Validating Accuracy:", self.output['mean_valid_accs'][-1]))
-        print(self.temp.format("Mean of Client Accuracy:", self.output['mean_curve'][-1]))
-        print(self.temp.format("Std of Client Accuracy:", self.output['var_curve'][-1]))
+        if len(self.output) == 0:
+            self.output['meta'] = server.option
+        test_metric = server.test()
+        valid_metrics = server.test_on_clients(self.current_round, 'valid')
+        train_metrics = server.test_on_clients(self.current_round, 'train')
+        for met_name, met_val in test_metric.items():
+            self.output['test_'+met_name].append(met_val)
+        # calculate weighted averaging of metrics of training datasets across clients
+        for met_name, met_val in train_metrics.items():
+            self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.client_vols, met_val)]) / server.data_vol)
+        # calculate weighted averaging and other statistics of metrics of validation datasets across clients
+        for met_name, met_val in valid_metrics.items():
+            self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.client_vols, met_val)]) / server.data_vol)
+            self.output['mean_valid_' + met_name].append(np.mean(met_val))
+            self.output['std_valid_' + met_name].append(np.std(met_val))
+        # output to stdout
+        for key, val in self.output.items():
+            if key=='meta':continue
+            print(self.temp.format(key, val[-1]))
 
 logger = MyLogger()
 

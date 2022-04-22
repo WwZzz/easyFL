@@ -2,32 +2,33 @@ from .fedbase import BasicServer, BasicClient
 from utils.fflow import Logger
 import utils.fflow as flw
 import os
+import numpy as np
 
 class MyLogger(Logger):
     def log(self, server=None, models=[]):
         if server == None or models == []: return
-        if self.output == {}:
-            self.output = {
-                "meta": server.option,
-                'test_metrics': [],
-                'test_losses': [],
-                'train_metrics': [],
-                'train_losses': [],
-                'valid_metrics': [],
-                'valid_losses': [],
-            }
-
+        if len(self.output) == 0:
+            self.output['meta'] = server.option
         for cid in range(server.num_clients):
-            server.model = models[cid]
-            test_metric, test_loss = server.test()
-            train_metric, train_loss = server.clients[cid].test(server.model, 'train')
-            valid_metric, valid_loss = server.clients[cid].test(server.model, 'valid')
-            self.output['test_metrics'].append(test_metric)
-            self.output['test_losses'].append(test_loss)
-            self.output['train_metrics'].append(train_metric)
-            self.output['train_losses'].append(train_loss)
-            self.output['valid_metrics'].append(valid_metric)
-            self.output['valid_losses'].append(valid_loss)
+            test_metric = server.test(models[cid])
+            train_metrics = server.clients[cid].test(models[cid], 'train')
+            valid_metrics = server.clients[cid].test(models[cid], 'valid')
+            self.output[server.clients[cid].name] = {}
+            for met_name, met_val in test_metric.items():
+                self.output['test_' + met_name].append(met_val)
+            # calculate weighted averaging of metrics of training datasets across clients
+            for met_name, met_val in train_metrics.items():
+                self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in
+                                                                   zip(server.client_vols, met_val)]) / server.data_vol)
+            # calculate weighted averaging and other statistics of metrics of validation datasets across clients
+            for met_name, met_val in valid_metrics.items():
+                self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in
+                                                                   zip(server.client_vols, met_val)]) / server.data_vol)
+                self.output['mean_valid_' + met_name].append(np.mean(met_val))
+                self.output['std_valid_' + met_name].append(np.std(met_val))
+                self.output['local_valid_'+met_name].append(met_val[cid])
+
+
 
 logger = MyLogger()
 
@@ -50,14 +51,3 @@ class Server(BasicServer):
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
-
-    def reply(self, svr_pkg):
-        model = self.unpack(svr_pkg)
-        self.train(model)
-        cpkg = self.pack(model)
-        return cpkg
-
-    def pack(self, model):
-        return {
-            "model": model,
-        }

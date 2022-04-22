@@ -24,7 +24,7 @@ class Server(BasicServer):
         # sample all the active clients
         self.selected_clients = self.sample()
         # training
-        models, train_losses = self.communicate(self.selected_clients)
+        models = self.communicate(self.selected_clients)['model']
         # update G
         for k in range(len(self.selected_clients)):
             self.update_table[self.selected_clients[k]] = 1.0 / self.lr * (self.model - models[k])
@@ -38,7 +38,6 @@ class Server(BasicServer):
 
     def aggregate(self):
         return self.model - self.lr * fmodule._model_average([update_i for update_i in self.update_table if update_i])
-
 
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):

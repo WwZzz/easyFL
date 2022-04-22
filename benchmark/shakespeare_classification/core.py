@@ -4,7 +4,7 @@ from benchmark.toolkits import DefaultTaskGen, TupleDataset
 import collections
 import re
 import os
-from benchmark.toolkits import  XYTaskReader, ClassifyCalculator
+from benchmark.toolkits import  XYTaskReader, ClassificationCalculator
 import numpy as np
 import os.path
 import ujson
@@ -24,11 +24,11 @@ def extract_from_zip(src_path, target_path):
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients=1, skewness=0.5, minvol = 10):
-        super(TaskGen, self).__init__(benchmark='shakespeare',
+        super(TaskGen, self).__init__(benchmark='shakespeare_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
-                                      rawdata_path='./benchmark/shakespeare/data',
+                                      rawdata_path='./benchmark/RAW_DATA/SHAKESPEARE',
                                       minvol=minvol
                                       )
         # Regular expression to capture an actors name, and line continuation
@@ -49,7 +49,7 @@ class TaskGen(DefaultTaskGen):
         all_data_path = os.path.join(raw_path, 'all_data.json')
         if not os.path.exists(all_data_path):
             if not os.path.exists(raw_path):
-                os.mkdir(raw_path)
+                os.makedirs(raw_path)
             src_path = download_from_url("http://www.gutenberg.org/files/100/old/1994-01-100.zip",
                                               os.path.join(raw_path, 'tmp'))
             tar_paths = extract_from_zip(src_path, raw_path)
@@ -241,7 +241,7 @@ class TaskReader(XYTaskReader):
     def __init__(self, taskpath=''):
         super(TaskReader, self).__init__(taskpath)
 
-class TaskCalculator(ClassifyCalculator):
+class TaskCalculator(ClassificationCalculator):
     def __init__(self, device):
         super(TaskCalculator, self).__init__(device)
 

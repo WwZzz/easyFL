@@ -6,6 +6,8 @@ from main import logger
 import os
 import utils.fflow as flw
 import utils.network_simulator as ns
+import math
+import collections
 
 class BasicServer:
     def __init__(self, option, model, clients, test_data = None):
@@ -32,15 +34,20 @@ class BasicServer:
         # sampling and aggregating methods
         self.sample_option = option['sample']
         self.agg_option = option['aggregate']
-        self.lr=option['learning_rate']
+        self.lr = option['learning_rate']
         # names of additional parameters
         self.paras_name=[]
         self.option = option
         # server calculator
         self.calculator = fmodule.TaskCalculator(fmodule.device)
-        # virtual clock
-        self._max_waiting_time = 10
-        self.virtual_clock = []
+        # virtual clock for calculating time consuming across communication rounds
+        self.TIME_UNIT = 1
+        self.TIME_ACCESS_BOUND = 100000
+        self.TIME_LATENCY_BOUND = 100000
+        self.virtual_clock = {
+            'time_access':[],
+            'time_sync':[]
+        }
 
     def run(self):
         """
@@ -72,12 +79,12 @@ class BasicServer:
         # sample clients: MD sampling as default
         self.selected_clients = self.sample()
         # training
-        models, train_losses = self.communicate(self.selected_clients)
+        models = self.communicate(self.selected_clients)['model']
         # aggregate: pk = 1/K as default where K=len(selected_clients)
-        self.model = self.aggregate(models, p = [1.0 * self.client_vols[cid]/self.data_vol for cid in self.selected_clients])
+        self.model = self.aggregate(models, p=[1.0 * self.client_vols[cid]/self.data_vol for cid in self.selected_clients])
         return
 
-    @ns.under_network_latency
+    @ns.with_latency
     def communicate(self, selected_clients):
         """
         The whole simulating communication procedure with the selected clients.
@@ -99,11 +106,9 @@ class BasicServer:
             packages_received_from_clients = pool.map(self.communicate_with, selected_clients)
             pool.close()
             pool.join()
-        self.selected_clients = [selected_clients[k] for k in range(len(selected_clients)) if packages_received_from_clients[k]]
         packages_received_from_clients = [pk for pk in packages_received_from_clients if pk]
         return self.unpack(packages_received_from_clients)
 
-    @ns.drop_client
     def communicate_with(self, client_id):
         """
         Pack the information that is needed for client_id to improve the global model
@@ -135,14 +140,13 @@ class BasicServer:
         Unpack the information from the received packages. Return models and losses as default.
         :param
             packages_received_from_clients:
-        :return: a list of local computing results [models, losses, ...] where
-            models: a list of the locally improved model
-            losses: a list of the losses of the global model on each training dataset
+        :return:
+            res: collections.defaultdict that contains several lists of the clients' reply
         """
-        res = []
-        if len(packages_received_from_clients)==0: return res
-        for key in packages_received_from_clients[0]:
-            res.append([cp[key] for cp in packages_received_from_clients])
+        res = collections.defaultdict(list)
+        for cpkg in packages_received_from_clients:
+            for pname, pval in cpkg.items():
+                res[pname].append(pval)
         return res
 
     def global_lr_scheduler(self, current_round):
@@ -164,7 +168,7 @@ class BasicServer:
             for c in self.clients:
                 c.set_learning_rate(self.lr)
 
-    @ns.deactivate_client
+    @ns.with_accessibility
     def sample(self):
         """Sample the clients.
         :param
@@ -220,15 +224,14 @@ class BasicServer:
             round: the current communication round
             dataflag: choose train data or valid data to evaluate
         :return
-            evals: the evaluation metrics of the global model on each client's dataset
-            loss: the loss of the global model on each client's dataset
+            metrics: a dict contains the lists of each metric_value of the clients
         """
-        evals, losses = [], []
+        all_metrics = collections.defaultdict(list)
         for c in self.clients:
-            eval_value, loss = c.test(self.model, dataflag)
-            evals.append(eval_value)
-            losses.append(loss)
-        return evals, losses
+            client_metrics = c.test(self.model, dataflag)
+            for met_name, met_val in client_metrics.items():
+                all_metrics[met_name].append(met_val)
+        return all_metrics
 
     def test(self, model=None):
         """
@@ -236,60 +239,49 @@ class BasicServer:
         :param
             model: the model need to be evaluated
         :return:
-            the metric and loss of the model on the test data
+            metrics: specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
         if model==None: model=self.model
         if self.test_data:
-            model.eval()
-            loss = 0
-            eval_metric = 0
-            data_loader = self.calculator.get_data_loader(self.test_data, batch_size=64)
-            for batch_id, batch_data in enumerate(data_loader):
-                bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data)
-                loss += bmean_loss * len(batch_data[0])
-                eval_metric += bmean_eval_metric * len(batch_data[0])
-            eval_metric /= len(self.test_data)
-            loss /= len(self.test_data)
-            return eval_metric, loss
-        else: return -1,-1
+            return self.calculator.test(model, self.test_data)
+        else:
+            return None
+
+    def wait_for_accessibility(self, selected_clients):
+        # always waiting for the selected clients to be active during sampling
+        time = 0
+        clients_ensured = set()
+        while True:
+            current_active_clients = [cid for cid in selected_clients if self.clients[cid].is_active()]
+            clients_ensured = clients_ensured.union(current_active_clients)
+            if len(clients_ensured)==len(selected_clients):
+                break
+            time += self.TIME_UNIT
+        return selected_clients, time
 
 class BasicClient():
     def __init__(self, option, name='', train_data=None, valid_data=None):
         self.name = name
-        self.frequency = 0
         # create local dataset
         self.train_data = train_data
         self.valid_data = valid_data
         self.datavol = len(self.train_data)
+        self.data_loader = None
         # local calculator
         self.calculator = fmodule.TaskCalculator(device=fmodule.device)
         # hyper-parameters for training
         self.optimizer_name = option['optimizer']
-        self.epochs = option['num_epochs']
         self.learning_rate = option['learning_rate']
         self.batch_size = len(self.train_data) if option['batch_size']==-1 else option['batch_size']
         self.momentum = option['momentum']
         self.weight_decay = option['weight_decay']
+        self.epochs = option['num_epochs']
+        self.num_steps = option['num_steps'] if option['num_steps']>0 else self.epochs * math.ceil(len(self.train_data)/self.batch_size)
+
         self.model = None
         # system setting
-        # the probability of dropout obey distribution beta(drop, 1). The larger 'drop' is, the more possible for a device to drop
-        if option['net_active']>99998:
-            self.active_rate = 1
-        elif option['net_active']>=100:
-            rho = 1.0 * option['net_active']/1000
-            miny = min(self.train_data.get_all_labels())
-            self.active_rate = (1-rho)*miny/9.0+rho
-        else:
-            self.active_rate =  np.random.beta(option['net_active'], 1, 1).item()
-        if option['net_drop'] >=100:
-            rho = 1.0 * option['net_drop'] / 1000
-            miny = min(self.train_data.get_all_labels())
-            self.drop_rate = (1-rho)*miny/9.0 + rho
-        elif option['net_drop'] <=0.01:
-            self.drop_rate=0
-        else:
-            self.drop_rate =np.random.beta(option['net_drop'], 1, 1).item()
-
+        self.active_rate = 1
+        self.drop_rate = 0
         self.latency_amount = np.random.normal(0, option['net_latency'], 1)
         self.latency_amount = 1.0/(1.0-self.latency_amount) if self.latency_amount<0 else 1.0*(1.0+self.latency_amount)
 
@@ -301,14 +293,15 @@ class BasicClient():
         :return
         """
         model.train()
-        data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        for iter in range(self.epochs):
-            for batch_id, batch_data in enumerate(data_loader):
-                model.zero_grad()
-                loss = self.calculator.get_loss(model, batch_data)
-                loss.backward()
-                optimizer.step()
+        for iter in range(self.num_steps):
+            # get a batch of data
+            batch_data = self.get_batch_data()
+            model.zero_grad()
+            # calculate the loss of the model on batched dataset through task-specified calculator
+            loss = self.calculator.train(model, batch_data)
+            loss.backward()
+            optimizer.step()
         return
 
     def test(self, model, dataflag='valid'):
@@ -318,21 +311,10 @@ class BasicClient():
             model:
             dataflag: choose the dataset to be evaluated on
         :return:
-            eval_metric: task specified evaluation metric
-            loss: task specified loss
+            metric: specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
         dataset = self.train_data if dataflag=='train' else self.valid_data
-        model.eval()
-        loss = 0
-        eval_metric = 0
-        data_loader = self.calculator.get_data_loader(dataset, batch_size=64)
-        for batch_id, batch_data in enumerate(data_loader):
-            bmean_eval_metric, bmean_loss = self.calculator.test(model, batch_data)
-            loss += bmean_loss * len(batch_data[0])
-            eval_metric += bmean_eval_metric * len(batch_data[0])
-        eval_metric =1.0 * eval_metric / len(dataset)
-        loss = 1.0 * loss / len(dataset)
-        return eval_metric, loss
+        return self.calculator.test(model, dataset)
 
     def unpack(self, received_pkg):
         """
@@ -351,7 +333,7 @@ class BasicClient():
         The whole local procedure should be planned here.
         The standard form consists of three procedure:
         unpacking the server_package to obtain the global model,
-        training the global model, and finally packing the improved
+        training the global model, and finally packing the updated
         model into client_package.
         :param
             svr_pkg: the package received from the server
@@ -359,24 +341,21 @@ class BasicClient():
             client_pkg: the package to be send to the server
         """
         model = self.unpack(svr_pkg)
-        loss = self.train_loss(model)
         self.train(model)
-        cpkg = self.pack(model, loss)
+        cpkg = self.pack(model)
         return cpkg
 
-    def pack(self, model, loss):
+    def pack(self, model):
         """
         Packing the package to be send to the server. The operations of compression
         of encryption of the package should be done here.
         :param
             model: the locally trained model
-            loss: the loss of the global model on the local training dataset
         :return
             package: a dict that contains the necessary information for the server
         """
         return {
             "model" : model,
-            "train_loss": loss,
         }
 
     def is_active(self):
@@ -386,8 +365,7 @@ class BasicClient():
         :return
             True if the client is active according to the active_rate else False
         """
-        if self.active_rate==1: return True
-        else: return (np.random.rand() <= self.active_rate)
+        return np.random.rand() <= self.active_rate
 
     def is_drop(self):
         """
@@ -396,8 +374,7 @@ class BasicClient():
         :return
             True if the client drops out according to the drop_rate else False
         """
-        if self.drop_rate==0: return False
-        else: return (np.random.rand() < self.drop_rate)
+        return (np.random.rand() < self.drop_rate)
 
     def train_loss(self, model):
         """
@@ -405,7 +382,7 @@ class BasicClient():
         :param model:
         :return:
         """
-        return self.test(model,'train')[1]
+        return self.test(model,'train')['loss']
 
     def valid_loss(self, model):
         """
@@ -413,7 +390,7 @@ class BasicClient():
         :param model:
         :return:
         """
-        return self.test(model)[1]
+        return self.test(model)[1]['loss']
 
     def set_model(self, model):
         """
@@ -434,6 +411,21 @@ class BasicClient():
     def get_network_latency(self):
         """
         Get the latency amount of the client
-        :return: self.latency_amount
+        :return: self.latency_amount if client not dropping out
         """
-        return self.latency_amount
+        return 1000000000 if self.is_drop() else self.latency_amount
+
+    def get_batch_data(self):
+        """
+        Get the batch of data
+        :return:
+            a batch of data
+        """
+        if not self.data_loader:
+            self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size))
+        try:
+            batch_data = next(self.data_loader)
+        except StopIteration:
+            self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size))
+            batch_data = next(self.data_loader)
+        return batch_data

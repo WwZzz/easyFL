@@ -19,7 +19,7 @@ class Server(BasicServer):
     def iterate(self, t):
         self.selected_clients = self.sample()
         # training
-        models, train_losses = self.communicate(self.selected_clients)
+        models = self.communicate(self.selected_clients)['model']
         for model_k, cid in zip(models, self.selected_clients):
             self.update_history[cid]=fmodule._model_to_tensor(model_k-self.model).cpu().numpy()
         # aggregate: pk = 1/K as default where K=len(selected_clients)

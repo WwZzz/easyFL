@@ -1,21 +1,32 @@
 from torchvision import datasets, transforms
-from benchmark.toolkits import ClassifyCalculator, DefaultTaskGen, IDXTaskReader
+from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, IDXTaskReader
 from torch.utils.data import DataLoader
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, skewness = 0.5):
-        super(TaskGen, self).__init__(benchmark='cifar100',
+        super(TaskGen, self).__init__(benchmark='cifar100_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
-                                      rawdata_path='./benchmark/cifar100/data',
+                                      rawdata_path='./benchmark/RAW_DATA/CIFAR100',
                                       )
         self.num_classes = 100
         self.save_data = self.IDXData_to_json
         self.datasrc = {
-            'lib': 'torchvision.datasets',
+            'class_path': 'torchvision.datasets',
             'class_name': 'CIFAR100',
-            'args':["'"+self.rawdata_path+"'", 'download=True', 'transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])']
+            'train_args': {
+                'root': '"'+self.rawdata_path+'"',
+                'download': 'True',
+                'transform': 'transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])',
+                'train': 'True'
+            },
+            'test_args': {
+                'root': '"'+self.rawdata_path+'"',
+                'download': 'True',
+                'transform': 'transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])',
+                'train': 'False'
+            }
         }
 
     def load_data(self):
@@ -28,6 +39,6 @@ class TaskReader(IDXTaskReader):
         super(TaskReader, self).__init__(taskpath)
         self.DataLoader = DataLoader
 
-class TaskCalculator(ClassifyCalculator):
+class TaskCalculator(ClassificationCalculator):
     def __init__(self, device):
         super(TaskCalculator, self).__init__(device)

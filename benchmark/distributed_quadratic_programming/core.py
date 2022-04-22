@@ -6,15 +6,15 @@ import torch
 from torch.utils.data import DataLoader
 
 class TaskGen(BasicTaskGen):
-    def __init__(self, dimension=2, dist_id = 5, num_clients = 30, skewness = 0.5, minvol=10, rawdata_path ='./benchmark/quad2d/data'):
-        super(TaskGen, self).__init__(benchmark='quad2d',
+    def __init__(self, dimension=2, dist_id = 5, num_clients = 30, skewness = 0.5, minvol=10, rawdata_path ='./benchmark/RAW_DATA/QUADRATIC'):
+        super(TaskGen, self).__init__(benchmark='distributed_quadratic_programming',
                                       dist_id=dist_id,
                                       skewness=skewness,
                                       rawdata_path=rawdata_path)
         self.dimension = dimension
         self.num_clients = num_clients
         self.taskname = self.get_taskname()
-        self.taskpath = os.path.join(self.rootpath, self.taskname)
+        self.taskpath = os.path.join(self.task_rootpath, self.taskname)
         self.minvol = minvol
 
     def run(self):
@@ -61,7 +61,7 @@ class TaskCalculator(BasicTaskCalculator):
     def __init__(self, device):
         super(TaskCalculator, self).__init__(device)
 
-    def get_loss(self, model, data):
+    def train(self, model, data):
         tdata = self.data_to_device(data)
         outputs = model(tdata)
         loss = 0.5 * torch.mean(outputs)

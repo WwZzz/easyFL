@@ -74,3 +74,16 @@ class Server(BasicServer):
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
+
+    def reply(self, svr_pkg):
+        model = self.unpack(svr_pkg)
+        train_loss = self.test(model, 'train')
+        self.train(model)
+        cpkg = self.pack(model, train_loss)
+        return cpkg
+
+    def pack(self, model, loss):
+        return {
+            "model" : model,
+            "loss": loss,
+        }

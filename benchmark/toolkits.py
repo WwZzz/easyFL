@@ -13,10 +13,11 @@ depends on partitions:
 -----------------------------------------------------------------------------------
 imbalance:
     iid:            6 Vol: only the vol of local dataset varies.
-    niid:           7 Vol: for generating synthetic data
+    niid:           7 Vol: for generating synthetic_classification data
 """
 
 import ujson
+import shutil
 import numpy as np
 import os.path
 import random
@@ -56,7 +57,7 @@ class BasicTaskGen:
 
     def __init__(self, benchmark, dist_id, skewness, rawdata_path, seed=0):
         self.benchmark = benchmark
-        self.rootpath = './fedtask'
+        self.task_rootpath = './fedtask'
         self.rawdata_path = rawdata_path
         self.dist_id = dist_id
         self.dist_name = self._TYPE_DIST[dist_id]
@@ -100,20 +101,28 @@ class BasicTaskGen:
     def create_task_directories(self):
         """Create the directories of the task."""
         taskname = self.get_taskname()
-        taskpath = os.path.join(self.rootpath, taskname)
+        taskpath = os.path.join(self.task_rootpath, taskname)
         os.mkdir(taskpath)
         os.mkdir(os.path.join(taskpath, 'record'))
 
     def _check_task_exist(self):
         """Check whether the task already exists."""
         taskname = self.get_taskname()
-        return os.path.exists(os.path.join(self.rootpath, taskname))
+        return os.path.exists(os.path.join(self.task_rootpath, taskname))
 
     def set_random_seed(self,seed=0):
         """Set random seed"""
         random.seed(3 + seed)
         np.random.seed(97 + seed)
         os.environ['PYTHONHASHSEED'] = str(seed)
+
+    def _remove_task(self):
+        "remove the task when generating failed"
+        if self._check_task_exist():
+            taskname = self.get_taskname()
+            taskpath = os.path.join(self.task_rootpath, taskname)
+            shutil.rmtree(taskpath)
+        return
 
 class DefaultTaskGen(BasicTaskGen):
     def __init__(self, benchmark, dist_id, skewness, rawdata_path, num_clients=1, minvol=10, seed=0):
@@ -125,7 +134,7 @@ class DefaultTaskGen(BasicTaskGen):
         self.num_clients = num_clients
         self.cnames = self.get_client_names()
         self.taskname = self.get_taskname()
-        self.taskpath = os.path.join(self.rootpath, self.taskname)
+        self.taskpath = os.path.join(self.task_rootpath, self.taskname)
         self.save_data = self.XYData_to_json
         self.datasrc = {
             'lib': None,
@@ -136,9 +145,7 @@ class DefaultTaskGen(BasicTaskGen):
     def run(self):
         """ Generate federated task"""
         # check if the task exists
-        if not self._check_task_exist():
-            self.create_task_directories()
-        else:
+        if self._check_task_exist():
             print("Task Already Exists.")
             return
         # read raw_data into self.train_data and self.test_data
@@ -155,8 +162,13 @@ class DefaultTaskGen(BasicTaskGen):
         # save task infomation as .json file and the federated dataset
         print('-----------------------------------------------------')
         print('Saving data...')
-        self.save_info()
-        self.save_data(train_cidxs, valid_cidxs)
+        # create the directory of the task
+        try:
+            self.create_task_directories()
+            self.save_data(train_cidxs, valid_cidxs)
+        except:
+            self._remove_task()
+            print("Failed to saving splited dataset.")
         print('Done.')
         return
 
@@ -287,16 +299,6 @@ class DefaultTaskGen(BasicTaskGen):
             valid_cidxs.append(local_data[k:])
         return train_cidxs, valid_cidxs
 
-    def save_info(self):
-        info = {
-            'benchmark': self.benchmark,  # name of the dataset
-            'dist': self.dist_id,  # type of the partition way
-            'skewness': self.skewness,  # hyper-parameter for controlling the degree of niid
-            'num-clients': self.num_clients,  # numbers of all the clients
-        }
-        # save info.json
-        with open(os.path.join(self.taskpath, 'info.json'), 'w') as outf:
-            ujson.dump(info, outf)
 
     def convert_data_for_saving(self):
         """Convert self.train_data and self.test_data to list that can be stored as .json file and the converted dataset={'x':[], 'y':[]}"""
@@ -366,7 +368,7 @@ class BasicTaskCalculator:
     def data_to_device(self, data):
         raise NotImplementedError
 
-    def get_loss(self):
+    def train(self):
         raise NotImplementedError
 
     def get_evaluation(self):
@@ -392,35 +394,39 @@ class BasicTaskCalculator:
     def setOP(cls, OP):
         cls._OPTIM = OP
 
-class ClassifyCalculator(BasicTaskCalculator):
+class ClassificationCalculator(BasicTaskCalculator):
     def __init__(self, device):
-        super(ClassifyCalculator, self).__init__(device)
+        super(ClassificationCalculator, self).__init__(device)
         self.lossfunc = torch.nn.CrossEntropyLoss()
         self.DataLoader = DataLoader
 
-    def get_loss(self, model, data):
-        tdata = self.data_to_device(data)
-        outputs = model(tdata[0])
-        loss = self.lossfunc(outputs, tdata[1])
-        return loss
-
-    @torch.no_grad()
-    def get_evaluation(self, model, data):
-        tdata = self.data_to_device(data)
-        outputs = model(tdata)
-        y_pred = outputs.data.max(1, keepdim=True)[1]
-        correct = y_pred.eq(tdata[1].data.view_as(y_pred)).long().cpu().sum()
-        return (1.0 * correct / len(tdata[1])).item()
-
-    @torch.no_grad()
-    def test(self, model, data):
-        """Metric = Accuracy"""
+    def train(self, model, data):
+        """
+        :param model: the model to train
+        :param data: the training dataset
+        :return: loss of the computing graph created by torch
+        """
         tdata = self.data_to_device(data)
         outputs = model(tdata[0])
         loss = self.lossfunc(outputs, tdata[-1])
-        y_pred = outputs.data.max(1, keepdim=True)[1]
-        correct = y_pred.eq(tdata[1].data.view_as(y_pred)).long().cpu().sum()
-        return (1.0 * correct / len(tdata[1])).item(), loss.item()
+        return loss
+
+    @torch.no_grad()
+    def test(self, model, dataset, batch_size=64):
+        """Metric = [mean_accuracy, mean_loss]"""
+        model.eval()
+        data_loader = self.get_data_loader(dataset, batch_size=64)
+        total_loss = 0.0
+        num_correct = 0
+        for batch_id, batch_data in enumerate(data_loader):
+            batch_data = self.data_to_device(batch_data)
+            outputs = model(batch_data[0])
+            batch_mean_loss = self.lossfunc(outputs, batch_data[-1]).item()
+            y_pred = outputs.data.max(1, keepdim=True)[1]
+            correct = y_pred.eq(batch_data[-1].data.view_as(y_pred)).long().cpu().sum()
+            num_correct += correct.item()
+            total_loss += batch_mean_loss * len(batch_data[-1])
+        return {'accuracy': 1.0*num_correct/len(dataset), 'loss':total_loss/len(dataset)}
 
     def data_to_device(self, data):
         return data[0].to(self.device), data[1].to(self.device)
@@ -439,10 +445,10 @@ class ClassifyCalculator(BasicTaskCalculator):
 #      the original dataset into .json file. Then dynamically importing the original dataset when running federated training procedure,
 #      and specifying each local dataset by the local indices. This function is implemented by IDXDataset and IDXTaskReader.
 #      The advantages of this way include saving storing memory, high efficiency and the full usage of the torch implemention of
-#      datasets in torchvision and torchspeech. Examples can be found in mnist\core.py, cifar\core.py.
+#      datasets in torchvision and torchspeech. Examples can be found in mnist_classification\core.py, cifar\core.py.
 #
 #   2) Save the partitioned data itself into .json file. Then read the data. The advantage of this way is the flexibility.
-#      Examples can be found in emnist\core.py, synthetic\core.py, quad2d\core.py.
+#      Examples can be found in emnist_classification\core.py, synthetic_classification\core.py, distributed_quadratic_programming\core.py.
 
 class BasicTaskReader:
     def __init__(self, taskpath=''):
@@ -472,16 +478,24 @@ class IDXTaskReader(BasicTaskReader):
     def read_data(self):
         with open(os.path.join(self.taskpath, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
-        DS = getattr(importlib.import_module(feddata['datasrc']['lib']), feddata['datasrc']['class_name'])
-        arg_strings = '(' + ','.join(feddata['datasrc']['args'])
-        train_args = arg_strings + ', train=True)'
-        test_args = arg_strings + ', train=False)'
-        IDXDataset.SET_DATA(eval('DS' + train_args))
-        IDXDataset.SET_DATA(eval('DS' + test_args), key='TEST')
+        class_path = feddata['datasrc']['class_path']
+        class_name = feddata['datasrc']['class_name']
+        origin_class = getattr(importlib.import_module(class_path), class_name)
+        IDXDataset.SET_ORIGIN_CLASS(origin_class)
+        origin_train_data = self.args_to_dataset(feddata['datasrc']['train_args'])
+        origin_test_data = self.args_to_dataset(feddata['datasrc']['test_args'])
+        IDXDataset.SET_ORIGIN_DATA(train_data=origin_train_data, test_data=origin_test_data)
+
         test_data = IDXDataset(feddata['dtest'], key='TEST')
         train_datas = [IDXDataset(feddata[name]['dtrain']) for name in feddata['client_names']]
         valid_datas = [IDXDataset(feddata[name]['dvalid']) for name in feddata['client_names']]
         return train_datas, valid_datas, test_data, feddata['client_names']
+
+    def args_to_dataset(self, args):
+        if not isinstance(args, dict):
+            raise TypeError
+        args_str = '(' +  ','.join([key+'='+value for key,value in args.items()]) + ')'
+        return eval("IDXDataset._ORIGIN_DATA['CLASS']"+args_str)
 
 class XTaskReader(BasicTaskReader):
     def read_data(self):
@@ -534,7 +548,7 @@ class XYDataset(Dataset):
 
 class IDXDataset(Dataset):
     # The source dataset that can be indexed by IDXDataset
-    _DATA = {'TRAIN': None,'TEST': None}
+    _ORIGIN_DATA = {'TRAIN': None, 'TEST': None, 'CLASS':None}
 
     def __init__(self, idxs, key='TRAIN'):
         """Init dataset with 'src_data' and a list of indexes that are used to position data in 'src_data'"""
@@ -544,18 +558,23 @@ class IDXDataset(Dataset):
         self.key = key
 
     @classmethod
-    def SET_DATA(cls, dataset, key = 'TRAIN'):
-        cls._DATA[key] = dataset
+    def SET_ORIGIN_DATA(cls, train_data=None, test_data=None):
+        cls._ORIGIN_DATA['TRAIN'] = train_data
+        cls._ORIGIN_DATA['TEST'] = test_data
+
+    @classmethod
+    def SET_ORIGIN_CLASS(cls, DataClass = None):
+        cls._ORIGIN_DATA['CLASS'] = DataClass
 
     @classmethod
     def ADD_KEY_TO_DATA(cls, key, value = None):
         if key==None:
             raise RuntimeError("Empty key when calling class algorithm IDXData.ADD_KEY_TO_DATA")
-        cls._DATA[key]=value
+        cls._ORIGIN_DATA[key]=value
 
     def __getitem__(self, item):
         idx = self.idxs[item]
-        return self._DATA[self.key][idx]
+        return self._ORIGIN_DATA[self.key][idx]
 
     def __len__(self):
         return len(self.idxs)
