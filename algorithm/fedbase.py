@@ -254,7 +254,7 @@ class BasicServer:
         while True:
             current_active_clients = [cid for cid in selected_clients if self.clients[cid].is_active()]
             clients_ensured = clients_ensured.union(current_active_clients)
-            if len(clients_ensured)==len(selected_clients):
+            if len(clients_ensured)==len(set(selected_clients)):
                 break
             time += self.TIME_UNIT
         return selected_clients, time
