@@ -34,7 +34,7 @@ def read_data_into_dicts(task, records):
             res.append(rec)
     return res
 
-def draw_curve(dicts, curve='train_losses', legends = [], final_round = -1):
+def draw_curve(dicts, curve='train_loss', legends = [], final_round = -1):
     # plt.figure(figsize=(100,100), dpi=100)
     if not legends: legends = [d['meta']['algorithm'] for d in dicts]
     for i,dict in enumerate(dicts):
@@ -44,7 +44,7 @@ def draw_curve(dicts, curve='train_losses', legends = [], final_round = -1):
         for round in range(num_rounds + 1):
             if eval_interval > 0 and (round == 0 or round % eval_interval == 0 or round == num_rounds):
                 x.append(round)
-        if curve == 'train_losses':
+        if curve == 'train_loss':
             y = [dict[curve][round] for round in range(num_rounds + 1) if (round == 0 or round % eval_interval == 0 or round == num_rounds)]
         else:
             y = dict[curve]
@@ -74,8 +74,8 @@ def round_to_achieve_test_acc(records, dicts, target=0):
     ]
     for rec, d in zip(records, dicts):
         r = -1
-        for i in range(len(d['test_accs'])):
-            if d['test_accs'][i]>=target-0.000001:
+        for i in range(len(d['test_accuracy'])):
+            if d['test_accuracy'][i]>=target-0.000001:
                 r = i*d['meta']['eval_interval']
                 break
         tb.add_row([rec, r])
