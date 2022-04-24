@@ -87,7 +87,13 @@ def initialize(option):
     utils.fmodule.device = torch.device('cuda:{}'.format(option['gpu']) if torch.cuda.is_available() and option['gpu'] != -1 else 'cpu')
     utils.fmodule.TaskCalculator = getattr(importlib.import_module(bmk_core_path), 'TaskCalculator')
     utils.fmodule.TaskCalculator.setOP(getattr(importlib.import_module('torch.optim'), option['optimizer']))
-    utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
+    # The Model is defined in bmk_model_path as default, whose filename is option['model'] and the classname is 'Model'
+    # If an algorithm change the backbone for a task, a modified model should be defined in the path 'algorithm/method_name.py', whose classname is option['model']
+    try:
+        utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
+    except ModuleNotFoundError:
+        utils.fmodule.Model = getattr(importlib.import_module('.'.join(['algorithm', option['algorithm']])), option['model'])
+    # read federated task by TaskReader
     task_reader = getattr(importlib.import_module(bmk_core_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
     train_datas, valid_datas, test_data, client_names = task_reader.read_data()
     num_clients = len(client_names)

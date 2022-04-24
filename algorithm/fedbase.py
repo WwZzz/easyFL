@@ -280,10 +280,9 @@ class BasicClient():
 
         self.model = None
         # system setting
-        self.active_rate = 1
-        self.drop_rate = 0
-        self.latency_amount = np.random.normal(0, option['net_latency'], 1)
-        self.latency_amount = 1.0/(1.0-self.latency_amount) if self.latency_amount<0 else 1.0*(1.0+self.latency_amount)
+        self.network_active_rate = 1
+        self.network_drop_rate = 0
+        self.network_latency_amount = 1
 
     def train(self, model):
         """
@@ -365,7 +364,7 @@ class BasicClient():
         :return
             True if the client is active according to the active_rate else False
         """
-        return np.random.rand() <= self.active_rate
+        return np.random.rand() <= self.network_active_rate
 
     def is_drop(self):
         """
@@ -374,7 +373,7 @@ class BasicClient():
         :return
             True if the client drops out according to the drop_rate else False
         """
-        return (np.random.rand() < self.drop_rate)
+        return (np.random.rand() < self.network_drop_rate)
 
     def train_loss(self, model):
         """
@@ -413,7 +412,7 @@ class BasicClient():
         Get the latency amount of the client
         :return: self.latency_amount if client not dropping out
         """
-        return 1000000000 if self.is_drop() else self.latency_amount
+        return 1000000000 if self.is_drop() else self.network_latency_amount
 
     def get_batch_data(self):
         """
