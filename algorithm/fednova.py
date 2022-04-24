@@ -9,7 +9,7 @@ class Server(BasicServer):
         self.selected_clients = self.sample()
         # training
         res = self.communicate(self.selected_clients)
-        models, taus = res['model'], res['tau'],
+        models, taus = res['model'], res['tau']
         ds = [(model-self.model)/tauk for model, tauk in zip(models, taus)]
         self.model = self.aggregate(ds, taus, p = [1.0 * self.client_vols[cid]/self.data_vol for cid in self.selected_clients])
         return
