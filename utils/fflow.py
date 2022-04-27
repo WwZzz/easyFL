@@ -97,7 +97,7 @@ def initialize(option):
     model = utils.fmodule.Model().to(utils.fmodule.device)
     try:
         if option['pretrain'] != '':
-            model.load_state_dict(torch.load(option['pretrain']))
+            model.load_state_dict(torch.load(option['pretrain'])['model'])
     except:
         print("Invalid Model Configuration.")
         exit(1)
