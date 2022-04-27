@@ -11,19 +11,15 @@ class Model(FModule):
         self.fc2 = nn.Linear(512, 10)
 
     def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
+        x = self.get_embedding(x)
+        x = self.fc2(x)
         return x
 
-    def encoder(self, x):
+    def get_embedding(self, x):
         x = x.view((x.shape[0],28,28))
         x = x.unsqueeze(1)
         x = F.max_pool2d(F.relu(self.conv1(x)), 2)
         x = F.max_pool2d(F.relu(self.conv2(x)), 2)
         x = x.view(-1, x.shape[1]*x.shape[2]*x.shape[3])
         x = F.relu(self.fc1(x))
-        return x
-
-    def decoder(self, x):
-        x = self.fc2(x)
         return x

@@ -1,8 +1,8 @@
+import multiprocessing
 import numpy as np
 from utils import fmodule
 import copy
 from multiprocessing import Pool as ThreadPool
-from main import logger
 import os
 import utils.fflow as flw
 import utils.network_simulator as ns
@@ -25,6 +25,7 @@ class BasicServer:
         self.data_vol = sum(self.client_vols)
         self.clients_buffer = [{} for _ in range(self.num_clients)]
         self.selected_clients = []
+        for c in self.clients:c.set_server(self)
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
         self.decay_rate = option['learning_rate_decay']
@@ -53,20 +54,23 @@ class BasicServer:
         """
         Start the federated learning symtem where the global model is trained iteratively.
         """
-        logger.time_start('Total Time Cost')
+        flw.logger.time_start('Total Time Cost')
         for round in range(self.num_rounds+1):
             print("--------------Round {}--------------".format(round))
-            logger.time_start('Time Cost')
-            if logger.check_if_log(round, self.eval_interval): logger.log(self)
+            flw.logger.time_start('Time Cost')
+            if flw.logger.check_if_log(round, self.eval_interval):
+                flw.logger.time_start('Eval Time Cost')
+                flw.logger.log(self, current_iter=round)
+                flw.logger.time_end('Eval Time Cost')
             # federated train
             self.iterate(round)
             # decay learning rate
             self.global_lr_scheduler(round)
-            logger.time_end('Time Cost')
+            flw.logger.time_end('Time Cost')
         print("=================End==================")
-        logger.time_end('Total Time Cost')
+        flw.logger.time_end('Total Time Cost')
         # save results as .json file
-        logger.save(os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)))
+        flw.logger.save(os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)))
         return
 
     def iterate(self, t):
@@ -102,6 +106,7 @@ class BasicServer:
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel
+            multiprocessing.set_start_method('spawn')
             pool = ThreadPool(min(self.num_threads, len(selected_clients)))
             packages_received_from_clients = pool.map(self.communicate_with, selected_clients)
             pool.close()
@@ -277,12 +282,13 @@ class BasicClient():
         self.weight_decay = option['weight_decay']
         self.epochs = option['num_epochs']
         self.num_steps = option['num_steps'] if option['num_steps']>0 else self.epochs * math.ceil(len(self.train_data)/self.batch_size)
-
         self.model = None
         # system setting
         self.network_active_rate = 1
         self.network_drop_rate = 0
         self.network_latency_amount = 1
+        # server
+        self.server = None
 
     def train(self, model):
         """
@@ -398,6 +404,10 @@ class BasicClient():
         :return:
         """
         self.model = model
+
+    def set_server(self, server=None):
+        if server:
+            self.server = server
 
     def set_learning_rate(self, lr = None):
         """

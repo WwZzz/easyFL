@@ -139,7 +139,8 @@ class DefaultTaskGen(BasicTaskGen):
         self.datasrc = {
             'lib': None,
             'class_name': None,
-            'args':[]
+            'train_args': {},
+            'test_args': {},
         }
 
     def run(self):

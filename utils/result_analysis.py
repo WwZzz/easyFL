@@ -4,6 +4,7 @@ M: model
 R: communication round
 B: batch size
 E: local epoch
+NS: number of local update steps
 LR: learning rate (step size)
 P: the proportion of selected clients in each round
 S: random seed
@@ -44,13 +45,11 @@ def draw_curve(dicts, curve='train_loss', legends = [], final_round = -1):
         for round in range(num_rounds + 1):
             if eval_interval > 0 and (round == 0 or round % eval_interval == 0 or round == num_rounds):
                 x.append(round)
-        if curve == 'train_loss':
-            y = [dict[curve][round] for round in range(num_rounds + 1) if (round == 0 or round % eval_interval == 0 or round == num_rounds)]
-        else:
-            y = dict[curve]
+        y = dict[curve]
         plt.plot(x, y, label=legends[i], linewidth=1)
         if final_round>0: plt.xlim((0, final_round))
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=1)
+    plt.legend()
+    # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=1)
     return
 
 def filename_filter(fnames=[], filter={}):
@@ -63,7 +62,12 @@ def filename_filter(fnames=[], filter={}):
                 con = '==' + con
             elif 'a'<=con[0]<='z' or 'A'<=con[0]<='Z':
                 con = "'"+con+"'"
-            fnames = [f for f in fnames if eval(f[f.find('_'+key)+len(key)+1:f.find('_',f.find(key)+1)]+' '+con)]
+            res = []
+            for f in fnames:
+                if f.find('_' + key)==-1: continue
+                if eval(f[f.find('_' + key) + len(key) + 1:f.find('_', f.find('_' + key) + 1)] + ' ' + con):
+                    res.append(f)
+            fnames = res
     return fnames
 
 def round_to_achieve_test_acc(records, dicts, target=0):
@@ -86,7 +90,7 @@ def scan_records(task, header = '', filter = {}):
     path = '../fedtask/' + task + '/record'
     files = os.listdir(path)
     # check headers
-    files = [f for f in files if f.startswith(header+'_')]
+    files = [f for f in files if f.startswith(header+'_') and f.endswith('.json')]
     return filename_filter(files, filter)
 
 def print_table(records, dicts):
@@ -147,8 +151,9 @@ if __name__ == '__main__':
         'fedavg',
     ]
     flt = {
-        # 'E': '5',
-        # 'B': '10',
+        # 'E': '1',
+        # 'B': '64',
+        # 'NS': '>1',
         # 'LR': '0.01',
         # 'R': '30',
         # 'P': '0.01',
@@ -172,7 +177,7 @@ if __name__ == '__main__':
         'test_accuracy',
     ]
     # create legends
-    legends = create_legend(records, ['P','LR'])
+    legends = create_legend(records, ['B','LR','NS'])
     for curve in curve_names:
         draw_curve(dicts, curve, legends, 200)
         plt.title(task)

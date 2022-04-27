@@ -10,15 +10,11 @@ class Model(FModule):
         self.fc2 = nn.Linear(dim_hidden, dim_out)
 
     def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
-
-    def decoder(self, x):
+        x = self.get_embedding(x)
         x = self.fc2(x)
         return x
 
-    def encoder(self, x):
+    def get_embedding(self, x):
         x = x.view(-1, x.shape[1] * x.shape[-2] * x.shape[-1])
         x = self.layer_input(x)
         x = self.relu(x)

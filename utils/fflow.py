@@ -14,6 +14,7 @@ import utils.network_simulator as ns
 sample_list=['uniform', 'md']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
 optimizer_list=['SGD', 'Adam']
+logger = None
 
 def read_option():
     parser = argparse.ArgumentParser()
@@ -21,7 +22,7 @@ def read_option():
     parser.add_argument('--task', help='name of fedtask;', type=str, default='mnist_cnum100_dist0_skew0_seed0')
     parser.add_argument('--algorithm', help='name of algorithm;', type=str, default='fedavg')
     parser.add_argument('--model', help='name of model;', type=str, default='cnn')
-
+    parser.add_argument('--pretrain', help='the path of the pretrained model parameter created by torch.save;', type=str, default='')
     # methods of server side for sampling and aggregating
     parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='md')
     parser.add_argument('--aggregate', help='methods for aggregating models', type=str, choices=agg_list, default='uniform')
@@ -93,6 +94,13 @@ def initialize(option):
         utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
     except ModuleNotFoundError:
         utils.fmodule.Model = getattr(importlib.import_module('.'.join(['algorithm', option['algorithm']])), option['model'])
+    model = utils.fmodule.Model().to(utils.fmodule.device)
+    try:
+        if option['pretrain'] != '':
+            model.load_state_dict(torch.load(option['pretrain']))
+    except:
+        print("Invalid Model Configuration.")
+        exit(1)
     # read federated task by TaskReader
     task_reader = getattr(importlib.import_module(bmk_core_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
     train_datas, valid_datas, test_data, client_names = task_reader.read_data()
@@ -109,20 +117,28 @@ def initialize(option):
     # init server
     print("init server...", end='')
     server_path = '%s.%s' % ('algorithm', option['algorithm'])
-    server = getattr(importlib.import_module(server_path), 'Server')(option, utils.fmodule.Model().to(utils.fmodule.device), clients, test_data = test_data)
+    server = getattr(importlib.import_module(server_path), 'Server')(option, model, clients, test_data = test_data)
     # init virtual network environment
     ns.init_network_environment(server)
+    # init logger
+    try:
+        Logger = getattr(importlib.import_module(server_path), 'MyLogger')
+    except AttributeError:
+        Logger = DefaultLogger
+    global logger
+    logger = Logger()
     print('done')
     return server
 
 def output_filename(option, server):
     header = "{}_".format(option["algorithm"])
     for para in server.paras_name: header = header + para + "{}_".format(option[para])
-    output_name = header + "M{}_R{}_B{}_E{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_.json".format(
+    output_name = header + "M{}_R{}_B{}_E{}_NS{}_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_DR{:.2f}_AC{:.2f}_.json".format(
         option['model'],
         option['num_rounds'],
         option['batch_size'],
         option['num_epochs'],
+        option['num_steps'],
         option['learning_rate'],
         option['proportion'],
         option['seed'],
@@ -173,3 +189,28 @@ class Logger:
 
     def log(self, server=None):
         pass
+
+class DefaultLogger(Logger):
+    def __init__(self):
+        super(DefaultLogger, self).__init__()
+
+    def log(self, server=None, current_round=-1):
+        if len(self.output) == 0:
+            self.output['meta'] = server.option
+        test_metric = server.test()
+        valid_metrics = server.test_on_clients(self.current_round, 'valid')
+        train_metrics = server.test_on_clients(self.current_round, 'train')
+        for met_name, met_val in test_metric.items():
+            self.output['test_' + met_name].append(met_val)
+        # calculate weighted averaging of metrics of training datasets across clients
+        for met_name, met_val in train_metrics.items():
+            self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.client_vols, met_val)]) / server.data_vol)
+        # calculate weighted averaging and other statistics of metrics of validation datasets across clients
+        for met_name, met_val in valid_metrics.items():
+            self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.client_vols, met_val)]) / server.data_vol)
+            self.output['mean_valid_' + met_name].append(np.mean(met_val))
+            self.output['std_valid_' + met_name].append(np.std(met_val))
+        # output to stdout
+        for key, val in self.output.items():
+            if key == 'meta': continue
+            print(self.temp.format(key, val[-1]))

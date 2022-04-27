@@ -12,10 +12,14 @@ class Model(FModule):
         self.fc3 = nn.Linear(200, 10)
 
     def forward(self, x):
+        x = self.get_embedding(x)
+        x = self.fc3(x)
+        return x
+
+    def get_embedding(self, x):
         x = x.view(-1, x.shape[1] * x.shape[-2] * x.shape[-1])
         x = self.fc1(x)
         x = F.relu(x)
         x = self.fc2(x)
         x = F.relu(x)
-        x = self.fc3(x)
         return x
