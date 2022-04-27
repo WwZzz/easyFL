@@ -81,7 +81,7 @@ class MyLogger(flw.Logger):
     def save(self, server):
         """Save the self.output as .json file"""
         rec_path = os.path.join('fedtask', server.option['task'], 'record', flw.output_filename(server.option, server))
-        model_name = server.option['model']+'_iter'+server.num_iters+'_'+server.option['algorithm']+'_'+time.strftime("%Y-%m-%d-%H-%M-%S",time.localtime())+'.pth'
+        model_name = server.option['model']+'_iter'+str(server.num_iters)+'_'+server.option['algorithm']+'_'+time.strftime("%Y-%m-%d-%H-%M-%S",time.localtime())+'.pth'
         model_path = os.path.join('fedtask', server.option['task'], 'record', model_name)
         with open(rec_path, 'w') as outf:
             ujson.dump(dict(self.output), outf)

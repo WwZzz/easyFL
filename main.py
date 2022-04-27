@@ -1,5 +1,4 @@
 import utils.fflow as flw
-import numpy as np
 
 def main():
     # read options
