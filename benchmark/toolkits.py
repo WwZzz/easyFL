@@ -375,7 +375,7 @@ class BasicTaskCalculator:
     def get_evaluation(self):
         raise NotImplementedError
 
-    def get_data_loader(self, data, batch_size = 64):
+    def get_data_loader(self, data, batch_size=64, shuffle=True):
         return NotImplementedError
 
     def test(self):
