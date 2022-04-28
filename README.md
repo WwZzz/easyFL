@@ -284,7 +284,9 @@ Utils is composed of commonly used operations: model-level operation (we convert
 
 ## Remark
 
-Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project.
+* Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project. 
+
+* A realization of federated learning algorithm on Road Markings Extraction from Mobile LiDAR Point Clouds (FedRME, https://fanxlxmu.github.io/publication/paper/CSCWD22-FedRME.pdf) was accepted by 2022 IEEE 25th International Conference on Computer Supported Cooperative Work in Design (IEEE CSCWD 2022). The source code for FedRME will be release as soon as possible.
 
 ## Citation
 
