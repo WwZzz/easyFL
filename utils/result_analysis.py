@@ -18,7 +18,7 @@ AC: the active rate of clients
 # matplotlib.rcParams['ps.fonttype'] = 42
 
 import matplotlib.pyplot as plt
-import ujson
+import json
 import prettytable as pt
 import os
 import numpy as np
@@ -31,7 +31,8 @@ def read_data_into_dicts(task, records):
         if f in files:
             file_path = os.path.join(path, f)
             with open(file_path, 'r') as inf:
-                rec = ujson.load(inf)
+                s_inf = inf.read()
+                rec = json.loads(s_inf)
             res.append(rec)
     return res
 
@@ -146,14 +147,19 @@ def create_legend(records=[], keys=[]):
 
 if __name__ == '__main__':
     # task+record
-    task = 'mnist_classification_cnum100_dist0_skew0_seed0'
+    task = 'mnist_classification_cnum10_dist1_skew1.0_seed0'
     headers = [
-        'fedavg',
+        # 'fedavg',
+        # 'fedirl',
+        # 'moon',
+        # 'fedprox',
+        'scaffold'
     ]
     flt = {
         # 'E': '1',
-        # 'B': '64',
-        # 'NS': '>1',
+        'B': '128',
+        'NS': '>1',
+        'R':'200',
         # 'LR': '0.01',
         # 'R': '30',
         # 'P': '0.01',

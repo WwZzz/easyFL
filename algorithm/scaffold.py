@@ -25,7 +25,7 @@ class Server(BasicServer):
         self.model, self.cg = self.aggregate(dys, dcs)
         return
 
-    def aggregate(self, dys, dcs):  # c_list is c_i^+
+    def aggregate(self, dys, dcs):
         dw = fmodule._model_average(dys)
         dc = fmodule._model_average(dcs)
         new_model = self.model + self.eta * dw
