@@ -1,6 +1,6 @@
 """
 This is a non-official implementation of Scaffold proposed in 'Stochastic
-Controlled Averaging for Federated Learning' (ICML 2020). 
+Controlled Averaging for Federated Learning' (ICML 2020).
 """
 
 from .fedbase import BasicServer, BasicClient
@@ -10,8 +10,9 @@ from utils import fmodule
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.eta = option['eta']
         self.cg = self.model.zeros_like()
+        self.cg.freeze_grad()
+        self.eta = option['eta']
         self.paras_name = ['eta']
 
     def pack(self, client_id):
@@ -62,7 +63,6 @@ class Client(BasicClient):
         # global parameters
         src_model = copy.deepcopy(model)
         src_model.freeze_grad()
-        cg.freeze_grad()
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         for iter in range(self.num_steps):
             batch_data = self.get_batch_data()

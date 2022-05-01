@@ -277,7 +277,8 @@ class BasicClient():
         # hyper-parameters for training
         self.optimizer_name = option['optimizer']
         self.learning_rate = option['learning_rate']
-        self.batch_size = len(self.train_data) if option['batch_size']==-1 else option['batch_size']
+        self.batch_size = len(self.train_data) if option['batch_size']<0 else option['batch_size']
+        self.batch_size = int(option['batch_size']) if option['batch_size']>=1 else int(len(self.train_data)*option['batch_size'])
         self.momentum = option['momentum']
         self.weight_decay = option['weight_decay']
         self.epochs = option['num_epochs']
