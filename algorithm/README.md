@@ -40,21 +40,20 @@ def train(self, model):
     data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
     optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
                                               weight_decay=self.weight_decay, momentum=self.momentum)
-    for iter in range(self.epochs):
-        for batch_idx, batch_data in enumerate(data_loader):
-            model.zero_grad()
-            loss = self.calculator.train(model, batch_data)
-            # 3
-            """loss_prox = 0"""
-            # 4
-            """
-            for pm, ps in zip(model.parameters(), src_model.parameters()): loss_prox+= torch.sum(torch.pow(pm-ps,2))
-            """
-            # 5
-            """loss += 0.5 * self.mu * loss_prox"""
-
-            loss.backward()
-            optimizer.step()
+    for iter in range(self.num_steps):
+        batch_data = self.get_batch_data()
+        model.zero_grad()
+        loss = self.calculator.train(model, batch_data)
+        # 3
+        """loss_proximal = 0"""
+        # 4
+        """
+        for pm, ps in zip(model.parameters(), src_model.parameters()): loss_proximal+= torch.sum(torch.pow(pm-ps,2))
+        """
+        # 5
+        """loss += 0.5 * self.mu * loss_proximal"""
+        loss.backward()
+        optimizer.step()
     return
 ```
  

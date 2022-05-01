@@ -1,8 +1,7 @@
 """
 This is a non-official implementation of MOON proposed in 'Model-Contrastive
 Federated Learning (https://arxiv.org/abs/2103.16257)'. The official
-implementation is in https://github.com/QinbinLi/MOON. The results of
-the two implementations have already been carefully compared.
+implementation is in https://github.com/QinbinLi/MOON. 
 """
 from .fedbase import BasicServer, BasicClient
 import copy
