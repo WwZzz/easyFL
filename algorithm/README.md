@@ -92,7 +92,7 @@ python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --al
  ## Example 2 : Scaffold
 Scaffold is different from Fedavg during all the three stages in FL: communication stage (e.g. uploading\downloading parameters), aggregation, local trianing. Thus, we discuss these three issues respectively. 
 
-**First, initialization of the server and the clients**
+**First, initialization of the server and the clients.**
 Scaffold additionally uses clients' control variates `c_i` and the global one `cg` to help local training not leave away from the global updating direction. Therefore, the two variables should be initialized in the `__init__()` of both `Client` and `Server` (remark: here we setting the initial values to be zero vectors as mentioned in the original paper). The hyperparameter `eta_g` should also be initialized in the `Server` as the way of initializing `mu` of FedProx.
 ```python
 class Server(BasicServer):
@@ -109,7 +109,7 @@ class Client(BasicClient):
         self.c = fmodule.Model().zeros_like()
         self.c.freeze_grad()
 ```
-**Second, change the communication procedure**
+**Second, change the communication procedure.**
 In each communication round of Fedavg, the server sends the global model to the selected clients and the selected clients upload the locally updated models to the clients. Compared to Fedavg, Scaffold additionally exchange the global and local controlling variates in each communication. Thus, there are two communicating procedures to be modified. The first one is the communciation from the server to the clients, which consists of a pair of functions: `Server.pack()` and `Client.unpack()`. The server package is realized as `dict` of Python, and the additional information is added by putting new key and value to the package. The reverse direction from the client to the server is realized similarly, where `Client.pack()` and `Server.unpack()` is needed to be modified. Since `BasicServer.unpack()` has been realized as default for converting the packages from different clients to the lists that contains each value specified by the keys of the packages, it's not necessary to rewrite this function.
 
 ```python
@@ -125,7 +125,7 @@ In each communication round of Fedavg, the server sends the global model to the 
     def Client.unpack(self, received_pkg):
         return received_pkg['model'], received_pkg['cg']
 ```
-**Third, change the local training procedure**
+**Third, change the local training procedure.**
 Let's focus the local training procedure of Scaffold in Algorithm 1 of the original paper. In each step of updating the model, the delta is corrected by adding (c-c_i) for client i as the 10th line in Algo.1. Thus, we add the term to the gradient `for pm in model.parameters(): pm.grad...` to achieve the correction. Then, the local control variate is also updated as:
 ```
           12th:  ci+ <-- ci - c + 1 / K / eta_l * (x - yi)
@@ -166,7 +166,7 @@ The whole codes for this part is shown as below (`train()` is copied from `Basic
         return dy, dc
 ```
 
-**Fourth, change the aggregation way of the server**
+**Fourth, change the aggregation way of the server.**
 The model is directly updated by averaging the local models of clients, and the global control variate is updated similarly according to th 16th line in Algo.1.
 ```python
     def aggregate(self, dys, dcs):
@@ -176,7 +176,7 @@ The model is directly updated by averaging the local models of clients, and the 
         new_c = self.cg + 1.0 * len(dcs) / self.num_clients * dc
         return new_model, new_c
 ```
-**Finally, modify the main function of the server and the clients**
+**Finally, modify the main function of the server and the clients.**
 In each communication round, the action of the server and clients are respectively decided by `Server.iterate()` and `Client.reply()`. Since a few changes are take in the three important stages during communication, the two main functions should also be changed for alignment. 
 ```python
     def Server.iterate(self, t):
