@@ -1,3 +1,8 @@
+"""
+This is a non-official implementation of Scaffold proposed in 'Stochastic
+Controlled Averaging for Federated Learning' (ICML 2020). 
+"""
+
 from .fedbase import BasicServer, BasicClient
 import copy
 from utils import fmodule
