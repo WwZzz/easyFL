@@ -90,3 +90,108 @@ python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --al
 python main.py --task synthetic_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedavg --aggregate weighted_com --sample uniform --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 ```
  ## Example 2 : Scaffold
+Scaffold is different from Fedavg during all the three stages in FL: communication stage (e.g. uploading\downloading parameters), aggregation, local trianing. Thus, we discuss these three issues respectively. 
+
+**First, initialization of the server and the clients**
+Scaffold additionally uses clients' control variates `c_i` and the global one `cg` to help local training not leave away from the global updating direction. Therefore, the two variables should be initialized in the `__init__()` of both `Client` and `Server` (remark: here we setting the initial values to be zero vectors as mentioned in the original paper). The hyperparameter `eta_g` should also be initialized in the `Server` as the way of initializing `mu` of FedProx.
+```python
+class Server(BasicServer):
+    def __init__(self, option, model, clients, test_data=None):
+        super(Server, self).__init__(option, model, clients, test_data)
+        self.cg = self.model.zeros_like()
+        self.cg.freeze_grad()
+        self.eta = option['eta']
+        self.paras_name = ['eta']
+        
+class Client(BasicClient):
+    def __init__(self, option, name='', train_data=None, valid_data=None):
+        super(Client, self).__init__(option, name, train_data, valid_data)
+        self.c = fmodule.Model().zeros_like()
+        self.c.freeze_grad()
+```
+**Second, change the communication procedure**
+In each communication round of Fedavg, the server sends the global model to the selected clients and the selected clients upload the locally updated models to the clients. Compared to Fedavg, Scaffold additionally exchange the global and local controlling variates in each communication. Thus, there are two communicating procedures to be modified. The first one is the communciation from the server to the clients, which consists of a pair of functions: `Server.pack()` and `Client.unpack()`. The server package is realized as `dict` of Python, and the additional information is added by putting new key and value to the package. The reverse direction from the client to the server is realized similarly, where `Client.pack()` and `Server.unpack()` is needed to be modified. Since `BasicServer.unpack()` has been realized as default for converting the packages from different clients to the lists that contains each value specified by the keys of the packages, it's not necessary to rewrite this function.
+
+```python
+    def Server.pack(self, client_id):
+        return {"model": copy.deepcopy(self.model), "cg": self.cg}
+    
+    def BasicServer.unpack(self, received_packages):
+        ...
+        
+    def Client.pack(self, dy, dc):
+            return {"dy": dy, "dc": dc}
+            
+    def Client.unpack(self, received_pkg):
+        return received_pkg['model'], received_pkg['cg']
+```
+**Third, change the local training procedure**
+Let's focus the local training procedure of Scaffold in Algorithm 1 of the original paper. In each step of updating the model, the delta is corrected by adding (c-c_i) for client i as the 10th line in Algo.1. Thus, we add the term to the gradient `for pm in model.parameters(): pm.grad...` to achieve the correction. Then, the local control variate is also updated as:
+```
+          12th:  ci+ <-- ci - c + 1 / K / eta_l * (x - yi)
+          13th:  communicate (dy, dc) <-- (yi - x, ci+ - ci)
+          14th:  ci <-- ci+
+```
+We implement this by instead calculating the terms below to obtain the same results:
+```
+          dy = yi - x
+          dc <-- ci+ - ci = -1/K/eta_l * (yi - x) - c = -1 / K /eta_l *dy - c
+          ci <-- ci+ = ci + dc
+          communicate (dy, dc)
+```
+The whole codes for this part is shown as below (`train()` is copied from `BasicClient.train()` and modified by adding/changing total 7 lines):
+```python
+    def train(self, model, cg):
+        model.train()
+        # 1
+        src_model = copy.deepcopy(model)
+        # 2
+        src_model.freeze_grad()
+        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        for iter in range(self.num_steps):
+            batch_data = self.get_batch_data()
+            model.zero_grad()
+            loss = self.calculator.train(model, batch_data)
+            loss.backward()
+            # 3
+            for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()): pm.grad = pm.grad - pc + pcg
+            optimizer.step()
+        # 4    
+        dy = model - src_model
+        # 5
+        dc = -1.0 / (self.num_steps * self.learning_rate) * dy - cg
+        # 6
+        self.c = self.c + dc
+        # 7
+        return dy, dc
+```
+
+**Fourth, change the aggregation way of the server**
+The model is directly updated by averaging the local models of clients, and the global control variate is updated similarly according to th 16th line in Algo.1.
+```python
+    def aggregate(self, dys, dcs):
+        dx = fmodule._model_average(dys)
+        dc = fmodule._model_average(dcs)
+        new_model = self.model + self.eta * dx
+        new_c = self.cg + 1.0 * len(dcs) / self.num_clients * dc
+        return new_model, new_c
+```
+**Finally, modify the main function of the server and the clients**
+In each communication round, the action of the server and clients are respectively decided by `Server.iterate()` and `Client.reply()`. Since a few changes are take in the three important stages during communication, the two main functions should also be changed for alignment. 
+```python
+    def Server.iterate(self, t):
+        self.selected_clients = self.sample()
+        res = self.communicate(self.selected_clients)
+        # 1
+        dys, dcs = res['dy'], res['dc']
+        # 2
+        self.model, self.cg = self.aggregate(dys, dcs)
+        return
+    
+    def Client.reply(self, svr_pkg):
+        model, c_g = self.unpack(svr_pkg)
+        dy, dc = self.train(model, c_g)
+        cpkg = self.pack(dy, dc)
+        return cpkg
+```
+Now let's take a look on the results of our implemention of Scaffold.
