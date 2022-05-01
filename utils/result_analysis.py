@@ -147,19 +147,12 @@ def create_legend(records=[], keys=[]):
 
 if __name__ == '__main__':
     # task+record
-    task = 'mnist_classification_cnum10_dist1_skew1.0_seed0'
+    task = 'mnist_classification_cnum100_dist0_skew0_seed0'
     headers = [
-        # 'fedavg',
-        # 'fedirl',
-        # 'moon',
-        # 'fedprox',
-        'scaffold'
+        'fedavg',
     ]
     flt = {
         # 'E': '1',
-        'B': '128',
-        'NS': '>1',
-        'R':'200',
         # 'LR': '0.01',
         # 'R': '30',
         # 'P': '0.01',
