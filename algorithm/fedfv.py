@@ -18,8 +18,8 @@ class Server(BasicServer):
         # sampling
         self.selected_clients = self.sample()
         # training locally
-        ws, losses = self.communicate(self.selected_clients)
-        if self.selected_clients == []: return
+        res = self.communicate(self.selected_clients)
+        ws, losses = res['model'], res['loss']
         grads = [self.model - w for w in ws]
         # update GH
         for cid, gi in zip(self.selected_clients, grads):
@@ -77,7 +77,7 @@ class Client(BasicClient):
 
     def reply(self, svr_pkg):
         model = self.unpack(svr_pkg)
-        train_loss = self.test(model, 'train')
+        train_loss = self.test(model, 'train')['loss']
         self.train(model)
         cpkg = self.pack(model, train_loss)
         return cpkg

@@ -181,8 +181,11 @@ class BasicServer:
             a list of the ids of the selected clients
         """
         all_clients = [cid for cid in range(self.num_clients)]
+        if self.clients_per_round==self.num_clients:
+            # full sampling
+            return all_clients
         # sample clients
-        if self.sample_option == 'uniform':
+        elif self.sample_option == 'uniform':
             # original sample proposed by fedavg
             selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=False))
         elif self.sample_option =='md':
@@ -320,7 +323,7 @@ class BasicClient():
             metric: specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
         dataset = self.train_data if dataflag=='train' else self.valid_data
-        return self.calculator.test(model, dataset)
+        return self.calculator.test(model, dataset, self.batch_size)
 
     def unpack(self, received_pkg):
         """
