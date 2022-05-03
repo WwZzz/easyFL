@@ -36,7 +36,7 @@ class Client(BasicClient):
 
     def reply(self, svr_pkg):
         model = self.unpack(svr_pkg)
-        train_loss = self.test(model, 'train')
+        train_loss = self.test(model, 'train')['loss']
         self.train(model)
         cpkg = self.pack(model, train_loss)
         return cpkg
