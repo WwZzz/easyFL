@@ -242,11 +242,14 @@ class DefaultTaskGen(BasicTaskGen):
             for lb in range(len(lb_counter.keys())):
                 lb_dict[lb] = np.where(labels==lb)[0]
             proportions = [np.random.dirichlet(alpha*p) for _ in range(self.num_clients)]
+            while np.any(np.isnan(proportions)):
+                proportions = [np.random.dirichlet(alpha * p) for _ in range(self.num_clients)]
             while True:
-                # generate dirichlet distribution till ||E(proportion) - P(D)||<=1e-4
+                # generate dirichlet distribution till ||E(proportion) - P(D)||<=1e-5*self.num_classes
                 mean_prop = np.mean(proportions, axis=0)
                 error_norm = ((mean_prop-p)**2).sum()
-                if error_norm<=1e-4:
+                print("Error: {:.8f}".format(error_norm))
+                if error_norm<=1e-3/self.num_classes:
                     break
                 exclude_norms = []
                 for cid in range(self.num_clients):
@@ -257,19 +260,25 @@ class DefaultTaskGen(BasicTaskGen):
                 sup_prop = [np.random.dirichlet(alpha*p) for _ in range(self.num_clients)]
                 alter_norms = []
                 for cid in range(self.num_clients):
+                    if np.any(np.isnan(sup_prop[cid])):
+                        continue
                     mean_alter_cid = mean_prop - proportions[excid]/self.num_clients + sup_prop[cid]/self.num_clients
                     error_alter = ((mean_alter_cid-p)**2).sum()
                     alter_norms.append(error_alter)
-                alcid = np.argmin(alter_norms)
-                proportions[excid] = sup_prop[alcid]
+                if len(alter_norms)>0:
+                    alcid = np.argmin(alter_norms)
+                    proportions[excid] = sup_prop[alcid]
             local_datas = [[] for _ in range(self.num_clients)]
+            self.dirichlet_dist = [] # for efficiently visualizing
             for lb in lb_counter.keys():
                 lb_idxs = lb_dict[lb]
                 lb_proportion = np.array([pi[lb] for pi in proportions])
                 lb_proportion = lb_proportion/lb_proportion.sum()
                 lb_proportion = (np.cumsum(lb_proportion) * len(lb_idxs)).astype(int)[:-1]
                 lb_datas = np.split(lb_idxs, lb_proportion)
+                self.dirichlet_dist.append([len(lb_data) for lb_data in lb_datas])
                 local_datas = [local_data+lb_data.tolist() for local_data,lb_data in zip(local_datas, lb_datas)]
+            self.dirichlet_dist = np.array(self.dirichlet_dist).T
             for i in range(self.num_clients):
                 np.random.shuffle(local_datas[i])
 
@@ -381,15 +390,29 @@ class DefaultTaskGen(BasicTaskGen):
         ax = plt.subplots()
         colors = [key for key in matplotlib.colors.CSS4_COLORS.keys()]
         random.shuffle(colors)
-        data_columns = [len(cidx) for cidx in train_cidxs]
         client_height = 1
-        for cid, cidxs in enumerate(train_cidxs):
-            labels = [int(self.train_data[did][-1]) for did in cidxs]
-            lb_counter = collections.Counter(labels)
-            offset = 0
-            for lbi in range(self.num_classes):
-                plt.barh(cid, lb_counter[lbi], client_height, left = offset, color=colors[lbi])
-                offset += lb_counter[lbi]
+        if hasattr(self, 'dirichlet_dist'):
+            client_dist = self.dirichlet_dist.tolist()
+            data_columns = [sum(cprop) for cprop in client_dist]
+            for cid, cprop in enumerate(client_dist):
+                offset = 0
+                y_bottom = cid - client_height/2.0
+                y_top = cid + client_height/2.0
+                for lbi in range(len(cprop)):
+                    plt.fill_between([offset,offset+cprop[lbi]], y_bottom, y_top, facecolor = colors[lbi])
+                    # plt.barh(cid, cprop[lbi], client_height, left=offset, color=)
+                    offset += cprop[lbi]
+        else:
+            data_columns = [len(cidx) for cidx in train_cidxs]
+            for cid, cidxs in enumerate(train_cidxs):
+                labels = [int(self.train_data[did][-1]) for did in cidxs]
+                lb_counter = collections.Counter(labels)
+                offset = 0
+                y_bottom = cid - client_height/2.0
+                y_top = cid + client_height/2.0
+                for lbi in range(self.num_classes):
+                    plt.fill_between([offset,offset+lb_counter[lbi]], y_bottom, y_top, facecolor = colors[lbi])
+                    offset += lb_counter[lbi]
         plt.xlim(0,max(data_columns))
         plt.ylim(-0.5,len(train_cidxs)-0.5)
         plt.ylabel('Client ID')
