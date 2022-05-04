@@ -205,8 +205,6 @@ Server-side options:
 
 * `num_rounds` is the number of communication rounds.
 
-* `num_steps` is the number of local updating steps and the default value is -1. If this term is set to larger than 0, then `num_rounds` is invalid.
-
 * `proportion` is the proportion of clients to be selected in each round. 
 
 * `lr_scheduler` is the global learning rate scheduler.
@@ -217,9 +215,11 @@ Client-side options:
 
 * `num_epochs` is the number of local training epochs.
 
+* `num_steps` is the number of local updating steps and the default value is -1. If this term is set to larger than 0, then `num_epochs` is invalid.
+
 * `learning_rate ` is the step size when locally training.
 
-* `batch_size ` is the size of one batch data during local training.
+* `batch_size ` is the size of one batch data during local training. `batch_size = full_batch` if `batch_size==-1` and `batch_size=|Di|*batch_size` if `1>batch_size>0`.
 
 * `optimizer` is to choose the optimizer. Options: `SGD`, `Adam`.
 
