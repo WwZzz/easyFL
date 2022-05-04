@@ -229,16 +229,15 @@ Each additional parameter can be defined in `./utils/fflow.read_option`
 We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and `utils`.
 ```
 ├─ benchmark
-│  ├─ mnist							//mnist dataset
-│  │  ├─ data							//data
+│  ├─ mnist_classification			//classification on mnist dataset
 │  │  ├─ model                   //the corresponding model
 │  |  └─ core.py                 //the core supporting for the dataset, and each contains three necessary classes(e.g. TaskGen, TaskReader, TaskCalculator)							
 │  ├─ ...
+│  ├─ RAW_DATA                   // storing the downloaded raw dataset
 │  └─ toolkits.py						//the basic tools for generating federated dataset
 ├─ fedtask
 │  ├─ mnist_client100_dist0_beta0_noise0//IID(beta=0) MNIST for 100 clients with not predefined noise
-│  │  ├─ record							//record of result
-│  │  ├─ info.json						//basic infomation of the task
+│  │  ├─ record							//the directionary of the running result
 │  |  └─ data.json						//the splitted federated dataset (fedtask)
 |  └─ ...
 ├─ method
@@ -250,10 +249,11 @@ We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and 
 ├─ utils
 │  ├─ fflow.py							//option to read, initialize,...
 │  ├─ fmodule.py						//model-level operators
+│  ├─ network_simulator.py						//simulating the network heterogeneity
 │  └─ result_analysis.py				        //to generate the visualization of record
 ├─ generate_fedtask.py					        //generate fedtask
 ├─ requirements.txt
-└─ main.py
+└─ main.py                       //run this file to start easyFL system
 ```
 ### Benchmark
 
@@ -264,6 +264,7 @@ We define each task as a combination of the federated dataset of a particular di
 
 ```python
 """
+# store the raw data
 {
     'store': 'XY'
     'client_names': ['user0', ..., 'user99']
@@ -276,6 +277,28 @@ We define each task as a combination of the federated dataset of a particular di
        'dvalid': {'x': [...], 'y': [...]},
      },
     'dtest': {'x':[...], 'y':[...]}
+}
+# store the index of data in the original dataset
+{
+    'store': 'IDX'
+    'datasrc':{
+        'class_path': 'torchvision.datasets',
+        'class_name': dataset_class_name,
+        'train_args': {
+             'root': "str(raw_data_path)",
+             ...
+        },
+        'test_args': {
+             'root': "str(raw_data_path)",
+             ...
+         }
+    }
+    'client_names': ['user0', ..., 'user99']
+    'user0': {
+       'dtrain': [...],
+       'dvalid': [...],
+     },...,
+    'dtest': [...]
 }
 """
 ```
