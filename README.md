@@ -41,6 +41,8 @@ python generate_fedtask.py --benchmark mnist_classification --dist 0 --skew 0 --
 
 ```sh
 python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --eval_interval 1
+# if using gpu, add the id of device as '--gpu id' to the last of the command like this
+# python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --eval_interval 1 --gpu 0
 ```
 
 The result will be stored in ` ./fedtask/mnist_classification_cnum100_dist0_skew0_seed0/record/`.
@@ -53,6 +55,12 @@ cd ../utils
 # visualize the results
 python result_analysis.py
 ```
+<p float="left">
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_trainloss.png" width="330" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="330" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="330" />
+</p>
+
 ### Performance
 
 <table>
