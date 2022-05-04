@@ -150,12 +150,12 @@ For those who want to realize their own federaed algorithms or reproduce others,
 We also provide the visualization of dataset partitioned by labels. Here we take the partition of CIFAR10 obeying the dirichlet(alpha * p) distirbution as an example.
 The dataset is allocated to 100 clients and each client has a similar amount data size (i.e. balance). The hyperparameters `skewness` controls the non-i.i.d. degree of the federated dataset, which increases from the left (skewness=0.0 => alpha=inf) to the right (skewness=1.0 => alpha=0).
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.0_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.2_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.4_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.6_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.8_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="160" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.0_seed0.jpg" width="180" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.2_seed0.jpg" width="180" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.4_seed0.jpg" width="180" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.6_seed0.jpg" width="180" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.8_seed0.jpg" width="180" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="180" />
 </p>
 
 
