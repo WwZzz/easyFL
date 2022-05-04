@@ -27,6 +27,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 ssl._create_default_https_context = ssl._create_unverified_context
 import importlib
+import collections
 from torchvision import datasets, transforms
 
 # ========================================Task Generator============================================
@@ -135,6 +136,7 @@ class DefaultTaskGen(BasicTaskGen):
         self.cnames = self.get_client_names()
         self.taskname = self.get_taskname()
         self.taskpath = os.path.join(self.task_rootpath, self.taskname)
+        self.visualize = None
         self.save_data = self.XYData_to_json
         self.datasrc = {
             'lib': None,
@@ -163,9 +165,12 @@ class DefaultTaskGen(BasicTaskGen):
         # save task infomation as .json file and the federated dataset
         print('-----------------------------------------------------')
         print('Saving data...')
-        # create the directory of the task
         try:
+            # create the directory of the task
             self.create_task_directories()
+            # visualizing partition
+            if self.visualize is not None:
+                self.visualize(train_cidxs)
             self.save_data(train_cidxs, valid_cidxs)
         except:
             self._remove_task()
@@ -225,25 +230,48 @@ class DefaultTaskGen(BasicTaskGen):
 
         elif self.dist_id == 2:
             """label_skew_dirichlet"""
-            """alpha = 1.0-skewness"""
-            min_size = 0
-            dpairs = [[did, self.train_data[did][-1]] for did in range(len(self.train_data))]
+            """alpha = (-4log(skewness + epsilon))**4"""
+            MIN_ALPHA = 0.01
+            alpha = (-4*np.log(self.skewness + 10e-8))**4
+            alpha = max(alpha, MIN_ALPHA)
+            labels = [self.train_data[did][-1] for did in range(len(self.train_data))]
+            lb_counter = collections.Counter(labels)
+            p = np.array([1.0*v/len(self.train_data) for v in lb_counter.values()])
+            lb_dict = {}
+            labels = np.array(labels)
+            for lb in range(len(lb_counter.keys())):
+                lb_dict[lb] = np.where(labels==lb)[0]
+            proportions = [np.random.dirichlet(alpha*p) for _ in range(self.num_clients)]
+            while True:
+                # generate dirichlet distribution till ||E(proportion) - P(D)||<=1e-4
+                mean_prop = np.mean(proportions, axis=0)
+                error_norm = ((mean_prop-p)**2).sum()
+                if error_norm<=1e-4:
+                    break
+                exclude_norms = []
+                for cid in range(self.num_clients):
+                    mean_excid = (mean_prop*self.num_clients-proportions[cid])/(self.num_clients-1)
+                    error_excid = ((mean_excid-p)**2).sum()
+                    exclude_norms.append(error_excid)
+                excid = np.argmin(exclude_norms)
+                sup_prop = [np.random.dirichlet(alpha*p) for _ in range(self.num_clients)]
+                alter_norms = []
+                for cid in range(self.num_clients):
+                    mean_alter_cid = mean_prop - proportions[excid]/self.num_clients + sup_prop[cid]/self.num_clients
+                    error_alter = ((mean_alter_cid-p)**2).sum()
+                    alter_norms.append(error_alter)
+                alcid = np.argmin(alter_norms)
+                proportions[excid] = sup_prop[alcid]
             local_datas = [[] for _ in range(self.num_clients)]
-            while min_size < self.minvol:
-                idx_batch = [[] for i in range(self.num_clients)]
-                for k in range(self.num_classes):
-                    idx_k = [p[0] for p in dpairs if p[1]==k]
-                    np.random.shuffle(idx_k)
-                    proportions = np.random.dirichlet(np.repeat(1-self.skewness, self.num_clients))
-                    ## Balance
-                    proportions = np.array([p * (len(idx_j) < len(self.train_data)/ self.num_clients) for p, idx_j in zip(proportions, idx_batch)])
-                    proportions = proportions / proportions.sum()
-                    proportions = (np.cumsum(proportions) * len(idx_k)).astype(int)[:-1]
-                    idx_batch = [idx_j + idx.tolist() for idx_j, idx in zip(idx_batch, np.split(idx_k, proportions))]
-                    min_size = min([len(idx_j) for idx_j in idx_batch])
-            for j in range(self.num_clients):
-                np.random.shuffle(idx_batch[j])
-                local_datas[j].extend(idx_batch[j])
+            for lb in lb_counter.keys():
+                lb_idxs = lb_dict[lb]
+                lb_proportion = np.array([pi[lb] for pi in proportions])
+                lb_proportion = lb_proportion/lb_proportion.sum()
+                lb_proportion = (np.cumsum(lb_proportion) * len(lb_idxs)).astype(int)[:-1]
+                lb_datas = np.split(lb_idxs, lb_proportion)
+                local_datas = [local_data+lb_data.tolist() for local_data,lb_data in zip(local_datas, lb_datas)]
+            for i in range(self.num_clients):
+                np.random.shuffle(local_datas[i])
 
         elif self.dist_id == 3:
             """label_skew_shard"""
@@ -344,6 +372,32 @@ class DefaultTaskGen(BasicTaskGen):
         with open(os.path.join(self.taskpath, 'data.json'), 'w') as outf:
             ujson.dump(feddata, outf)
         return
+
+    def visualize_by_class(self, train_cidxs):
+        import collections
+        import matplotlib.pyplot as plt
+        import matplotlib.colors
+        import random
+        ax = plt.subplots()
+        colors = [key for key in matplotlib.colors.CSS4_COLORS.keys()]
+        random.shuffle(colors)
+        data_columns = [len(cidx) for cidx in train_cidxs]
+        client_height = 1
+        for cid, cidxs in enumerate(train_cidxs):
+            labels = [int(self.train_data[did][-1]) for did in cidxs]
+            lb_counter = collections.Counter(labels)
+            offset = 0
+            for lbi in range(self.num_classes):
+                plt.barh(cid, lb_counter[lbi], client_height, left = offset, color=colors[lbi])
+                offset += lb_counter[lbi]
+        plt.xlim(0,max(data_columns))
+        plt.ylim(-0.5,len(train_cidxs)-0.5)
+        plt.ylabel('Client ID')
+        plt.xlabel('Number of Samples')
+        plt.title(self.get_taskname())
+        plt.savefig(os.path.join(self.taskpath, self.get_taskname()+'.jpg'))
+        plt.show()
+
 
 # =======================================Task Calculator===============================================
 # This module is to seperate the task-specific calculating part from the federated algorithms, since the
