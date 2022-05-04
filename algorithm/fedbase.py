@@ -2,7 +2,7 @@ import multiprocessing
 import numpy as np
 from utils import fmodule
 import copy
-from multiprocessing import Pool as ThreadPool
+from multiprocessing.pool import ThreadPool
 import os
 import utils.fflow as flw
 import utils.network_simulator as ns
@@ -99,19 +99,22 @@ class BasicServer:
             :the unpacked response from clients that is created ny self.unpack()
         """
         packages_received_from_clients = []
+        client_package_buffer = {}
+        communicate_clients = list(set(selected_clients))
+        for cid in communicate_clients:client_package_buffer[cid] = None
         if self.num_threads <= 1:
             # computing iteratively
-            for client_id in selected_clients:
+            for client_id in communicate_clients:
                 response_from_client_id = self.communicate_with(client_id)
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel
-            multiprocessing.set_start_method('spawn')
-            pool = ThreadPool(min(self.num_threads, len(selected_clients)))
-            packages_received_from_clients = pool.map(self.communicate_with, selected_clients)
+            pool = ThreadPool(min(self.num_threads, len(communicate_clients)))
+            packages_received_from_clients = pool.map(self.communicate_with, communicate_clients)
             pool.close()
             pool.join()
-        packages_received_from_clients = [pk for pk in packages_received_from_clients if pk]
+        for i,cid in enumerate(communicate_clients): client_package_buffer[cid] = packages_received_from_clients[i]
+        packages_received_from_clients = [client_package_buffer[cid] for cid in selected_clients if client_package_buffer[cid]]
         return self.unpack(packages_received_from_clients)
 
     def communicate_with(self, client_id):
