@@ -45,11 +45,13 @@ import numpy as np
 import os.path
 import ujson
 class TaskGen(BasicTaskGen):
-    def __init__(self, num_classes=10, dimension=60, dist_id = 0, num_clients = 30, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/RAW_DATA/SYNTHETIC'):
+    def __init__(self, num_classes=10, dimension=60, dist_id = 0, num_clients = 30, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/RAW_DATA/SYNTHETIC', seed=0):
         super(TaskGen, self).__init__(benchmark='synthetic_classification',
                                       dist_id=dist_id,
                                       skewness=skewness,
-                                      rawdata_path=rawdata_path)
+                                      rawdata_path=rawdata_path,
+                                      seed=seed
+                                      )
         self.dimension = dimension
         self.num_classes = num_classes
         self.num_clients = num_clients

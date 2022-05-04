@@ -2,12 +2,13 @@ from torchvision import datasets, transforms
 from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, IDXTaskReader
 
 class TaskGen(DefaultTaskGen):
-    def __init__(self, dist_id, num_clients = 1, skewness = 0.5):
+    def __init__(self, dist_id, num_clients = 1, skewness = 0.5,seed=0):
         super(TaskGen, self).__init__(benchmark='mnist_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
                                       rawdata_path='./benchmark/RAW_DATA/MNIST',
+                                      seed=seed
                                       )
         self.num_classes = 10
         self.save_data = self.IDXData_to_json

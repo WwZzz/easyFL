@@ -23,13 +23,14 @@ def extract_from_zip(src_path, target_path):
     return [os.path.join(target_path, tar) for tar in targets]
 
 class TaskGen(DefaultTaskGen):
-    def __init__(self, dist_id, num_clients=1, skewness=0.5, minvol = 10):
+    def __init__(self, dist_id, num_clients=1, skewness=0.5, minvol = 10, seed=0):
         super(TaskGen, self).__init__(benchmark='shakespeare_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
                                       rawdata_path='./benchmark/RAW_DATA/SHAKESPEARE',
-                                      minvol=minvol
+                                      minvol=minvol,
+                                      seed = seed
                                       )
         # Regular expression to capture an actors name, and line continuation
         self.CHARACTER_RE = re.compile(r'^  ([a-zA-Z][a-zA-Z ]*)\. (.*)')

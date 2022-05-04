@@ -3,12 +3,13 @@ from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, IDXTask
 from torch.utils.data import DataLoader
 
 class TaskGen(DefaultTaskGen):
-    def __init__(self, dist_id, num_clients = 1, skewness = 0.5):
+    def __init__(self, dist_id, num_clients = 1, skewness = 0.5, seed=0):
         super(TaskGen, self).__init__(benchmark='cifar100_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
                                       rawdata_path='./benchmark/RAW_DATA/CIFAR100',
+                                      seed=seed
                                       )
         self.num_classes = 100
         self.save_data = self.IDXData_to_json

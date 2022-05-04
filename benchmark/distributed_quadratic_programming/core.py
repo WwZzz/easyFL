@@ -6,11 +6,12 @@ import torch
 from torch.utils.data import DataLoader
 
 class TaskGen(BasicTaskGen):
-    def __init__(self, dimension=2, dist_id = 5, num_clients = 30, skewness = 0.5, minvol=10, rawdata_path ='./benchmark/RAW_DATA/QUADRATIC'):
+    def __init__(self, dimension=2, dist_id = 5, num_clients = 30, skewness = 0.5, minvol=10, rawdata_path ='./benchmark/RAW_DATA/QUADRATIC', seed=0):
         super(TaskGen, self).__init__(benchmark='distributed_quadratic_programming',
                                       dist_id=dist_id,
                                       skewness=skewness,
-                                      rawdata_path=rawdata_path)
+                                      rawdata_path=rawdata_path,
+                                      seed=seed)
         self.dimension = dimension
         self.num_clients = num_clients
         self.taskname = self.get_taskname()

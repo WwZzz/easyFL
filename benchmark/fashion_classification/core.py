@@ -2,12 +2,13 @@ from torchvision import datasets, transforms
 from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, XYTaskReader, XYDataset
 
 class TaskGen(DefaultTaskGen):
-    def __init__(self, dist_id, num_clients = 1, skewness = 0.5, selected_labels = [0,2,6]):
+    def __init__(self, dist_id, num_clients = 1, skewness = 0.5, selected_labels = [0,2,6], seed=0):
         super(TaskGen, self).__init__(benchmark='fashion_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
                                       rawdata_path='./benchmark/RAW_DATA/FASHION',
+                                      seed=seed
                                       )
         self.num_classes = len(selected_labels)
         self.save_data = self.XYData_to_json
