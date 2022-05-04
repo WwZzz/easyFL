@@ -176,9 +176,9 @@ if __name__ == '__main__':
         'test_accuracy',
     ]
     # create legends
-    legends = create_legend(records, ['B','LR','NS'])
+    legends = create_legend(records, ['B','LR'])
     for curve in curve_names:
-        draw_curve(dicts, curve, legends, 200)
+        draw_curve(dicts, curve, legends)
         plt.title(task)
         plt.xlabel("communication rounds")
         plt.ylabel(curve)
