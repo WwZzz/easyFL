@@ -60,6 +60,7 @@ python result_analysis.py
    <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="330" />
    <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="330" />
 </p>
+
 ### Performance
 
 <table>
