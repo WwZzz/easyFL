@@ -148,8 +148,15 @@ For those who want to realize their own federaed algorithms or reproduce others,
 
 ### Dataset Partition Visualizing
 We also provide the visualization of dataset partitioned by labels. Here we take the partition of CIFAR100/MNIST/CIFAR10 as the examples. Across all the examples, each row in the figure corresponds to the local data of one client, and different colors represent different labels. The x axis is the number of samples in the local dataset.
+#### Di ~ D where dist=0
+Each local dataset is I.I.D. drawn from the global distribution. Here we allocate the data of CIFAR100 to 100 clients. The iid can also be gengerated by setting (dist=2, skew=0). We list the results of the two IID partition manners below.
+<p float="left">
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist0_skew0_seed0.jpg" width="200" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist2_skew0.0_seed0.jpg" width="200" />
+</p>
+
 #### |{Di(Y)}|=K where dist=1
-Each local dataset is allocated K labels of data. The visualization of the partition is on MNIST.
+Each local dataset is allocated K labels of data. The visualization of the partition is on MNIST. There are 10 clients in each picture.
 <p float="left">
    <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.39_seed0.jpg" width="200" />
    <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.69_seed0.jpg" width="200" />
@@ -171,7 +178,9 @@ Here the partitioned dataset obeys the dirichlet(alpha * p) distirbution. The da
 To generate these fedtasks, run the command below
 
 ```
-#skew=0.
+# I.I.D.
+python generated_fedtask.py --dist 0 --skew 0 --num_client 100 --benchmark cifar100_classification
+# skew=0.39,0.69,0.79
 python generated_fedtask.py --dist 1 --skew 0.39 --num_client 10 --benchmark mnist_classification
 # varying skew from 0.0 to 1.0
 python generated_fedtask.py --dist 2 --skew 0.0 --num_client 100 --benchmark cifar10_classification
