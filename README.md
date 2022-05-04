@@ -205,6 +205,8 @@ Server-side options:
 
 * `num_rounds` is the number of communication rounds.
 
+* `num_steps` is the number of local updating steps and the default value is -1. If this term is set to larger than 0, then `num_rounds` is invalid.
+
 * `proportion` is the proportion of clients to be selected in each round. 
 
 * `lr_scheduler` is the global learning rate scheduler.
