@@ -192,7 +192,6 @@ class DefaultTaskGen(BasicTaskGen):
 
         elif self.dist_id == 1:
             """label_skew_quantity"""
-            self.skewness = min(max(0, self.skewness),1.0)
             dpairs = [[did, self.train_data[did][-1]] for did in range(len(self.train_data))]
             num = max(int((1-self.skewness)*self.num_classes), 1)
             K = self.num_classes
@@ -208,11 +207,11 @@ class DefaultTaskGen(BasicTaskGen):
                 times = [0 for _ in range(self.num_classes)]
                 contain = []
                 for i in range(self.num_clients):
-                    current = [i % K]
-                    times[i % K] += 1
-                    j = 1
+                    current = []
+                    j =0
                     while (j < num):
-                        ind = random.randint(0, K - 1)
+                        mintime = np.min(times)
+                        ind = np.random.choice(np.where(times == mintime)[0])
                         if (ind not in current):
                             j = j + 1
                             current.append(ind)

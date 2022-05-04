@@ -11,6 +11,7 @@ class TaskGen(DefaultTaskGen):
                                       )
         self.num_classes = 10
         self.save_data = self.IDXData_to_json
+        self.visualize = self.visualize_by_class
         self.datasrc = {
             'class_path': 'torchvision.datasets',
             'class_name': 'MNIST',
