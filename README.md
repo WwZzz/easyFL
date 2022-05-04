@@ -159,10 +159,13 @@ Each row in the figure corresponds to the local data of one client, and differen
    <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.8_seed0.jpg" width="160" />
    <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="160" />
 </p>
+
 To generate this fedtask, run the command below
+
 ```
 python generated_fedtask.py --dist 2 --skew 0.0 --num_client 100 --benchmark cifar10_classification
 ```
+
 ### Options
 
 Basic options:
