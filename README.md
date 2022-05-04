@@ -149,8 +149,9 @@ For those who want to realize their own federaed algorithms or reproduce others,
 ### Dataset Partition Visualizing
 We also provide the visualization of dataset partitioned by labels. Here we take the partition of CIFAR100/MNIST/CIFAR10 as the examples. Across all the examples, each row in the figure corresponds to the local data of one client, and different colors represent different labels. The x axis is the number of samples in the local dataset.
 #### Di ~ D where dist=0
-Each local dataset is I.I.D. drawn from the global distribution. Here we allocate the data of CIFAR100 to 100 clients. The iid can also be gengerated by setting (dist=2, skew=0). We list the results of the two IID partition manners below.
+Each local dataset is I.I.D. drawn from the global distribution. Here we allocate the data of CIFAR100 to 100 clients. The iid can also be gengerated by setting (dist=2, skew=0) or (dist=1, skew=0). We list the results of the three IID partition manners below (i.e. dist=0,1,2 from left to right).
 <p float="left">
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist0_skew0_seed0.jpg" width="200" />
    <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist0_skew0_seed0.jpg" width="200" />
    <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist2_skew0.0_seed0.jpg" width="200" />
 </p>
