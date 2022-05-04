@@ -147,10 +147,18 @@ python result_analysis.py
 For those who want to realize their own federaed algorithms or reproduce others, please see `algorithms/readme.md`, where we take two simple examples to show how to use easyFL for the popurse.
 
 ### Dataset Partition Visualizing
-We also provide the visualization of dataset partitioned by labels. Here we take the partition of CIFAR10 obeying the dirichlet(alpha * p) distirbution as an example.
-The dataset is allocated to 100 clients and each client has a similar amount data size (i.e. balance). The hyperparameters `skewness` controls the non-i.i.d. degree of the federated dataset, which increases from the left (skewness=0.0 => alpha=inf) to the right (skewness=1.0 => alpha=0). 
-#### Di ~ Dirichlet(αP)
-Each row in the figure corresponds to the local data of one client, and different colors represent different label. The x axis is the number of samples in the local dataset.
+We also provide the visualization of dataset partitioned by labels. Here we take the partition of CIFAR100/MNIST/CIFAR10 as the examples. Across all the examples, each row in the figure corresponds to the local data of one client, and different colors represent different labels. The x axis is the number of samples in the local dataset.
+#### |{Di(Y)}|=K where dist=1
+Each local dataset is allocated K labels of data. The visualization of the partition is on MNIST.
+<p float="left">
+   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.39_seed0.jpg" width="200" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.69_seed0.jpg" width="200" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.79_seed0.jpg" width="200" />
+</p>
+
+#### Di ~ Dirichlet(αP) where dist=2
+Here the partitioned dataset obeys the dirichlet(alpha * p) distirbution. The dataset is allocated to 100 clients and each client has a similar amount data size (i.e. balance). The hyperparameters `skewness` controls the non-i.i.d. degree of the federated dataset, which increases from the left (skewness=0.0 => alpha=inf) to the right (skewness=1.0 => alpha=0). 
+
 <p float="left">
    <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.0_seed0.jpg" width="160" />
    <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.2_seed0.jpg" width="160" />
@@ -160,9 +168,12 @@ Each row in the figure corresponds to the local data of one client, and differen
    <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="160" />
 </p>
 
-To generate this fedtask, run the command below
+To generate these fedtasks, run the command below
 
 ```
+#skew=0.
+python generated_fedtask.py --dist 1 --skew 0.39 --num_client 10 --benchmark mnist_classification
+# varying skew from 0.0 to 1.0
 python generated_fedtask.py --dist 2 --skew 0.0 --num_client 100 --benchmark cifar10_classification
 ```
 
