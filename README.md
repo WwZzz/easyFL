@@ -11,7 +11,9 @@ Our easyFL is a strong and reusable experimental platform for research on federa
 - [Remark](#Remark)
 - [Citation](#Citation)
 - [Contacts](#Contacts)
+- [FedRME](#FedRME)
 - [References](#References)
+
 
 ## Requirements
 
