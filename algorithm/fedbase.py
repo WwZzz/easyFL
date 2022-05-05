@@ -1,8 +1,7 @@
-import multiprocessing
 import numpy as np
 from utils import fmodule
 import copy
-from multiprocessing.pool import ThreadPool
+from multiprocessing.dummy import Pool as ThreadPool
 import os
 import utils.fflow as flw
 import utils.network_simulator as ns
@@ -254,7 +253,7 @@ class BasicServer:
         """
         if model==None: model=self.model
         if self.test_data:
-            return self.calculator.test(model, self.test_data)
+            return self.calculator.test(model, self.test_data, batch_size = self.option['test_batch_size'])
         else:
             return None
 
@@ -290,6 +289,8 @@ class BasicClient():
         self.epochs = option['num_epochs']
         self.num_steps = option['num_steps'] if option['num_steps']>0 else self.epochs * math.ceil(len(self.train_data)/self.batch_size)
         self.model = None
+        self.test_batch_size = option['test_batch_size']
+        self.loader_num_workers = option['num_workers']
         # system setting
         self.network_active_rate = 1
         self.network_drop_rate = 0
@@ -326,7 +327,7 @@ class BasicClient():
             metric: specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
         dataset = self.train_data if dataflag=='train' else self.valid_data
-        return self.calculator.test(model, dataset, self.batch_size)
+        return self.calculator.test(model, dataset, self.test_batch_size)
 
     def unpack(self, received_pkg):
         """
@@ -438,10 +439,10 @@ class BasicClient():
             a batch of data
         """
         if not self.data_loader:
-            self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size))
+            self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, num_workers=self.loader_num_workers))
         try:
             batch_data = next(self.data_loader)
         except StopIteration:
-            self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size))
+            self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, num_workers=self.loader_num_workers))
             batch_data = next(self.data_loader)
         return batch_data
