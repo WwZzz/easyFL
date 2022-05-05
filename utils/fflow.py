@@ -45,7 +45,7 @@ def read_option():
     parser.add_argument('--gpu', help='GPU ID, -1 for CPU', type=int, default=-1)
     parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
-    parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=1)
+    parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
 
     # the simulating system settings of clients
