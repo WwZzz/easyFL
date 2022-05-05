@@ -41,7 +41,7 @@ python generate_fedtask.py --benchmark mnist_classification --dist 0 --skew 0 --
 
 ```sh
 python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --eval_interval 1
-# if using gpu, add the id of device as '--gpu id' to the last of the command like this
+# if using gpu, add the id of the gpu device as '--gpu id' to the end of the command like this
 # python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.215 --proportion 0.1 --batch_size 10 --eval_interval 1 --gpu 0
 ```
 
@@ -360,6 +360,7 @@ Utils is composed of commonly used operations: model-level operation (we convert
 
 * Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project. 
 
+# FedRME
 * A realization of federated learning algorithm on Road Markings Extraction from Mobile LiDAR Point Clouds (FedRME, https://fanxlxmu.github.io/publication/paper/CSCWD22-FedRME.pdf) was accepted by 2022 IEEE 25th International Conference on Computer Supported Cooperative Work in Design (IEEE CSCWD 2022). The source code for FedRME will be release as soon as possible.
 
 ## Citation
