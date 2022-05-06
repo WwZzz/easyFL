@@ -489,7 +489,7 @@ class ClassificationCalculator(BasicTaskCalculator):
         return loss
 
     @torch.no_grad()
-    def test(self, model, dataset, batch_size=64, num_workers=1):
+    def test(self, model, dataset, batch_size=64, num_workers=0):
         """
         Metric = [mean_accuracy, mean_loss]
         :param model:
