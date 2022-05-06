@@ -489,7 +489,7 @@ class ClassificationCalculator(BasicTaskCalculator):
         return loss
 
     @torch.no_grad()
-    def test(self, model, dataset, batch_size=64, num_workers=1):
+    def test(self, model, dataset, batch_size=64, num_workers=0):
         """
         Metric = [mean_accuracy, mean_loss]
         :param model:
@@ -515,7 +515,7 @@ class ClassificationCalculator(BasicTaskCalculator):
     def data_to_device(self, data):
         return data[0].to(self.device), data[1].to(self.device)
 
-    def get_data_loader(self, dataset, batch_size=64, shuffle=True, num_workers=1):
+    def get_data_loader(self, dataset, batch_size=64, shuffle=True, num_workers=0):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)

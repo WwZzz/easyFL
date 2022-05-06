@@ -125,7 +125,7 @@ def _model_from_tensor(mt):
     return res
 
 def _model_sum(ms):
-    if not ms: return None
+    if len(ms)==0: return None
     op_with_graph = sum([mi.ingraph for mi in ms]) > 0
     res = Model().to(ms[0].get_device())
     if op_with_graph:
@@ -143,8 +143,8 @@ def _model_sum(ms):
     return res
 
 def _model_average(ms = [], p = []):
-    if not ms: return None
-    if not p: p = [1.0 / len(ms) for _ in range(len(ms))]
+    if len(ms)==0: return None
+    if len(p)==0: p = [1.0 / len(ms) for _ in range(len(ms))]
     op_with_graph = sum([w.ingraph for w in ms]) > 0
     res = Model().to(ms[0].get_device())
     if op_with_graph:
@@ -272,7 +272,7 @@ def _modeldict_cp(md1, md2):
     return
 
 def _modeldict_sum(mds):
-    if not mds: return None
+    if len(mds)==0: return None
     md_sum = {}
     for layer in mds[0].keys():
         md_sum[layer] = torch.zeros_like(mds[0][layer])
@@ -285,7 +285,7 @@ def _modeldict_sum(mds):
     return md_sum
 
 def _modeldict_weighted_average(mds, weights=[]):
-    if not mds:
+    if len(mds)==0:
         return None
     md_avg = {}
     for layer in mds[0].keys(): md_avg[layer] = torch.zeros_like(mds[0][layer])
