@@ -20,7 +20,7 @@ Thus, we realize FedProx as steps below:
 
 **First, copy the codes we need from fedbase.**
 
-Create classes of `Server` and `Client` that adaptlively inherit from `BasicServer` and `BasicClient` in `fedbase`. 
+Create classes of `Server` and `Client` respectively inheriting from `BasicServer` and `BasicClient` in `fedbase`. 
 And copy the standard local training function `train()` from `BasicClient` to `fedprox.Client`. 
 
 **Second, handling hyper-parameters of FedProx.**
