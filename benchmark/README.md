@@ -4,7 +4,7 @@ When someone wants to convert a traditional ML task into a federated one, the is
 * Should the existing federated optimization algorithms (e.g. fedavg) be rewrite to suit the new coming task?
 * What if the metrics vary across different ML tasks? Will existing codes still work?
 * Can a partitioned setting be reused by different algorithms?
-...
+* ...
 
 Fortunately, we've developed this module to simultaneously address these problems. The main purpose of ours is to 1) provide a data pre-processing paradigm to distribute a ML dataset to different virtual clients, 2) decouple the task-specific part from federated optimization process. Now we in turn introduce how we achieve the two objectives and finally take an example of converting to help understand the whole procedure.
 
