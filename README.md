@@ -58,9 +58,9 @@ cd ../utils
 python result_analysis.py
 ```
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_trainloss.png" width="330" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="330" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="330" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_trainloss.png" width="200" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="200" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="200" />
 </p>
 
 ### Performance
