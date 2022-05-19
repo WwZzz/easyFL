@@ -200,6 +200,5 @@ Now let's take a look on the results of our implemention of Scaffold.
 
 # How to do observations during training time?
 
-<div id='refer-anchor-2'></div>
-
 coming soon...
+<div id='refer-anchor-2'></div>
