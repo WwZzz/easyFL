@@ -58,9 +58,9 @@ cd ../utils
 python result_analysis.py
 ```
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_trainloss.png" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_trainloss.png" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="240" />
 </p>
 
 ### Performance
@@ -161,17 +161,17 @@ We also provide the visualization of dataset partitioned by labels. Here we take
 #### Di ~ D where dist=0
 Each local dataset is I.I.D. drawn from the global distribution. Here we allocate the data of CIFAR100 to 100 clients. The iid can also be gengerated by setting (dist=2, skew=0) or (dist=1, skew=0). We list the results of the three IID partition manners below (i.e. dist=0,1,2 from left to right).
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist0_skew0_seed0.jpg" width="200" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist1_skew0.0_seed0.jpg" width="200" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist2_skew0.0_seed0.jpg" width="200" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist0_skew0_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist1_skew0.0_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist2_skew0.0_seed0.jpg" width="240" />
 </p>
 
 #### |{Di(Y)}|=K where dist=1
 Each local dataset is allocated K labels of data. The visualization of the partition is on MNIST. There are 10 clients in each picture.
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.39_seed0.jpg" width="200" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.69_seed0.jpg" width="200" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.79_seed0.jpg" width="200" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.39_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.69_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.79_seed0.jpg" width="240" />
 </p>
 
 #### Di ~ Dirichlet(αP) where dist=2
