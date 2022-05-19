@@ -62,9 +62,9 @@ cd ../utils
 python result_analysis.py
 ```
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_trainloss.png" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_trainloss.png" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="230" />
 </p>
 
 ### Performance
@@ -165,29 +165,29 @@ We also provide the visualization of dataset partitioned by labels. Here we take
 #### Di ~ D where dist=0
 Each local dataset is I.I.D. drawn from the global distribution. Here we allocate the data of CIFAR100 to 100 clients. The iid can also be gengerated by setting (dist=2, skew=0) or (dist=1, skew=0). We list the results of the three IID partition manners below (i.e. dist=0,1,2 from left to right).
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist0_skew0_seed0.jpg" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist1_skew0.0_seed0.jpg" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist2_skew0.0_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist0_skew0_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist1_skew0.0_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist2_skew0.0_seed0.jpg" width="230" />
 </p>
 
 #### |{Di(Y)}|=K where dist=1
 Each local dataset is allocated K labels of data. The visualization of the partition is on MNIST. There are 10 clients in each picture.
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.39_seed0.jpg" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.69_seed0.jpg" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.79_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.39_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.69_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.79_seed0.jpg" width="230" />
 </p>
 
 #### Di ~ Dirichlet(αP) where dist=2
 Here the partitioned dataset obeys the dirichlet(alpha * p) distirbution. The dataset is allocated to 100 clients and each client has a similar amount data size (i.e. balance). The hyperparameters `skewness` controls the non-i.i.d. degree of the federated dataset, which increases from the left (skewness=0.0 => alpha=inf) to the right (skewness=1.0 => alpha=0). 
 
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.0_seed0.jpg" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.2_seed0.jpg" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.4_seed0.jpg" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.6_seed0.jpg" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.8_seed0.jpg" width="240" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.0_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.2_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.4_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.6_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.8_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="230" />
 </p>
 
 To generate these fedtasks, run the command below
