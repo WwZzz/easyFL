@@ -6,10 +6,11 @@ class Server(BasicServer):
         super(Server, self).__init__(option, model, clients, test_data)
         self.update_table = [None for _ in range(self.num_clients)]
         self.initflag = False
-        self.c = option['c']
-        self.paras_name = ['c']
+        # self.c = option['c']
+        # self.paras_name = ['c']
+        self.c = 1.0
         # choose all the clients that are active
-        # self.clients_per_round = self.num_clients
+        self.clients_per_round = self.num_clients
 
     def check_if_init(self):
         """Check whether the update_table is initialized"""

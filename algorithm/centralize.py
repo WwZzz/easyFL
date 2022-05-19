@@ -17,10 +17,11 @@ class Server(BasicServer):
             valid_data = valid_data + self.clients[i].valid_data
         self.train_data = train_data
         self.valid_data = valid_data
-        self.batch_size = len(self.train_data) if option['batch_size'] == -1 else option['batch_size']
+        self.batch_size = len(self.train_data) if option['batch_size'] == -1 else int(option['batch_size'])
         self.epochs = option['num_epochs']
         self.num_iters_per_epoch = math.ceil(len(self.train_data)/self.batch_size)
         self.num_iters = option['num_steps'] if option['num_steps'] > 0 else self.epochs * self.num_iters_per_epoch
+        self.epochs = math.ceil(1.0*self.num_iters/self.num_iters_per_epoch)
 
     def run(self):
         # training
@@ -73,7 +74,7 @@ class MyLogger(flw.Logger):
             self.write('train_'+met_name, met_value)
         for met_name, met_value in valid_metrics.items():
             self.write('valid_'+met_name, met_value)
-        print('----------Iter {}/{} :: Epoch {}-------------'.format(current_iter%server.num_iters_per_epoch, server.num_iters_per_epoch,current_iter//server.num_iters_per_epoch))
+        print('----------Iter {}/{} :: Epoch {}/{}-------------'.format(current_iter%server.num_iters_per_epoch, server.num_iters_per_epoch,current_iter//server.num_iters_per_epoch, server.epochs))
         for key, val in self.output.items():
             if key == 'meta': continue
             print(self.temp.format(key, val[-1]))

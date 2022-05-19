@@ -248,7 +248,7 @@ class DefaultTaskGen(BasicTaskGen):
                 mean_prop = np.mean(proportions, axis=0)
                 error_norm = ((mean_prop-p)**2).sum()
                 print("Error: {:.8f}".format(error_norm))
-                if error_norm<=1e-3/self.num_classes:
+                if error_norm<=1e-2/self.num_classes:
                     break
                 exclude_norms = []
                 for cid in range(self.num_clients):

@@ -195,7 +195,7 @@ class BasicServer:
             selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=[nk / self.data_vol for nk in self.client_vols]))
         return selected_clients
 
-    def aggregate(self, models, p=[]):
+    def aggregate(self, models: list, p=[]):
         """
         Aggregate the locally improved models.
         :param
@@ -212,7 +212,7 @@ class BasicServer:
         ==========================================================================================================================
         N/K * Σpk * model_k             |1/K * Σmodel_k             |(1-Σpk) * w_old + Σpk * model_k  |Σ(pk/Σpk) * model_k
         """
-        if not models: return self.model
+        if len(models) == 0: return self.model
         if self.agg_option == 'weighted_scale':
             K = len(models)
             N = self.num_clients
@@ -291,6 +291,7 @@ class BasicClient():
         self.model = None
         self.test_batch_size = option['test_batch_size']
         self.loader_num_workers = option['num_workers']
+        self.current_steps = 0
         # system setting
         self.network_active_rate = 1
         self.network_drop_rate = 0
@@ -445,4 +446,7 @@ class BasicClient():
         except StopIteration:
             self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, num_workers=self.loader_num_workers))
             batch_data = next(self.data_loader)
+        # clear local DataLoader when finishing local training
+        self.current_steps = (self.current_steps+1) % self.num_steps
+        if self.current_steps == 0:self.data_loader = None
         return batch_data

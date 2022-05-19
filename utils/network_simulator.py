@@ -30,8 +30,8 @@ def with_accessibility(sample):
 def with_latency(communicate):
     def communicate_under_network_latency(self, selected_clients):
         client_latencies = [self.clients[cid].get_network_latency() for cid in selected_clients]
-        # drop clients whose latency > the upper bound of waiting time
-        self.selected_clients = [selected_clients[i] for i in range(len(selected_clients)) if client_latencies[i]<=self.TIME_LATENCY_BOUND]
+        # drop clients if dropping out
+        self.selected_clients = [selected_clients[i] for i in range(len(selected_clients)) if not self.clients[selected_clients[i]].is_drop()]
         time_sync = min(max(client_latencies), self.TIME_LATENCY_BOUND)
         self.virtual_clock['time_sync'].append(time_sync)
         return communicate(self, self.selected_clients)
