@@ -198,7 +198,7 @@ In each communication round, the action of the server and clients are respective
 ```
 Now let's take a look on the results of our implemention of Scaffold.
 
-# How to do observations during training time?
+# How to make observations during training time?
 
 coming soon...
 <div id='refer-anchor-2'></div>
