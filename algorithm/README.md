@@ -195,5 +195,5 @@ In each communication round, the action of the server and clients are respective
         return cpkg
 ```
 Now let's take a look on the results of our implemention of Scaffold.
-# How to do observations during training time?
+# <a href='#refer-anchor-1'>How to do observations during training time?</a>
 coming soon...
