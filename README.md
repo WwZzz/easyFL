@@ -178,12 +178,12 @@ Each local dataset is allocated K labels of data. The visualization of the parti
 Here the partitioned dataset obeys the dirichlet(alpha * p) distirbution. The dataset is allocated to 100 clients and each client has a similar amount data size (i.e. balance). The hyperparameters `skewness` controls the non-i.i.d. degree of the federated dataset, which increases from the left (skewness=0.0 => alpha=inf) to the right (skewness=1.0 => alpha=0). 
 
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.0_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.2_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.4_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.6_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.8_seed0.jpg" width="160" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="160" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.0_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.2_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.4_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.6_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.8_seed0.jpg" width="240" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="240" />
 </p>
 
 To generate these fedtasks, run the command below
