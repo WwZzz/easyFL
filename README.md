@@ -2,7 +2,11 @@
 
 This repository is PyTorch implementation for the IJCAI-21 paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/).
 
-Our easyFL is a strong and reusable experimental platform for research on federated learning (FL) algorithm. It is easy for FL-researchers to quickly realize and compare popular centralized federated learning algorithms. 
+Our easyFL is a strong and reusable experimental platform for research on federated learning (FL) algorithm, which has provided a few easy-to-use modules to hold out for those who want to do various federated learning experiments. In short, it is easy for FL-researchers to 
+* quickly realize and compare popular centralized federated learning algorithms [Look Here](algorithm/README.md)
+* transform traditional machine learning tasks into federated items by following our paradigm of constructing data pipeline [Look Here](benchmark/README.md)
+* do some interesting observations during training to get a deep insight of federated learning in a code-incremental manner without destorying the original codes [Look Here](algorithm/README.md)
+* efficiently manage and analyze the experiment records with `utils/result_analysis.py`
 
 ## Table of Contents
 - [Requirements](#Requirements)
