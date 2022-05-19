@@ -5,7 +5,7 @@ This repository is PyTorch implementation for the IJCAI-21 paper [Federated Lear
 Our easyFL is a strong and reusable experimental platform for research on federated learning (FL) algorithm, which has provided a few easy-to-use modules to hold out for those who want to do various federated learning experiments. In short, it is easy for FL-researchers to 
 * quickly realize and compare popular centralized federated learning algorithms ([Look Here](https://github.com/WwZzz/easyFL/blob/main/algorithm/README.md#refer-anchor-1))
 * transform traditional machine learning tasks into federated tasks by following our paradigm of constructing data pipeline ([Look Here](benchmark/README.md))
-* do some interesting observations during training time to get a deeper insight of federated learning in a code-incremental manner without destorying the original realization ([Look Here](https://github.com/WwZzz/easyFL/blob/main/algorithm/README.md#refer-anchor-2))
+* make interesting observations during training time to get a deeper insight of federated learning in a code-incremental manner without destorying the original realization ([Look Here](https://github.com/WwZzz/easyFL/blob/main/algorithm/README.md#refer-anchor-2))
 * efficiently manage and analyze the experiment records with `utils/result_analysis.py`
 
 ## Table of Contents
