@@ -1,3 +1,5 @@
+<div id='refer-anchor-1'></div>
+
 # How to realize federated algorithms by easyFL?
 Either you want to quickly implement your own federated algorithms, 
 or you want to reproducing the experimental results of other papers, 
@@ -195,5 +197,7 @@ In each communication round, the action of the server and clients are respective
         return cpkg
 ```
 Now let's take a look on the results of our implemention of Scaffold.
-# <a href='#refer-anchor-1'>How to do observations during training time?</a>
+
+<div id='refer-anchor-2'></div>
+# How to do observations during training time?
 coming soon...
