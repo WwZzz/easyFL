@@ -36,14 +36,17 @@ To federalize a traditional ML task, we consider steps including loading the ori
 
 **Setting Model.** The model should be defined in `./benchmark/benchmark_name/model/` with the name of the model. Each `model_name.py` (e.g. cnn.py) should contains a class named `Model()` inherenting from `utils.fmodule.FModule` where we pre-define a few operators like directly plusing one model's parameters to another's. Details can be found in `utils.fmodule`.   
 
-**Partitioning Dataset.** After loading the dataset into the memory, we should partition the dataset into several parts so that it can be allocated to different virtual clients. There are mainly three kinds of datasets: testing dataset owned by Server, local training and validation dataset owned by clients. We pre-define  `TaskGen.partition()` to partition the training dataset and `TaskGen.local_holdout()` to hold out the validation dataset from each After partitioning, the partition information should be recorded by TaskGen itself and provide adequate information to reconstruct the federated dataset. Then the instance of `TaskGen` itself will be used to save the dataset by TaskPipe.
+**Partitioning Dataset.** After loading the dataset into the memory, we should partition the dataset into several parts so that it can be allocated to different virtual clients. There are mainly three kinds of datasets: testing dataset owned by Server, local training and validation dataset owned by clients. We pre-define  `TaskGen.partition()` to partition the training dataset and `TaskGen.local_holdout()` to hold out the validation dataset from each local dataset. After partitioning, the partition information should be recorded by TaskGen itself and provide adequate information to reconstruct the federated dataset. Then the instance of `TaskGen` itself will be used to save the dataset by TaskPipe.
 
 ### TaskPipe
 
 The `TaskPipe` is named as its function since it's like a pipe of TaskGen-Fedtask-FederatedTrainingSystem, where the generator uses it to save partitioned dataset into the disk as `fedtask` and the federated system uses it to read the `fedtask` from the disk. Each TaskPipe contains three parts: `save_task: @classmethod`, `load_task: @classmethod`, 'TaskDataset: class variable'.
 
-**Loading Dataset.**
+**save_task.** this method will be only called by TaskGen, which converts the generator that has finished partition to the fedtask as .json file.   
 
+**TaskDataset.** The TaskDataset inherents from torch.utils.data.Dataset and is an encapsulation for the splited sub-dataset of the original dataset. There are mainly two ways to design this class. If the numerical data (e.g. image) is stored in `fedtask` (e.g. `benchmark/toolkits.XYTaskPipe`), then `TaskDataset.__init__` should receive the stored features and labels to reconstruct the subdataset and `TaskDataset.__getitem__` should returns the indexed data at each momnet it is called. If the original indices of data in the original dataset is stored (e.g. `benchmark/toolkits.IDXTaskPipe`), then the `TaskDataset` must record the coresponding way to access the original dataset and returns the indexed data in original dataset. The second manner is comparably more faster than the first one and takes up less space in he memory. However, for synthetic data, only the first manner can be used. 
+
+**load_task.** this method will be only called by `utils.fflow.initialize` when initalizing the federated sysptem, which read the `fedtask` to the client's training data, clients' validation data and server's testing data. The types of the loaded data are all `TaskPipe.TaskDataset`. 
 
 ## Decoupling Task-Specific Calculation From Federated System by `TaskCalculator`
 coming soon...
