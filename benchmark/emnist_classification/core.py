@@ -1,19 +1,20 @@
 from torchvision import datasets, transforms
-from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, IDXTaskReader
+from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, IDXTaskPipe
 import numpy as np
 
 class TaskGen(DefaultTaskGen):
-    def __init__(self, dist_id, num_clients = 1, skewness = 0.5, seed=0):
+    def __init__(self, dist_id, num_clients = 1, skewness = 0.5, local_hld_rate=0.2, seed=0):
         super(TaskGen, self).__init__(benchmark='emnist_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
                                       rawdata_path='./benchmark/RAW_DATA/EMNIST',
+                                      local_hld_rate=local_hld_rate,
                                       seed=seed
                                       )
         self.num_classes = 62
-        self.save_data = self.IDXData_to_json
-        self.datasrc = {
+        self.save_task = IDXTaskPipe.save_task
+        self.source_dict = {
             'class_path': 'torchvision.datasets',
             'class_name': 'EMNIST',
             'train_args': {
@@ -57,9 +58,9 @@ class TaskGen(DefaultTaskGen):
             local_datas = [niid_k+iid_k for niid_k,iid_k in zip(local_niid_datas, local_datas)]
         return local_datas
 
-class TaskReader(IDXTaskReader):
-    def __init__(self, taskpath=''):
-        super(TaskReader, self).__init__(taskpath)
+class TaskPipe(IDXTaskPipe):
+    def __init__(self):
+        super(TaskPipe, self).__init__()
 
 class TaskCalculator(ClassificationCalculator):
     def __init__(self, device):

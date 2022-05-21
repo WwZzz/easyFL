@@ -39,7 +39,7 @@ The details of this dataset is described as below:
     (dist_id, skewness) in {(6, 0), (10, 0), (10, 0.5), (10, 1.0)} as the orininal setup
     IID or (alpha, beta) in {(0,0), (0.5, 0.5), (1, 1)}.
 """
-from benchmark.toolkits import BasicTaskGen, XYTaskReader, ClassificationCalculator
+from benchmark.toolkits import BasicTaskGen, XYTaskPipe, ClassificationCalculator
 from scipy.special import softmax
 import numpy as np
 import os.path
@@ -97,7 +97,6 @@ class TaskGen(BasicTaskGen):
                     'y': y_valids[cid]
                 }
             }
-
         with open(os.path.join(self.taskpath, 'data.json'), 'w') as outf:
             ujson.dump(feddata, outf)
 
@@ -180,9 +179,9 @@ class TaskGen(BasicTaskGen):
             y_split[k] = Y_k.tolist()
         return X_split, y_split
 
-class TaskReader(XYTaskReader):
-    def __init__(self, taskpath=''):
-        super(TaskReader, self).__init__(taskpath)
+class TaskPipe(XYTaskPipe):
+    def __init__(self):
+        super(TaskPipe, self).__init__()
 
 class TaskCalculator(ClassificationCalculator):
     def __init__(self, device):

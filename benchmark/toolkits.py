@@ -56,7 +56,15 @@ class BasicTaskGen:
     }
     _TYPE_DATASET = ['2DImage', '3DImage', 'Text', 'Sequential', 'Graph', 'Tabular']
 
-    def __init__(self, benchmark, dist_id, skewness, rawdata_path, seed=0):
+    def __init__(self, benchmark, dist_id, skewness, rawdata_path, local_hld_rate=0.2, seed=0):
+        """
+        :param benchmark: the name of the ML task to be converted
+        :param dist_id:  the index for ensuring the type of the data distribution
+        :param skewness: the degree of data heterogeneity which grows with skewness from 0 to 1
+        :param rawdata_path: the dictionary of the original dataset
+        :param local_hld_rate: the hold-out rate of each local dataset (e.g. |valid_data| = |all_data|*local_hld_rate)
+        :param seed: random seed
+        """
         self.benchmark = benchmark
         self.task_rootpath = './fedtask'
         self.rawdata_path = rawdata_path
@@ -64,29 +72,34 @@ class BasicTaskGen:
         self.dist_name = self._TYPE_DIST[dist_id]
         self.skewness = 0 if dist_id==0 else skewness
         self.num_clients = -1
+        self.local_holdout_rate = local_hld_rate
         self.seed = seed
         self.set_random_seed(self.seed)
 
-    def run(self):
+    def run(self, *args, **kwargs):
         """The whole process to generate federated task. """
         pass
 
-    def load_data(self):
+    def load_data(self, *args, **kwargs):
         """Download and load dataset into memory."""
         pass
 
-    def partition(self):
+    def partition(self, *args, **kwargs):
         """Partition the data according to 'dist' and 'skewness'"""
         pass
 
-    def save_data(self):
+    def save_task(self, *args, **kwargs):
         """Save the federated dataset to the task_path/data.
         This algorithm should be implemented as the way to read
-        data from disk that is defined by DataReader.read_data()
+        data from disk that is defined by DataReader.read_task()
         """
         pass
 
-    def save_info(self):
+    def local_holdout(self, *args, **kwargs):
+        """hold-out the validation dataset from each local dataset"""
+        pass
+
+    def save_info(self, *args, **kwargs):
         """Save the task infomation to the .json file stored in taskpath"""
         pass
 
@@ -126,8 +139,8 @@ class BasicTaskGen:
         return
 
 class DefaultTaskGen(BasicTaskGen):
-    def __init__(self, benchmark, dist_id, skewness, rawdata_path, num_clients=1, minvol=10, seed=0):
-        super(DefaultTaskGen, self).__init__(benchmark, dist_id, skewness, rawdata_path, seed)
+    def __init__(self, benchmark, dist_id, skewness, rawdata_path, num_clients=1, minvol=10, local_hld_rate=0.2, seed=0):
+        super(DefaultTaskGen, self).__init__(benchmark, dist_id, skewness, rawdata_path, local_hld_rate, seed)
         self.minvol=minvol
         self.num_classes = -1
         self.train_data = None
@@ -137,8 +150,7 @@ class DefaultTaskGen(BasicTaskGen):
         self.taskname = self.get_taskname()
         self.taskpath = os.path.join(self.task_rootpath, self.taskname)
         self.visualize = None
-        self.save_data = self.XYData_to_json
-        self.datasrc = {
+        self.source_dict = {
             'lib': None,
             'class_name': None,
             'train_args': {},
@@ -160,7 +172,7 @@ class DefaultTaskGen(BasicTaskGen):
         print('-----------------------------------------------------')
         print('Partitioning data...')
         local_datas = self.partition()
-        train_cidxs, valid_cidxs = self.local_holdout(local_datas, rate=0.8, shuffle=True)
+        self.train_cidxs, self.valid_cidxs = self.local_holdout(local_datas, shuffle=True)
         print('Done.')
         # save task infomation as .json file and the federated dataset
         print('-----------------------------------------------------')
@@ -170,8 +182,8 @@ class DefaultTaskGen(BasicTaskGen):
             self.create_task_directories()
             # visualizing partition
             if self.visualize is not None:
-                self.visualize(train_cidxs)
-            self.save_data(train_cidxs, valid_cidxs)
+                self.visualize(self.train_cidxs)
+            self.save_task(self)
         except:
             self._remove_task()
             print("Failed to saving splited dataset.")
@@ -324,62 +336,21 @@ class DefaultTaskGen(BasicTaskGen):
             local_datas  = np.split(d_idxs, proportions)
         return local_datas
 
-    def local_holdout(self, local_datas, rate=0.8, shuffle=False):
+    def local_holdout(self, local_datas, shuffle=False):
         """split each local dataset into train data and valid data according the rate."""
         train_cidxs = []
         valid_cidxs = []
         for local_data in local_datas:
             if shuffle:
                 np.random.shuffle(local_data)
-            k = int(len(local_data) * rate)
+            k = int(len(local_data) * (1-self.local_holdout_rate))
             train_cidxs.append(local_data[:k])
             valid_cidxs.append(local_data[k:])
         return train_cidxs, valid_cidxs
 
-
     def convert_data_for_saving(self):
         """Convert self.train_data and self.test_data to list that can be stored as .json file and the converted dataset={'x':[], 'y':[]}"""
         pass
-
-    def XYData_to_json(self, train_cidxs, valid_cidxs):
-        self.convert_data_for_saving()
-        # save federated dataset
-        feddata = {
-            'store': 'XY',
-            'client_names': self.cnames,
-            'dtest': self.test_data
-
-        }
-        for cid in range(self.num_clients):
-            feddata[self.cnames[cid]] = {
-                'dtrain':{
-                    'x':[self.train_data['x'][did] for did in train_cidxs[cid]], 'y':[self.train_data['y'][did] for did in train_cidxs[cid]]
-                },
-                'dvalid':{
-                    'x':[self.train_data['x'][did] for did in valid_cidxs[cid]], 'y':[self.train_data['y'][did] for did in valid_cidxs[cid]]
-                }
-            }
-        with open(os.path.join(self.taskpath, 'data.json'), 'w') as outf:
-            ujson.dump(feddata, outf)
-        return
-
-    def IDXData_to_json(self, train_cidxs, valid_cidxs):
-        if self.datasrc ==None:
-            raise RuntimeError("Attr datasrc not Found. Please define it in __init__() before calling IndexData_to_json")
-        feddata = {
-            'store': 'IDX',
-            'client_names': self.cnames,
-            'dtest': [i for i in range(len(self.test_data))],
-            'datasrc': self.datasrc
-        }
-        for cid in range(self.num_clients):
-            feddata[self.cnames[cid]] = {
-                'dtrain': train_cidxs[cid],
-                'dvalid': valid_cidxs[cid]
-            }
-        with open(os.path.join(self.taskpath, 'data.json'), 'w') as outf:
-            ujson.dump(feddata, outf)
-        return
 
     def visualize_by_class(self, train_cidxs):
         import collections
@@ -420,7 +391,6 @@ class DefaultTaskGen(BasicTaskGen):
         plt.savefig(os.path.join(self.taskpath, self.get_taskname()+'.jpg'))
         plt.show()
 
-
 # =======================================Task Calculator===============================================
 # This module is to seperate the task-specific calculating part from the federated algorithms, since the
 # way of calculation (e.g. loss, evaluating metrics, optimizer) and the format of data (e.g. image, text)
@@ -445,16 +415,16 @@ class BasicTaskCalculator:
     def data_to_device(self, data):
         raise NotImplementedError
 
-    def train(self):
+    def train(self, *args, **kwargs):
         raise NotImplementedError
 
-    def get_evaluation(self):
+    def get_evaluation(self, *args, **kwargs):
         raise NotImplementedError
 
     def get_data_loader(self, data, batch_size=64, shuffle=True):
         return NotImplementedError
 
-    def test(self):
+    def test(self, *args, **kwargs):
         raise NotImplementedError
 
     def get_optimizer(self, name="sgd", model=None, lr=0.1, weight_decay=0, momentum=0):
@@ -532,13 +502,23 @@ class ClassificationCalculator(BasicTaskCalculator):
 #      datasets in torchvision and torchspeech. Examples can be found in mnist_classification\core.py, cifar\core.py.
 #
 #   2) Save the partitioned data itself into .json file. Then read the data. The advantage of this way is the flexibility.
-#      Examples can be found in emnist_classification\core.py, synthetic_classification\core.py, distributed_quadratic_programming\core.py.
+#      Examples can be found in emnist_classification\core.py, synthetic_classification\core.py, distributedQP\core.py.
 
-class BasicTaskReader:
-    def __init__(self, taskpath=''):
-        self.taskpath = taskpath
+class BasicTaskPipe:
+    """
+    A Pipe for saving the partitioned dataset as .json file (i.e. fedtask)
+    and reading the stored fedtask into the federated system.
 
-    def read_data(self):
+        TaskPipe.save_task: the operation of saving a task should be complemented here
+        TaskPipe.load_task: the operation of loading a task should be complemented here
+        TaskPipe.TaskDataset: when running main.py to start the training procedure, each
+                          dataset should be loaded with this type of class (i.e. server.test_data
+                          client.train_data, client.valid_data)
+    """
+    TaskDataset = None
+
+    @classmethod
+    def load_task(cls, *args, **kwargs):
         """
             Reading the spilted dataset from disk files and loading data into the class 'LocalDataset'.
             This algorithm should read three types of data from the processed task:
@@ -547,121 +527,244 @@ class BasicTaskReader:
                 test_set = test_dataset
             Return train_sets, valid_sets, test_set, client_names
         """
-        pass
+        raise NotImplementedError
 
-class XYTaskReader(BasicTaskReader):
-    def read_data(self):
-        with open(os.path.join(self.taskpath, 'data.json'), 'r') as inf:
+    @classmethod
+    def save_task(cls, *args, **kwargs):
+        """save the federated task as .json file"""
+        raise NotImplementedError
+
+class XYTaskPipe(BasicTaskPipe):
+    class XYDataset(Dataset):
+        def __init__(self, X=[], Y=[], totensor=True):
+            """ Init Dataset with pairs of features and labels/annotations.
+            XYDataset transforms data that is list\array into tensor.
+            The data is already loaded into memory before passing into XYDataset.__init__()
+            and thus is only suitable for benchmarks with small size (e.g. CIFAR10, MNIST)
+            Args:
+                X: a list of features
+                Y: a list of labels with the same length of X
+            """
+            if not self._check_equal_length(X, Y):
+                raise RuntimeError("Different length of Y with X.")
+            if totensor:
+                try:
+                    self.X = torch.tensor(X)
+                    self.Y = torch.tensor(Y)
+                except:
+                    raise RuntimeError("Failed to convert input into torch.Tensor.")
+            else:
+                self.X = X
+                self.Y = Y
+            self.all_labels = list(set(self.tolist()[1]))
+
+        def __len__(self):
+            return len(self.Y)
+
+        def __getitem__(self, item):
+            return self.X[item], self.Y[item]
+
+        def tolist(self):
+            if not isinstance(self.X, torch.Tensor):
+                return self.X, self.Y
+            return self.X.tolist(), self.Y.tolist()
+
+        def _check_equal_length(self, X, Y):
+            return len(X) == len(Y)
+
+        def get_all_labels(self):
+            return self.all_labels
+    TaskDataset = XYDataset
+    @classmethod
+    def save_task(cls, generator):
+        """
+        Store all the features (i.e. X) and coresponding labels (i.e. Y) into disk as .json file.
+        The input 'generator' must have attributes:
+            :taskpath: string. the path of storing
+            :train_data: the training dataset which is a dict {'x':..., 'y':...}
+            :test_data: the testing dataset which is a dict {'x':..., 'y':...}
+            :train_cidxs: a list of lists of integer. The splited indices in train_data of the training part of each local dataset
+            :valid_cidxs: a list of lists of integer. The splited indices in train_data of the valiadtion part of each local dataset
+            :client_names: a list of strings. The names of all the clients, which is used to index the clients' data in .json file
+            :return:
+        """
+        feddata = {
+            'store': 'XY',
+            'client_names': generator.cnames,
+            'dtest': generator.test_data
+        }
+        for cid in range(len(generator.cnames)):
+            feddata[generator.cnames[cid]] = {
+                'dtrain': {
+                    'x': [generator.train_data['x'][did] for did in generator.train_cidxs[cid]],
+                    'y': [generator.train_data['y'][did] for did in generator.train_cidxs[cid]]
+                },
+                'dvalid': {
+                    'x': [generator.train_data['x'][did] for did in generator.valid_cidxs[cid]],
+                    'y': [generator.train_data['y'][did] for did in generator.valid_cidxs[cid]]
+                }
+            }
+        with open(os.path.join(generator.taskpath, 'data.json'), 'w') as outf:
+            ujson.dump(feddata, outf)
+
+    @classmethod
+    def load_task(cls, task_path):
+        with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
-        test_data = XYDataset(feddata['dtest']['x'], feddata['dtest']['y'])
-        train_datas = [XYDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
-        valid_datas = [XYDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
+        test_data = cls.TaskDataset(feddata['dtest']['x'], feddata['dtest']['y'])
+        train_datas = [cls.TaskDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
+        valid_datas = [cls.TaskDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
         return train_datas, valid_datas, test_data, feddata['client_names']
 
-class IDXTaskReader(BasicTaskReader):
-    def read_data(self):
-        with open(os.path.join(self.taskpath, 'data.json'), 'r') as inf:
+class IDXTaskPipe(BasicTaskPipe):
+    class IDXDataset(Dataset):
+        # The source dataset that can be indexed by IDXDataset
+        _ORIGIN_DATA = {'TRAIN': None, 'TEST': None, 'CLASS': None}
+
+        def __init__(self, idxs, key='TRAIN'):
+            """Init dataset with 'src_data' and a list of indexes that are used to position data in 'src_data'"""
+            if not isinstance(idxs, list):
+                raise RuntimeError("Invalid Indexes")
+            self.idxs = idxs
+            self.key = key
+
+        @classmethod
+        def SET_ORIGIN_DATA(cls, train_data=None, test_data=None):
+            cls._ORIGIN_DATA['TRAIN'] = train_data
+            cls._ORIGIN_DATA['TEST'] = test_data
+
+        @classmethod
+        def SET_ORIGIN_CLASS(cls, DataClass=None):
+            cls._ORIGIN_DATA['CLASS'] = DataClass
+
+        @classmethod
+        def ADD_KEY_TO_DATA(cls, key, value=None):
+            if key == None:
+                raise RuntimeError("Empty key when calling class algorithm IDXData.ADD_KEY_TO_DATA")
+            cls._ORIGIN_DATA[key] = value
+
+        def __getitem__(self, item):
+            idx = self.idxs[item]
+            return self._ORIGIN_DATA[self.key][idx]
+
+        def __len__(self):
+            return len(self.idxs)
+    TaskDataset = IDXDataset
+    @classmethod
+    def save_task(cls, generator):
+        """
+        Store the splited indices of the local data in the original dataset (source dataset) into the disk as .json file
+        The input 'generator' must have attributes:
+            :taskpath: string. the path of storing
+            :train_data: the training dataset which is a dict {'x':..., 'y':...}
+            :test_data: the testing dataset which is a dict {'x':..., 'y':...}
+            :train_cidxs: a list of lists of integer. The splited indices in train_data of the training part of each local dataset
+            :valid_cidxs: a list of lists of integer. The splited indices in train_data of the valiadtion part of each local dataset
+            :client_names: a list of strings. The names of all the clients, which is used to index the clients' data in .json file
+            :source_dict: a dict that contains parameters which is necessary to dynamically importing the original Dataset class and generating instances
+                    For example, for MNIST using this task pipe, the source_dict should be like:
+                    {'class_path': 'torchvision.datasets',
+                     'class_name': 'MNIST',
+                     'train_args': {'root': '"'+MNIST_rawdata_path+'"', 'download': 'True', 'transform': 'transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])','train': 'True'},
+                     'test_args': {'root': '"'+MNIST_rawdata_path+'"', 'download': 'True', 'transform': 'transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])', 'train': 'False'}
+                    }
+            :return:
+        """
+        feddata = {
+            'store': 'IDX',
+            'client_names': generator.cnames,
+            'dtest': [i for i in range(len(generator.test_data))],
+            'datasrc': generator.source_dict
+        }
+        for cid in range(len(generator.cnames)):
+            feddata[generator.cnames[cid]] = {
+                'dtrain': generator.train_cidxs[cid],
+                'dvalid': generator.valid_cidxs[cid]
+            }
+        with open(os.path.join(generator.taskpath, 'data.json'), 'w') as outf:
+            ujson.dump(feddata, outf)
+        return
+
+    @classmethod
+    def load_task(cls, task_path):
+        with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
         class_path = feddata['datasrc']['class_path']
         class_name = feddata['datasrc']['class_name']
         origin_class = getattr(importlib.import_module(class_path), class_name)
-        IDXDataset.SET_ORIGIN_CLASS(origin_class)
-        origin_train_data = self.args_to_dataset(feddata['datasrc']['train_args'])
-        origin_test_data = self.args_to_dataset(feddata['datasrc']['test_args'])
-        IDXDataset.SET_ORIGIN_DATA(train_data=origin_train_data, test_data=origin_test_data)
-
-        test_data = IDXDataset(feddata['dtest'], key='TEST')
-        train_datas = [IDXDataset(feddata[name]['dtrain']) for name in feddata['client_names']]
-        valid_datas = [IDXDataset(feddata[name]['dvalid']) for name in feddata['client_names']]
+        cls.TaskDataset.SET_ORIGIN_CLASS(origin_class)
+        origin_train_data = cls.args_to_dataset(feddata['datasrc']['train_args'])
+        origin_test_data = cls.args_to_dataset(feddata['datasrc']['test_args'])
+        cls.TaskDataset.SET_ORIGIN_DATA(train_data=origin_train_data, test_data=origin_test_data)
+        test_data = cls.TaskDataset(feddata['dtest'], key='TEST')
+        train_datas = [cls.TaskDataset(feddata[name]['dtrain']) for name in feddata['client_names']]
+        valid_datas = [cls.TaskDataset(feddata[name]['dvalid']) for name in feddata['client_names']]
         return train_datas, valid_datas, test_data, feddata['client_names']
 
-    def args_to_dataset(self, args):
+    @classmethod
+    def args_to_dataset(cls, args):
         if not isinstance(args, dict):
             raise TypeError
-        args_str = '(' +  ','.join([key+'='+value for key,value in args.items()]) + ')'
-        return eval("IDXDataset._ORIGIN_DATA['CLASS']"+args_str)
+        args_str = '(' + ','.join([key + '=' + value for key, value in args.items()]) + ')'
+        return eval("cls.TaskDataset._ORIGIN_DATA['CLASS']" + args_str)
 
-class XTaskReader(BasicTaskReader):
-    def read_data(self):
-        with open(os.path.join(self.taskpath, 'data.json'), 'r') as inf:
-            feddata = ujson.load(inf)
-        test_data = XDataset(feddata['dtest']['x'])
-        train_datas = [XDataset(feddata[name]['dtrain']['x']) for name in feddata['client_names']]
-        valid_datas = [XDataset(feddata[name]['dvalid']['x']) for name in feddata['client_names']]
-        return train_datas, valid_datas, test_data, feddata['client_names']
+class XTaskPipe(BasicTaskPipe):
+    class XDataset(Dataset):
+        def __init__(self, X=[], totensor=True):
+            if totensor:
+                try:
+                    self.X = torch.tensor(X)
+                except:
+                    raise RuntimeError("Failed to convert input into torch.Tensor.")
+            else:
+                self.X = X
 
-class XYDataset(Dataset):
-    def __init__(self, X=[], Y=[], totensor = True):
-        """ Init Dataset with pairs of features and labels/annotations.
-        XYDataset transforms data that is list\array into tensor.
-        The data is already loaded into memory before passing into XYDataset.__init__()
-        and thus is only suitable for benchmarks with small size (e.g. CIFAR10, MNIST)
-        Args:
-            X: a list of features
-            Y: a list of labels with the same length of X
+        def __getitem__(self, item):
+            return self.X[item]
+
+        def __len__(self):
+            return len(self.X)
+
+    TaskDataset = XDataset
+    @classmethod
+    def save_task(cls, generator):
         """
-        if not self._check_equal_length(X, Y):
-            raise RuntimeError("Different length of Y with X.")
-        if totensor:
-            try:
-                self.X = torch.tensor(X)
-                self.Y = torch.tensor(Y)
-            except:
-                raise RuntimeError("Failed to convert input into torch.Tensor.")
-        else:
-            self.X = X
-            self.Y = Y
-        self.all_labels = list(set(self.tolist()[1]))
-
-    def __len__(self):
-        return len(self.Y)
-
-    def __getitem__(self, item):
-        return self.X[item], self.Y[item]
-
-    def tolist(self):
-        if not isinstance(self.X, torch.Tensor):
-            return self.X, self.Y
-        return self.X.tolist(), self.Y.tolist()
-
-    def _check_equal_length(self, X, Y):
-        return len(X)==len(Y)
-
-    def get_all_labels(self):
-        return self.all_labels
-
-class IDXDataset(Dataset):
-    # The source dataset that can be indexed by IDXDataset
-    _ORIGIN_DATA = {'TRAIN': None, 'TEST': None, 'CLASS':None}
-
-    def __init__(self, idxs, key='TRAIN'):
-        """Init dataset with 'src_data' and a list of indexes that are used to position data in 'src_data'"""
-        if not isinstance(idxs, list):
-            raise RuntimeError("Invalid Indexes")
-        self.idxs = idxs
-        self.key = key
+        Store all the features (i.e. X) into the disk as .json file.
+        The input 'generator' must have attributes:
+            :taskpath: string. the path of storing
+            :train_data: the training dataset which is a dict {'x':..., 'y':...}
+            :test_data: the testing dataset which is a dict {'x':..., 'y':...}
+            :train_cidxs: a list of lists of integer. The splited indices in train_data of the training part of each local dataset
+            :valid_cidxs: a list of lists of integer. The splited indices in train_data of the valiadtion part of each local dataset
+            :client_names: a list of strings. The names of all the clients, which is used to index the clients' data in .json file
+            :return:
+        """
+        feddata = {
+            'store': 'X',
+            'client_names': generator.cnames,
+            'dtest': generator.test_data
+        }
+        for cid in range(generator.num_clients):
+            feddata[generator.cnames[cid]] = {
+                'dtrain': {
+                    'x': [generator.train_data[did] for did in generator.train_cidxs[cid]],
+                },
+                'dvalid': {
+                    'x': [generator.train_data[did] for did in generator.valid_cidxs[cid]],
+                }
+            }
+        with open(os.path.join(generator.taskpath, 'data.json'), 'w') as outf:
+            ujson.dump(feddata, outf)
+        return
 
     @classmethod
-    def SET_ORIGIN_DATA(cls, train_data=None, test_data=None):
-        cls._ORIGIN_DATA['TRAIN'] = train_data
-        cls._ORIGIN_DATA['TEST'] = test_data
-
-    @classmethod
-    def SET_ORIGIN_CLASS(cls, DataClass = None):
-        cls._ORIGIN_DATA['CLASS'] = DataClass
-
-    @classmethod
-    def ADD_KEY_TO_DATA(cls, key, value = None):
-        if key==None:
-            raise RuntimeError("Empty key when calling class algorithm IDXData.ADD_KEY_TO_DATA")
-        cls._ORIGIN_DATA[key]=value
-
-    def __getitem__(self, item):
-        idx = self.idxs[item]
-        return self._ORIGIN_DATA[self.key][idx]
-
-    def __len__(self):
-        return len(self.idxs)
+    def load_task(cls, task_path):
+        with open(os.path.join(task_path, 'data.json'), 'r') as inf:
+            feddata = ujson.load(inf)
+        test_data = cls.TaskDataset(feddata['dtest']['x'])
+        train_datas = [cls.TaskDataset(feddata[name]['dtrain']['x']) for name in feddata['client_names']]
+        valid_datas = [cls.TaskDataset(feddata[name]['dvalid']['x']) for name in feddata['client_names']]
+        return train_datas, valid_datas, test_data, feddata['client_names']
 
 class TupleDataset(Dataset):
     def __init__(self, X1=[], X2=[], Y=[], totensor=True):
@@ -688,18 +791,3 @@ class TupleDataset(Dataset):
             return self.X1, self.X2, self.Y
         return self.X1.tolist(), self.X2.tolist(), self.Y.tolist()
 
-class XDataset(Dataset):
-    def __init__(self, X=[], totensor=True):
-        if totensor:
-            try:
-                self.X = torch.tensor(X)
-            except:
-                raise RuntimeError("Failed to convert input into torch.Tensor.")
-        else:
-            self.X = X
-
-    def __getitem__(self, item):
-        return self.X[item]
-
-    def __len__(self):
-        return len(self.X)

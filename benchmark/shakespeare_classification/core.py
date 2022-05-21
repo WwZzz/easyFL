@@ -4,7 +4,7 @@ from benchmark.toolkits import DefaultTaskGen, TupleDataset
 import collections
 import re
 import os
-from benchmark.toolkits import  XYTaskReader, ClassificationCalculator
+from benchmark.toolkits import  XYTaskPipe, ClassificationCalculator
 import numpy as np
 import os.path
 import ujson
@@ -23,13 +23,14 @@ def extract_from_zip(src_path, target_path):
     return [os.path.join(target_path, tar) for tar in targets]
 
 class TaskGen(DefaultTaskGen):
-    def __init__(self, dist_id, num_clients=1, skewness=0.5, minvol = 10, seed=0):
+    def __init__(self, dist_id, num_clients=1, skewness=0.5, minvol = 10, local_hld_rate=0.2, seed=0):
         super(TaskGen, self).__init__(benchmark='shakespeare_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
                                       rawdata_path='./benchmark/RAW_DATA/SHAKESPEARE',
                                       minvol=minvol,
+                                      local_hld_rate=local_hld_rate,
                                       seed = seed
                                       )
         # Regular expression to capture an actors name, and line continuation
@@ -42,7 +43,7 @@ class TaskGen(DefaultTaskGen):
         self.ALL_LETTERS = "\n !\"&'(),-.0123456789:;>?ABCDEFGHIJKLMNOPQRSTUVWXYZ[]abcdefghijklmnopqrstuvwxyz}"
         self.NUM_LETTERS = len(self.ALL_LETTERS)
         self.SEQ_LENGTH = 80
-        self.save_data = self.XYData_to_json
+        self.save_data = XYTaskPipe.save_task
 
     def load_data(self):
         # download, read the raw dataset and store it as .json
@@ -114,12 +115,13 @@ class TaskGen(DefaultTaskGen):
         self.test_data = test_dict
         return
 
-    def convert_data_for_saving(self):
+    def save_task(self, generator):
         xs, _, ys = self.train_data.tolist()
         self.train_data = {
             'x': xs,
             'y': ys
         }
+        XYTaskPipe.save_task(self)
 
     def _split_into_plays(self, shakespeare_full):
         """Splits the full data by play."""
@@ -238,9 +240,9 @@ class TaskGen(DefaultTaskGen):
     def Y_text_to_vec(self, Y):
         return [self.ALL_LETTERS.find(c) for c in Y]
 
-class TaskReader(XYTaskReader):
-    def __init__(self, taskpath=''):
-        super(TaskReader, self).__init__(taskpath)
+class TaskPipe(XYTaskPipe):
+    def __init__(self):
+        super(TaskPipe, self).__init__()
 
 class TaskCalculator(ClassificationCalculator):
     def __init__(self, device):

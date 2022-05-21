@@ -104,8 +104,8 @@ def initialize(option):
         print("Invalid Model Configuration.")
         exit(1)
     # read federated task by TaskReader
-    task_reader = getattr(importlib.import_module(bmk_core_path), 'TaskReader')(taskpath=os.path.join('fedtask', option['task']))
-    train_datas, valid_datas, test_data, client_names = task_reader.read_data()
+    TaskPipe = getattr(importlib.import_module(bmk_core_path), 'TaskPipe')
+    train_datas, valid_datas, test_data, client_names = TaskPipe.load_task(os.path.join('fedtask', option['task']))
     num_clients = len(client_names)
     print("done")
 

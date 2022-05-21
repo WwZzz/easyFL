@@ -1,5 +1,5 @@
 from torchvision import datasets, transforms
-from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, XYTaskReader, XYDataset
+from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, XYTaskPipe
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, skewness = 0.5, selected_labels = [0,2,6], seed=0):
@@ -11,7 +11,6 @@ class TaskGen(DefaultTaskGen):
                                       seed=seed
                                       )
         self.num_classes = len(selected_labels)
-        self.save_data = self.XYData_to_json
         self.selected_labels = selected_labels
         self.label_dict = {0: 'T-shirt', 1: 'Trouser', 2: 'pullover', 3: 'Dress', 4: 'Coat', 5: 'Sandal', 6: 'shirt', 7: 'Sneaker', 8: 'Bag', 9: 'Abkle boot'}
 
@@ -24,7 +23,7 @@ class TaskGen(DefaultTaskGen):
         train_didxs = [did for did in range(len(self.train_data)) if self.train_data[did][1] in self.selected_labels]
         train_data_x = [self.train_data[did][0].tolist() for did in train_didxs]
         train_data_y = [lb_convert[self.train_data[did][1]] for did in train_didxs]
-        self.train_data = XYDataset(train_data_x, train_data_y)
+        self.train_data = XYTaskPipe.TaskDataset(train_data_x, train_data_y)
         test_didxs = [did for did in range(len(self.test_data)) if self.test_data[did][1] in self.selected_labels]
         test_data_x = [self.test_data[did][0].tolist() for did in test_didxs]
         test_data_y = [lb_convert[self.test_data[did][1]] for did in test_didxs]
@@ -35,9 +34,13 @@ class TaskGen(DefaultTaskGen):
         self.train_data = {'x':train_x, 'y':train_y}
         return
 
-class TaskReader(XYTaskReader):
-    def __init__(self, taskpath=''):
-        super(TaskReader, self).__init__(taskpath)
+    def save_task(self, generator):
+        self.convert_data_for_saving()
+        XYTaskPipe.save_task(self)
+
+class TaskPipe(XYTaskPipe):
+    def __init__(self):
+        super(TaskPipe, self).__init__()
 
 class TaskCalculator(ClassificationCalculator):
     def __init__(self, device):
