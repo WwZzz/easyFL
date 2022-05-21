@@ -231,4 +231,5 @@ class Client(BasicClient):
         # 5
         flw.logger.write('client00_local_testing_loss', rec_test_loss)
         return
-```'
+```
+In this way, the codes of `fedavg.py` is preserved, since all the addtional operations are made in another dependent algorithm file with a different name. 
