@@ -12,8 +12,10 @@ Fortunately, we've developed this module to simultaneously address these problem
    <img src="https://github.com/WwZzz/myfigs/blob/master/easyfl_benchmark_od.jpg" width="1000" />
 </p>
 
-## Generating FL Task From Traditional ML Task By `TaskGenerator` and `TaskReader`
-coming soon...
+## Generating FL Task From Traditional ML Task By `TaskGenerator` and `TaskPipe`
+To federalize a traditional ML task, we consider steps including loading the original ML dataset, choosing the model, partitioning the dataset, saving as a stastic file, dynamically loading the saved file into federated training system. Now we illustrate each step in detail.
+### Loading Dataset
+<!-- download the original dataset into two the directionary /benchmark/RAW_DATA/benchmark_name.  -->
 
 ## Decoupling Task-Specific Calculation From Federated System by `TaskCalculator`
 coming soon...
