@@ -199,6 +199,36 @@ In each communication round, the action of the server and clients are respective
 Now let's take a look on the results of our implemention of Scaffold.
 
 # How to make observations during training time?
-
-coming soon...
 <div id='refer-anchor-2'></div>
+To make additional observations about the whole training procedure for different optimization algorithms, we encourage the user to create another new algorithm file  and use `MyLogger(utils.fmodule.Logger)` to insert codes to the proper position to show the particular computing results. For example, if someone wants to see how testing loss changes during the local training process of a specified client i (e.g. client 0) when using fedavg to optimize the targets, what he needs to do including:
+
+* create a new file `algorithm/fedavg_localtest_example.py` and copy the necessary parts from `fedbase.py` (e.g. copy Client.train() into the new file since the codes should be inserted into the local training process to show the testing loss during local training time).
+* create a new class `class MyLogger(utils.fflow.Logger)` and add the instance method `local_test(server, model): {return the server's testing loss of the model}` to the class. The instance of this class will be generated in `utils.fflow.logger`.
+* use `utils.fflow.logger` to make observations on client 0 in the training process as below, and the results will be stored by the logger into the log file in `fedtask/task_name/record/`.
+
+```python
+# 0
+import utils.fflow as flw
+...
+class Client(BasicClient):
+    def train(self, model):
+        model.train()
+        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        # 1
+        rec_test_loss = []
+        for iter in range(self.num_steps):
+            batch_data = self.get_batch_data()
+            # 2
+            if self.name == 'Client00':
+                # 3
+                test_loss = self.server.test(model)['loss']
+                # 4
+                rec_test_loss.append(test_loss)
+            model.zero_grad()
+            loss = self.calculator.train(model, batch_data)
+            loss.backward()
+            optimizer.step()
+        # 5
+        flw.logger.write('client00_local_testing_loss', rec_test_loss)
+        return
+```'
