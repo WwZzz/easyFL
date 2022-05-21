@@ -9,7 +9,7 @@ When someone wants to convert a traditional ML task into a federated one, the is
 Fortunately, we've developed this module to simultaneously address these problems. The main purpose of ours is to 1) provide a data pre-processing paradigm to distribute a ML dataset to different virtual clients, 2) decouple the task-specific part from federated optimization process. Now we in turn introduce how we achieve the two objectives and finally take an example of converting to help understand the whole procedure.
 
 <p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/federated_benchmark_od.Jpeg" width="1000" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/easyfl_benchmark_od.jpg" width="1000" />
 </p>
 
 ## Generating FL Task From Traditional ML Task By `TaskGenerator` and `TaskReader`
