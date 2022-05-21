@@ -50,5 +50,29 @@ The `TaskPipe` is named as its function since it's like a pipe of TaskGen-Fedtas
 
 ## Decoupling Task-Specific Calculation From Federated System by `TaskCalculator`
 
-It's difficult or even impossible to decouple all the task-specific parts from the federated optimization, since the models, the optimizers, the metrics, training procedures, the shape of data all vary across different ML tasks and federated algorithms. Therefore, we try to conclude a universal template that can be generalized to as more ML tasks as possible. 
+It's difficult or even impossible to decouple all the task-specific parts from the federated optimization, since the models, the optimizers, the metrics, training procedures, the shape of data all vary across different ML tasks and federated algorithms. Therefore, we try to conclude a universal template that can be generalized to as more ML tasks as possible. Let's first see the local training procedure of `BasicClient.train()`:
 
+```python
+class BasicClient:
+   ...
+   def train(self, model):
+        model.train()
+        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        for iter in range(self.num_steps):
+            batch_data = self.get_batch_data()
+            model.zero_grad()
+            loss = self.calculator.train(model, batch_data)
+            loss.backward()
+            optimizer.step()
+        return
+        
+    def get_batch_data(self):
+     try:
+         batch_data = next(self.data_loader)
+     except:
+         self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, num_workers=self.loader_num_workers))
+         batch_data = next(self.data_loader)
+     return batch_data
+```
+
+Here the `calculator` is the instance of `TaskCalculator` that is dynamically imported at `utils/fflow.initialize` according to the benchmark name of the fedtask.  
