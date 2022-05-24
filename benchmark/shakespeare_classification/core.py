@@ -43,7 +43,7 @@ class TaskGen(DefaultTaskGen):
         self.ALL_LETTERS = "\n !\"&'(),-.0123456789:;>?ABCDEFGHIJKLMNOPQRSTUVWXYZ[]abcdefghijklmnopqrstuvwxyz}"
         self.NUM_LETTERS = len(self.ALL_LETTERS)
         self.SEQ_LENGTH = 80
-        self.save_data = XYTaskPipe.save_task
+        self.save_task = XYTaskPipe.save_task
 
     def load_data(self):
         # download, read the raw dataset and store it as .json

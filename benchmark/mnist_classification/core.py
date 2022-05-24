@@ -12,7 +12,7 @@ class TaskGen(DefaultTaskGen):
                                       seed=seed
                                       )
         self.num_classes = 10
-        self.save_data = IDXTaskPipe.save_task
+        self.save_task = IDXTaskPipe.save_task
         self.visualize = self.visualize_by_class
         self.source_dict = {
             'class_path': 'torchvision.datasets',
