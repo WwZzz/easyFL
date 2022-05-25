@@ -190,4 +190,12 @@ if __name__ == '__main__':
         plt.ylabel(curve)
         ax = plt.gca()
         plt.grid()
-        plt.show()
+        try:
+            plt.show()
+        except:
+            print('Failed to call plt.show()')
+        finally:
+            import datetime
+            res_name = datetime.datetime.strftime(datetime.datetime.now(),'%Y-%m-%d-%H:%M:%S')
+            res_name = res_name + curve +'.png'
+            plt.savefig(os.path.join('../fedtask', task, 'record', res_name))
