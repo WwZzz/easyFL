@@ -11,6 +11,8 @@ from utils import fmodule
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
+        if not "get_embedding" in dir(model):
+            raise NotImplementedError("the model used by Moon should have the method `get_embedding` to obtain the intermediate result of forward")
         self.paras_name = ['mu']
 
 class Client(BasicClient):
