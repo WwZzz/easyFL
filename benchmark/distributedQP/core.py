@@ -76,7 +76,7 @@ class TaskCalculator(BasicTaskCalculator):
         tdata = self.data_to_device(data)
         outputs = model(tdata)
         loss = 0.5 * torch.mean(outputs)
-        return loss
+        return {'loss': loss}
 
     @torch.no_grad()
     def get_evaluation(self, model, data):
