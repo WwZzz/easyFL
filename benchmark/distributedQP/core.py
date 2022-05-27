@@ -72,7 +72,7 @@ class TaskCalculator(BasicTaskCalculator):
     def __init__(self, device):
         super(TaskCalculator, self).__init__(device)
 
-    def train(self, model, data):
+    def train_one_step(self, model, data):
         tdata = self.data_to_device(data)
         outputs = model(tdata)
         loss = 0.5 * torch.mean(outputs)

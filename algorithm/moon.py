@@ -34,7 +34,7 @@ class Client(BasicClient):
         for iter in range(self.num_steps):
             batch_data = self.get_batch_data()
             model.zero_grad()
-            loss = self.calculator.train(model, batch_data)
+            loss = self.calculator.train_one_step(model, batch_data)['loss']
             # calculate model contrastive loss
             batch_data = self.calculator.data_to_device(batch_data)
             z = model.get_embedding(batch_data[0])

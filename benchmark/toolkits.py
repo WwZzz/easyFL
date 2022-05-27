@@ -409,13 +409,13 @@ class BasicTaskCalculator:
 
     def __init__(self, device):
         self.device = device
-        self.lossfunc = None
+        self.criterion = None
         self.DataLoader = None
 
     def data_to_device(self, data):
         raise NotImplementedError
 
-    def train(self, *args, **kwargs):
+    def train_one_step(self, *args, **kwargs):
         raise NotImplementedError
 
     def get_evaluation(self, *args, **kwargs):
@@ -444,19 +444,19 @@ class BasicTaskCalculator:
 class ClassificationCalculator(BasicTaskCalculator):
     def __init__(self, device):
         super(ClassificationCalculator, self).__init__(device)
-        self.lossfunc = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.CrossEntropyLoss()
         self.DataLoader = DataLoader
 
-    def train(self, model, data):
+    def train_one_step(self, model, data):
         """
         :param model: the model to train
         :param data: the training dataset
-        :return: loss of the computing graph created by torch
+        :return: dict of train-one-step's result, which should at least contains the key 'loss'
         """
         tdata = self.data_to_device(data)
         outputs = model(tdata[0])
-        loss = self.lossfunc(outputs, tdata[-1])
-        return loss
+        loss = self.criterion(outputs, tdata[-1])
+        return {'loss': loss}
 
     @torch.no_grad()
     def test(self, model, dataset, batch_size=64, num_workers=0):
@@ -475,7 +475,7 @@ class ClassificationCalculator(BasicTaskCalculator):
         for batch_id, batch_data in enumerate(data_loader):
             batch_data = self.data_to_device(batch_data)
             outputs = model(batch_data[0])
-            batch_mean_loss = self.lossfunc(outputs, batch_data[-1]).item()
+            batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
             y_pred = outputs.data.max(1, keepdim=True)[1]
             correct = y_pred.eq(batch_data[-1].data.view_as(y_pred)).long().cpu().sum()
             num_correct += correct.item()

@@ -33,30 +33,30 @@ calculate and add the proximal loss to the original loss before backward propaga
 
 ```python
 def train(self, model):
-    """the '"' hightlight additional lines of train() in fedprox compared to fedavg"""
-    # 1
-    """src_model = copy.deepcopy(model)"""
-    # 2 (only for efficiency and can be removed)   
-    """src_model.freeze_grad()"""
-    model.train()
-    data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
-    optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
-                                              weight_decay=self.weight_decay, momentum=self.momentum)
-    for iter in range(self.num_steps):
-        batch_data = self.get_batch_data()
-        model.zero_grad()
-        loss = self.calculator.train(model, batch_data)
-        # 3
-        """loss_proximal = 0"""
-        # 4
-        """
-        for pm, ps in zip(model.parameters(), src_model.parameters()): loss_proximal+= torch.sum(torch.pow(pm-ps,2))
-        """
-        # 5
-        """loss += 0.5 * self.mu * loss_proximal"""
-        loss.backward()
-        optimizer.step()
-    return
+ """the '"' hightlight additional lines of train() in fedprox compared to fedavg"""
+ # 1
+ """src_model = copy.deepcopy(model)"""
+ # 2 (only for efficiency and can be removed)   
+ """src_model.freeze_grad()"""
+ model.train()
+ data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
+ optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
+                                           weight_decay=self.weight_decay, momentum=self.momentum)
+ for iter in range(self.num_steps):
+  batch_data = self.get_batch_data()
+  model.zero_grad()
+  loss = self.calculator.train_one_step(model, batch_data)
+  # 3
+  """loss_proximal = 0"""
+  # 4
+  """
+  for pm, ps in zip(model.parameters(), src_model.parameters()): loss_proximal+= torch.sum(torch.pow(pm-ps,2))
+  """
+  # 5
+  """loss += 0.5 * self.mu * loss_proximal"""
+  loss.backward()
+  optimizer.step()
+ return
 ```
  
  That is to say, you only need 5 lines 
@@ -142,30 +142,32 @@ We implement this by instead calculating the terms below to obtain the same resu
           communicate (dy, dc)
 ```
 The whole codes for this part is shown as below (`train()` is copied from `BasicClient.train()` and modified by adding/changing total 7 lines):
+
 ```python
     def train(self, model, cg):
-        model.train()
-        # 1
-        src_model = copy.deepcopy(model)
-        # 2
-        src_model.freeze_grad()
-        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        for iter in range(self.num_steps):
-            batch_data = self.get_batch_data()
-            model.zero_grad()
-            loss = self.calculator.train(model, batch_data)
-            loss.backward()
-            # 3
-            for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()): pm.grad = pm.grad - pc + pcg
-            optimizer.step()
-        # 4    
-        dy = model - src_model
-        # 5
-        dc = -1.0 / (self.num_steps * self.learning_rate) * dy - cg
-        # 6
-        self.c = self.c + dc
-        # 7
-        return dy, dc
+ model.train()
+ # 1
+ src_model = copy.deepcopy(model)
+ # 2
+ src_model.freeze_grad()
+ optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
+                                           weight_decay=self.weight_decay, momentum=self.momentum)
+ for iter in range(self.num_steps):
+  batch_data = self.get_batch_data()
+  model.zero_grad()
+  loss = self.calculator.train_one_step(model, batch_data)
+  loss.backward()
+  # 3
+  for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()): pm.grad = pm.grad - pc + pcg
+  optimizer.step()
+ # 4    
+ dy = model - src_model
+ # 5
+ dc = -1.0 / (self.num_steps * self.learning_rate) * dy - cg
+ # 6
+ self.c = self.c + dc
+ # 7
+ return dy, dc
 ```
 
 **Fourth, change the aggregation way of the server.**
@@ -209,35 +211,40 @@ To make additional observations about the whole training procedure for different
 ```python
 # 0
 import utils.fflow as flw
+
 ...
+
+
 class Client(BasicClient):
-    def train(self, model):
-        model.train()
-        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        # 1
-        rec_test_loss = []
-        for iter in range(self.num_steps):
-            batch_data = self.get_batch_data()
-            # 2
-            if self.name == 'Client00':
-                # 3
-                test_loss = flw.logger.local_test(self.server, model)
-                # 4
-                rec_test_loss.append(test_loss)
-            model.zero_grad()
-            loss = self.calculator.train(model, batch_data)
-            loss.backward()
-            optimizer.step()
-        # 5
-        flw.logger.write('client00_local_testing_loss', rec_test_loss)
-        return
-        
+ def train(self, model):
+  model.train()
+  optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
+                                            weight_decay=self.weight_decay, momentum=self.momentum)
+  # 1
+  rec_test_loss = []
+  for iter in range(self.num_steps):
+   batch_data = self.get_batch_data()
+   # 2
+   if self.name == 'Client00':
+    # 3
+    test_loss = flw.logger.local_test(self.server, model)
+    # 4
+    rec_test_loss.append(test_loss)
+   model.zero_grad()
+   loss = self.calculator.train_one_step(model, batch_data)
+   loss.backward()
+   optimizer.step()
+  # 5
+  flw.logger.write('client00_local_testing_loss', rec_test_loss)
+  return
+
+
 class MyLogger(flw.Logger):
-    def __init__(self):
-        super(MyLogger, self).__init__()
-    
-    def local_test(self, server, model):
-        test_metric = server.test(model)
-        return test_metric['loss']
+ def __init__(self):
+  super(MyLogger, self).__init__()
+
+ def local_test(self, server, model):
+  test_metric = server.test(model)
+  return test_metric['loss']
 ```
 In this way, the codes of `fedavg.py` is preserved, since all the addtional operations are made in another dependent algorithm file with a different name. 

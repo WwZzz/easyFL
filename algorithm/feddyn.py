@@ -31,7 +31,7 @@ class Client(BasicClient):
         for iter in range(self.num_steps):
             batch_data = self.get_batch_data()
             model.zero_grad()
-            l1 = self.calculator.train(model, batch_data)
+            l1 = self.calculator.train_one_step(model, batch_data)['loss']
             l2 = 0
             l3 = 0
             for pgl, pm, ps in zip(self.gradL.parameters(), model.parameters(), src_model.parameters()):

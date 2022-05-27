@@ -23,7 +23,7 @@ class Client(BasicClient):
             batch_data = self.get_batch_data()
             model.zero_grad()
             # calculate the loss of the model on batched dataset through task-specified calculator
-            loss = self.calculator.train(model, batch_data)
+            loss = self.calculator.train_one_step(model, batch_data)['loss']
             loss_proximal = 0
             for pm, ps in zip(model.parameters(), src_model.parameters()):
                 loss_proximal += torch.sum(torch.pow(pm - ps, 2))

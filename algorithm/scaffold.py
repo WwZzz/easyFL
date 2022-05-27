@@ -67,7 +67,7 @@ class Client(BasicClient):
         for iter in range(self.num_steps):
             batch_data = self.get_batch_data()
             model.zero_grad()
-            loss = self.calculator.train(model, batch_data)
+            loss = self.calculator.train_one_step(model, batch_data)['loss']
             loss.backward()
             # y_i <-- y_i - eta_l ( g_i(y_i)-c_i+c )  =>  g_i(y_i)' <-- g_i(y_i)-c_i+c
             for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()):

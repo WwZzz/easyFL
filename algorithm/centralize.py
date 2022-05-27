@@ -38,7 +38,7 @@ class Server(BasicServer):
             batch_data = self.get_batch_data()
             self.model.zero_grad()
             # calculate the loss of the model on batched dataset through task-specified calculator
-            loss = self.calculator.train(self.model, batch_data)
+            loss = self.calculator.train_one_step(self.model, batch_data)
             loss.backward()
             optimizer.step()
         flw.logger.time_start('Eval Time Cost')
