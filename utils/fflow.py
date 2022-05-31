@@ -97,13 +97,24 @@ def initialize(option):
     except ModuleNotFoundError:
         utils.fmodule.Model = getattr(importlib.import_module('.'.join(['algorithm', option['algorithm']])), option['model'])
     model = utils.fmodule.Model().to(utils.fmodule.device)
+    # init the model that owned by the server (e.g. the model trained in the server-side)
+    try:
+        utils.fmodule.SvrModel = getattr(importlib.import_module(bmk_model_path), 'SvrModel')
+    except:
+        utils.fmodule.SvrModel = utils.fmodule.Model
+    # init the model that owned by the client (e.g. the personalized model whose type may be different from the global model)
+    try:
+        utils.fmodule.CltModel = getattr(importlib.import_module(bmk_model_path), 'CltModel')
+    except:
+        utils.fmodule.CltModel = utils.fmodule.Model
+    # load pre-trained model
     try:
         if option['pretrain'] != '':
             model.load_state_dict(torch.load(option['pretrain'])['model'])
     except:
         print("Invalid Model Configuration.")
         exit(1)
-    # read federated task by TaskReader
+    # read federated task by TaskPipe
     TaskPipe = getattr(importlib.import_module(bmk_core_path), 'TaskPipe')
     train_datas, valid_datas, test_data, client_names = TaskPipe.load_task(os.path.join('fedtask', option['task']))
     num_clients = len(client_names)
@@ -200,14 +211,14 @@ class DefaultLogger(Logger):
         if len(self.output) == 0:
             self.output['meta'] = server.option
         test_metric = server.test()
-        valid_metrics = server.test_on_clients(self.current_round, 'valid')
-        train_metrics = server.test_on_clients(self.current_round, 'train')
         for met_name, met_val in test_metric.items():
             self.output['test_' + met_name].append(met_val)
         # calculate weighted averaging of metrics of training datasets across clients
-        for met_name, met_val in train_metrics.items():
-            self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.client_vols, met_val)]) / server.data_vol)
+        # train_metrics = server.test_on_clients(self.current_round, 'train')
+        # for met_name, met_val in train_metrics.items():
+        #     self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.client_vols, met_val)]) / server.data_vol)
         # calculate weighted averaging and other statistics of metrics of validation datasets across clients
+        valid_metrics = server.test_on_clients(self.current_round, 'valid')
         for met_name, met_val in valid_metrics.items():
             self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.client_vols, met_val)]) / server.data_vol)
             self.output['mean_valid_' + met_name].append(np.mean(met_val))
