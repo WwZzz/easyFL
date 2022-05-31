@@ -3,8 +3,10 @@ from torch import nn
 
 device=None
 TaskCalculator=None
-Model = None
 Optim = None
+Model = None
+SvrModel = None
+CltModel = None
 
 class FModule(nn.Module):
     def __init__(self):
@@ -66,6 +68,10 @@ class FModule(nn.Module):
         for p in self.parameters():
             p.requires_grad = False
 
+    def enable_grad(self):
+        for p in self.parameters():
+            p.requires_grad = True
+
     def zero_dict(self):
         self.op_without_graph()
         for p in self.parameters():
@@ -96,8 +102,8 @@ def log(m):
     return element_wise_func(m, torch.log)
 
 def element_wise_func(m, func):
-    if not m: return None
-    res = Model().to(m.get_device())
+    if m is None: return None
+    res = m.__class__().to(m.get_device())
     if m.ingraph:
         res.op_with_graph()
         ml = get_module_from_model(m)
@@ -112,8 +118,9 @@ def element_wise_func(m, func):
 def _model_to_tensor(m):
     return torch.cat([mi.data.view(-1) for mi in m.parameters()])
 
-def _model_from_tensor(mt):
-    res = Model().to(device)
+def _model_from_tensor(mt, model_class=None):
+    if model_class is None: model_class = Model
+    res = model_class().to(device)
     cnt = 0
     end = 0
     with torch.no_grad():
@@ -127,7 +134,7 @@ def _model_from_tensor(mt):
 def _model_sum(ms):
     if len(ms)==0: return None
     op_with_graph = sum([mi.ingraph for mi in ms]) > 0
-    res = Model().to(ms[0].get_device())
+    res = ms[0].__class__().to(ms[0].get_device())
     if op_with_graph:
         mlks = [get_module_from_model(mi) for mi in ms]
         mlr = get_module_from_model(res)
@@ -146,7 +153,7 @@ def _model_average(ms = [], p = []):
     if len(ms)==0: return None
     if len(p)==0: p = [1.0 / len(ms) for _ in range(len(ms))]
     op_with_graph = sum([w.ingraph for w in ms]) > 0
-    res = Model().to(ms[0].get_device())
+    res = ms[0].__class__().to(ms[0].get_device())
     if op_with_graph:
         mlks = [get_module_from_model(mi) for mi in ms]
         mlr = get_module_from_model(res)
@@ -163,7 +170,7 @@ def _model_average(ms = [], p = []):
 
 def _model_add(m1, m2):
     op_with_graph = m1.ingraph or m2.ingraph
-    res = Model().to(m1.get_device())
+    res = m1.__class__().to(m1.get_device())
     if op_with_graph:
         res.op_with_graph()
         ml1 = get_module_from_model(m1)
@@ -180,7 +187,7 @@ def _model_add(m1, m2):
 
 def _model_sub(m1, m2):
     op_with_graph = m1.ingraph or m2.ingraph
-    res = Model().to(m1.get_device())
+    res = m1.__class__().to(m1.get_device())
     if op_with_graph:
         res.op_with_graph()
         ml1 = get_module_from_model(m1)
@@ -197,7 +204,7 @@ def _model_sub(m1, m2):
 
 def _model_scale(m, s):
     op_with_graph = m.ingraph
-    res = Model().to(m.get_device())
+    res = m.__class__().to(m.get_device())
     if op_with_graph:
         ml = get_module_from_model(m)
         mlr = get_module_from_model(res)
