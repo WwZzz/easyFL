@@ -444,7 +444,7 @@ class BasicClient():
         except:
             self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size, num_workers=self.loader_num_workers))
             batch_data = next(self.data_loader)
-        # # clear local DataLoader when finishing local training
-        # self.current_steps = (self.current_steps+1) % self.num_steps
-        # if self.current_steps == 0:self.data_loader = None
+        # clear local DataLoader when finishing local training
+        self.current_steps = (self.current_steps+1) % self.num_steps
+        if self.current_steps == 0:self.data_loader = None
         return batch_data
