@@ -251,7 +251,7 @@ class BasicServer:
         :return:
             metrics: specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
-        if model==None: model=self.model
+        if model is None: model=self.model
         if self.test_data:
             return self.calculator.test(model, self.test_data, batch_size = self.option['test_batch_size'])
         else:

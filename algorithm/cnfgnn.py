@@ -84,7 +84,7 @@ class Server(BasicServer):
         # augmente the dataset with graph_encodings initialized as zero vector
         for cid, client in enumerate(self.clients):
             client.train_data = AugSTNodeDataset(client.train_data, torch.zeros(len(client.train_data), client.train_data[0][0].shape[2], self.model_gru_num_layers, self.model_hidden_size).float())
-            client.valid_data = AugSTNodeDataset(client.valid_data, torch.zeros(len(client.train_data), client.train_data[0][0].shape[2], self.model_gru_num_layers, self.model_hidden_size).float())
+            client.valid_data = AugSTNodeDataset(client.valid_data, torch.zeros(len(client.valid_data), client.valid_data[0][0].shape[2], self.model_gru_num_layers, self.model_hidden_size).float())
         self.test_data = AugSTNodeDataset(self.test_data, torch.zeros(len(self.test_data), len(self.adj), self.model_gru_num_layers, self.model_hidden_size).float())
         self.total_train_data = AugSTNodeDataset.concat_datasets([c.train_data for c in self.clients], align_dim=2)
         self.total_valid_data = AugSTNodeDataset.concat_datasets([c.valid_data for c in self.clients], align_dim=2)
