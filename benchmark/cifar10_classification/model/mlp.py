@@ -21,4 +21,3 @@ class Model(FModule):
         x = self.fc1(x)
         x = self.relu(x)
         return x
-

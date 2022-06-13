@@ -90,7 +90,7 @@ class TaskCalculator(BasicTaskCalculator):
         tdata = self.data_to_device(data)
         outputs = model(tdata)
         loss = 0.5 * torch.mean(outputs)
-        return loss.item(), loss.item()
+        return {'loss': loss.item()}
 
     def data_to_device(self, data):
         return data.to(self.device)
