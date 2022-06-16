@@ -247,4 +247,4 @@ class MyLogger(flw.Logger):
   test_metric = server.test(model)
   return test_metric['loss']
 ```
-In this way, the codes of `fedavg.py` is preserved, since all the addtional operations are made in another dependent algorithm file with a different name. 
+In this way, the codes of `fedavg.py` is preserved, since all the addtional operations are made in another independent algorithm file with a different name. 
