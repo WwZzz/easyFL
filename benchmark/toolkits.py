@@ -23,12 +23,13 @@ import os.path
 import random
 import os
 import ssl
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, TensorDataset, Subset
 import torch
 ssl._create_default_https_context = ssl._create_unverified_context
 import importlib
 import collections
 from torchvision import datasets, transforms
+import utils.fmodule
 
 # ========================================Task Generator============================================
 # This part is for generating federated dataset from original dataset. The generation process should be
@@ -404,11 +405,9 @@ class DefaultTaskGen(BasicTaskGen):
 # The same as TaskGenerator, we provide a default task calculator ClassifyCalculator that is suitable for datasets
 # like MNIST, CIFAR100.
 class BasicTaskCalculator:
-
-    _OPTIM = None
-
-    def __init__(self, device):
+    def __init__(self, device, optimizer_name='sgd'):
         self.device = device
+        self.optimizer_name = optimizer_name
         self.criterion = None
         self.DataLoader = None
 
@@ -427,13 +426,15 @@ class BasicTaskCalculator:
     def test(self, *args, **kwargs):
         raise NotImplementedError
 
-    def get_optimizer(self, name="sgd", model=None, lr=0.1, weight_decay=0, momentum=0):
-        if self._OPTIM == None:
-            raise RuntimeError("TaskCalculator._OPTIM Not Initialized.")
-        if name.lower() == 'sgd':
-            return self._OPTIM(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
-        elif name.lower() == 'adam':
-            return self._OPTIM(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
+    def get_optimizer(self, model=None, lr=0.1, weight_decay=0, momentum=0):
+        # if self._OPTIM == None:
+        #     raise RuntimeError("TaskCalculator._OPTIM Not Initialized.")
+        if self.optimizer_name.lower() == 'sgd':
+            return getattr(importlib.import_module('torch.optim'), self.optimizer_name)(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+            # return utils.fmodule.Optim(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+        elif self.optimizer_name.lower() == 'adam':
+            return getattr(importlib.import_module('torch.optim'), self.optimizer_name)(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
+            # return utils.fmodule.Optim(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
         else:
             raise RuntimeError("Invalid Optimizer.")
 
@@ -442,8 +443,8 @@ class BasicTaskCalculator:
         cls._OPTIM = OP
 
 class ClassificationCalculator(BasicTaskCalculator):
-    def __init__(self, device):
-        super(ClassificationCalculator, self).__init__(device)
+    def __init__(self, device, optimizer_name='sgd'):
+        super(ClassificationCalculator, self).__init__(device, optimizer_name)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.DataLoader = DataLoader
 
@@ -617,39 +618,40 @@ class XYTaskPipe(BasicTaskPipe):
         return train_datas, valid_datas, test_data, feddata['client_names']
 
 class IDXTaskPipe(BasicTaskPipe):
-    class IDXDataset(Dataset):
-        # The source dataset that can be indexed by IDXDataset
-        _ORIGIN_DATA = {'TRAIN': None, 'TEST': None, 'CLASS': None}
+    # class IDXDataset(Dataset):
+    #     # The source dataset that can be indexed by IDXDataset
+    #     _ORIGIN_DATA = {'TRAIN': None, 'TEST': None, 'CLASS': None}
+    #
+    #     def __init__(self, idxs, key='TRAIN'):
+    #         """Init dataset with 'src_data' and a list of indexes that are used to position data in 'src_data'"""
+    #         if not isinstance(idxs, list):
+    #             raise RuntimeError("Invalid Indexes")
+    #         self.idxs = idxs
+    #         self.key = key
+    #
+    #     @classmethod
+    #     def SET_ORIGIN_DATA(cls, train_data=None, test_data=None):
+    #         cls._ORIGIN_DATA['TRAIN'] = train_data
+    #         cls._ORIGIN_DATA['TEST'] = test_data
+    #
+    #     @classmethod
+    #     def SET_ORIGIN_CLASS(cls, DataClass=None):
+    #         cls._ORIGIN_DATA['CLASS'] = DataClass
+    #
+    #     @classmethod
+    #     def ADD_KEY_TO_DATA(cls, key, value=None):
+    #         if key == None:
+    #             raise RuntimeError("Empty key when calling class algorithm IDXData.ADD_KEY_TO_DATA")
+    #         cls._ORIGIN_DATA[key] = value
+    #
+    #     def __getitem__(self, item):
+    #         idx = self.idxs[item]
+    #         return self._ORIGIN_DATA[self.key][idx]
+    #
+    #     def __len__(self):
+    #         return len(self.idxs)
 
-        def __init__(self, idxs, key='TRAIN'):
-            """Init dataset with 'src_data' and a list of indexes that are used to position data in 'src_data'"""
-            if not isinstance(idxs, list):
-                raise RuntimeError("Invalid Indexes")
-            self.idxs = idxs
-            self.key = key
-
-        @classmethod
-        def SET_ORIGIN_DATA(cls, train_data=None, test_data=None):
-            cls._ORIGIN_DATA['TRAIN'] = train_data
-            cls._ORIGIN_DATA['TEST'] = test_data
-
-        @classmethod
-        def SET_ORIGIN_CLASS(cls, DataClass=None):
-            cls._ORIGIN_DATA['CLASS'] = DataClass
-
-        @classmethod
-        def ADD_KEY_TO_DATA(cls, key, value=None):
-            if key == None:
-                raise RuntimeError("Empty key when calling class algorithm IDXData.ADD_KEY_TO_DATA")
-            cls._ORIGIN_DATA[key] = value
-
-        def __getitem__(self, item):
-            idx = self.idxs[item]
-            return self._ORIGIN_DATA[self.key][idx]
-
-        def __len__(self):
-            return len(self.idxs)
-    TaskDataset = IDXDataset
+    TaskDataset = Subset
     @classmethod
     def save_task(cls, generator):
         """
@@ -692,21 +694,19 @@ class IDXTaskPipe(BasicTaskPipe):
         class_path = feddata['datasrc']['class_path']
         class_name = feddata['datasrc']['class_name']
         origin_class = getattr(importlib.import_module(class_path), class_name)
-        cls.TaskDataset.SET_ORIGIN_CLASS(origin_class)
-        origin_train_data = cls.args_to_dataset(feddata['datasrc']['train_args'])
-        origin_test_data = cls.args_to_dataset(feddata['datasrc']['test_args'])
-        cls.TaskDataset.SET_ORIGIN_DATA(train_data=origin_train_data, test_data=origin_test_data)
-        test_data = cls.TaskDataset(feddata['dtest'], key='TEST')
-        train_datas = [cls.TaskDataset(feddata[name]['dtrain']) for name in feddata['client_names']]
-        valid_datas = [cls.TaskDataset(feddata[name]['dvalid']) for name in feddata['client_names']]
+        origin_train_data = cls.args_to_dataset(origin_class, feddata['datasrc']['train_args'])
+        origin_test_data = cls.args_to_dataset(origin_class, feddata['datasrc']['test_args'])
+        test_data = cls.TaskDataset(origin_test_data, [_ for _ in range(len(origin_test_data))])
+        train_datas = [cls.TaskDataset(origin_train_data, feddata[name]['dtrain']) for name in feddata['client_names']]
+        valid_datas = [cls.TaskDataset(origin_train_data, feddata[name]['dvalid']) for name in feddata['client_names']]
         return train_datas, valid_datas, test_data, feddata['client_names']
 
     @classmethod
-    def args_to_dataset(cls, args):
+    def args_to_dataset(cls, original_class, args):
         if not isinstance(args, dict):
             raise TypeError
         args_str = '(' + ','.join([key + '=' + value for key, value in args.items()]) + ')'
-        return eval("cls.TaskDataset._ORIGIN_DATA['CLASS']" + args_str)
+        return eval("original_class" + args_str)
 
 class XTaskPipe(BasicTaskPipe):
     class XDataset(Dataset):
