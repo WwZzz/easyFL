@@ -245,7 +245,7 @@ Real Machine-Dependent options:
 
 * `seed ` is the initial random seed.
 
-* `gpu ` is the id of the GPU device. CPU is used if Without specifying this term. `--gpu 0` will only use device GPU 0, and `--gpu 0 1 2 3` will using the specified four GPUs. 
+* `gpu ` is the id of the GPU device. CPU is used if Without specifying this term. `--gpu 0` will only use device GPU 0, and `--gpu 0 1 2 3` will use the specified four GPUs. 
 
 * `server_with_cpu ` is set False as default value, since all the tensor is kept on the memory of only one device can usually accelerate training.
 
