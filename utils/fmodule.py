@@ -1,8 +1,9 @@
 import torch
 from torch import nn
 
-device=None
-TaskCalculator=None
+dev_list = []
+dev_manager = None
+TaskCalculator = None
 Optim = None
 Model = None
 SvrModel = None
@@ -120,7 +121,7 @@ def _model_to_tensor(m):
 
 def _model_from_tensor(mt, model_class=None):
     if model_class is None: model_class = Model
-    res = model_class().to(device)
+    res = model_class().to(mt.device)
     cnt = 0
     end = 0
     with torch.no_grad():
@@ -272,7 +273,6 @@ def get_module_from_model(model, res = None):
             get_module_from_model(model.__getattr__(name), res)
     return res
 
-
 def _modeldict_cp(md1, md2):
     for layer in md1.keys():
         md1[layer].data.copy_(md2[layer])
@@ -306,7 +306,8 @@ def _modeldict_weighted_average(mds, weights=[]):
             md_avg[layer] = md_avg[layer] + mds[wid][layer] * weight
     return md_avg
 
-def _modeldict_to_device(md, device = device):
+def _modeldict_to_device(md):
+    device = md[list(md)[0]].device
     res = {}
     for layer in md.keys():
         if md[layer] is None:
@@ -421,3 +422,43 @@ def _modeldict_print(md):
             continue
         print("{}:{}".format(layer, md[layer]))
 
+def with_multi_gpus(func):
+    def cal_on_personal_gpu(self, model, *args, **kargs):
+        origin_device = model.get_device()
+        # transfer to new device
+        new_args = []
+        new_kargs = {}
+        for arg in args:
+            narg = arg.to(self.device) if hasattr(arg, 'get_device') or hasattr(arg, 'device') else arg
+            new_args.append(narg)
+        for k,v in kargs.items():
+            nv = v.to(self.device) if hasattr(v, 'get_device') or hasattr(v, 'device') else v
+            new_kargs[k] = nv
+        model.to(self.device)
+        # calculating
+        res = func(self, model, *tuple(new_args), **new_kargs)
+        # transter to original device
+        model.to(origin_device)
+        if res is not None:
+            if type(res)==dict:
+                for k,v in res.items():
+                    nv = v.to(origin_device) if hasattr(v, 'get_device') or hasattr(v, 'device') else v
+                    res[k] = nv
+            elif type(res)==tuple or list:
+                new_res = []
+                for v in res:
+                    nv = v.to(origin_device) if hasattr(v, 'get_device') or hasattr(v, 'device') else v
+                    new_res.append(nv)
+                if type(res)==tuple:
+                    res = tuple(new_res)
+            else:
+                res = res.to(origin_device) if hasattr(res, 'get_device') or hasattr(res, 'device') else res
+        return res
+    return cal_on_personal_gpu
+
+def get_device():
+    if len(dev_list)==0: return torch.device('cpu')
+    crt_dev = 0
+    while True:
+        yield dev_list[crt_dev]
+        crt_dev = (crt_dev+1)%len(dev_list)
