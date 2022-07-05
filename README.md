@@ -205,7 +205,7 @@ python generated_fedtask.py --dist 2 --skew 0.0 --num_client 100 --benchmark cif
 
 Basic options:
 
-* `task` is to choose the task of splited dataset. Options: name of fedtask (e.g. `mnist_client100_dist0_beta0_noise0`).
+* `task` is to choose the task of splited dataset. Options: name of fedtask (e.g. `mnist_classification_client100_dist0_beta0_noise0`).
 
 * `algorithm` is to choose the FL algorithm. Options: `fedfv`, `fedavg`, `fedprox`, …
 
@@ -237,29 +237,34 @@ Client-side options:
 
 * `optimizer` is to choose the optimizer. Options: `SGD`, `Adam`.
 
+* `weight_decay` is to set ratio for weight decay during the local training process.
+
 * `momentum` is the ratio of the momentum item when the optimizer SGD taking each step. 
 
-Other options:
+Real Machine-Dependent options:
 
 * `seed ` is the initial random seed.
 
-* `gpu ` is the id of the GPU device, `-1` for CPU.
+* `gpu ` is the id of the GPU device. CPU is used if Without specifying this term. `--gpu 0` will only use device GPU 0, and `--gpu 0 1 2 3` will using the specified four GPUs. 
+
+* `server_with_cpu ` is set False as default value, since all the tensor is kept on the memory of only one device can usually accelerate training.
+
+* `test_batch_size ` is the batch_size used when evaluating models on validation datasets, which is limited by the free space of the used device.
 
 * `eval_interval ` controls the interval between every two evaluations. 
 
-* `net_drop` controls the dropout of clients after being selected in each communication round according to distribution Beta(net_drop,1). The larger this term is, the more possible for clients to drop.
-
-* `net_active` controls the active rate of clients before being selected in each communication round according to distribution Beta(net_active,1). The larger this term is, the more possible for clients to be active.
-
 * `num_threads` is the number of threads in the clients computing session that aims to accelarate the training process.
 
-Additional hyper-parameters for particular federated algorithms:
-* `mu` is the parameter for FedProx.
-* `alpha` is the parameter for FedFV.
-* `tau` is the parameter for FedFV.
-* ...
+* `num_workers` is the number of workers of the torch.utils.data.Dataloader
 
-Each additional parameter can be defined in `./utils/fflow.read_option`
+Simulating systemic configuration: 1) network heterogeneity, 2) computing power heterogeneiry
+
+* `network_config` controls the network conditions of all the clients. See `utils.systemic_simulator` for more details. 
+
+* `computing_config` controls the computing resources of all the clients. See `utils.systemic_simulator` for more details. 
+
+Additional hyper-parameters for particular federated algorithms:
+* `algo_para` is used to receive the algorithm-dependent hyper-parameters from command lines. Usage: 1) The hyper-parameter will be set as the default value defined in Server.__init__() if not specifying this term, 2) For algorithms with one or more parameters, use `--algo_para v1 v2 ...` to specify the values for the parameters. The input order depends on the dict `Server.algo_para` defined in `Server.__init__()`.
 
 ## Architecture
 
@@ -286,7 +291,7 @@ We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and 
 ├─ utils
 │  ├─ fflow.py							//option to read, initialize,...
 │  ├─ fmodule.py						//model-level operators
-│  ├─ network_simulator.py						//simulating the network heterogeneity
+│  ├─ systemic_simulator.py						//simulating the network heterogeneity
 │  └─ result_analysis.py				        //to generate the visualization of record
 ├─ generate_fedtask.py					        //generate fedtask
 ├─ requirements.txt
@@ -369,7 +374,7 @@ Utils is composed of commonly used operations: model-level operation (we convert
 
 * Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project. 
 
-# FedRME
+# Publication Using easyFL 
 * A realization of federated learning algorithm on Road Markings Extraction from Mobile LiDAR Point Clouds (FedRME, https://fanxlxmu.github.io/publication/paper/CSCWD22-FedRME.pdf) was accepted by 2022 IEEE 25th International Conference on Computer Supported Cooperative Work in Design (IEEE CSCWD 2022). The source code for FedRME will be release as soon as possible.
 
 ## Citation
