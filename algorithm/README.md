@@ -25,38 +25,44 @@ And copy the standard local training function `train()` from `BasicClient` to `f
 
 **Second, handling hyper-parameters of FedProx.**
 
-add hyper-parameter `mu` as an attribute of `fedprox.Client`, and append the name `mu` to `fedprox.Server.paras_name`.
+```python
+class Server(BasicServer):
+    def __init__(self, option, model, clients, test_data = None):
+        super(Server, self).__init__(option, model, clients, test_data)
+        self.algo_para = {'mu':0.1}
+        self.init_algo_para(option['algo_para'])
+```
+Initialize the algorithm-dependent hyper-parameters as a dict of Server, and calling self.init_algo_para() with inputted values from `option`, which will set the parameters as attributions of both the server and clients.
 
 **Finally, add the proximal term to the loss.**
 
 calculate and add the proximal loss to the original loss before backward propagation.
 
 ```python
-def train(self, model):
- """the '"' hightlight additional lines of train() in fedprox compared to fedavg"""
- # 1
- """src_model = copy.deepcopy(model)"""
- # 2 (only for efficiency and can be removed)   
- """src_model.freeze_grad()"""
- model.train()
- data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
- optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
-                                           weight_decay=self.weight_decay, momentum=self.momentum)
- for iter in range(self.num_steps):
-  batch_data = self.get_batch_data()
-  model.zero_grad()
-  loss = self.calculator.train_one_step(model, batch_data)
-  # 3
-  """loss_proximal = 0"""
-  # 4
-  """
-  for pm, ps in zip(model.parameters(), src_model.parameters()): loss_proximal+= torch.sum(torch.pow(pm-ps,2))
-  """
-  # 5
-  """loss += 0.5 * self.mu * loss_proximal"""
-  loss.backward()
-  optimizer.step()
- return
+@fmodule.with_multi_gpus
+def train(self, model): 
+    """the '"' hightlight additional lines of train() in fedprox compared to fedavg"""
+    # 1
+    """src_model = copy.deepcopy(model)"""
+    # 2 (only for efficiency and can be removed)   
+    """src_model.freeze_grad()"""
+    model.train()
+    optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+    for iter in range(self.num_steps):
+        # get a batch of data
+        batch_data = self.get_batch_data()
+        model.zero_grad()
+        # calculate the loss of the model on batched dataset through task-specified calculator
+        loss = self.calculator.train_one_step(model, batch_data)['loss']
+        # 3
+        """loss_proximal = 0"""
+        # 4
+        """for pm, ps in zip(model.parameters(), src_model.parameters()): loss_proximal += torch.sum(torch.pow(pm - ps, 2))"""
+        # 5
+        """loss = loss + 0.5 * self.mu * loss_proximal"""
+        loss.backward()
+        optimizer.step()
+    return
 ```
  
  That is to say, you only need 5 lines 
@@ -80,13 +86,13 @@ python generate_fedtask.py --benchmark synthetic_classification --dist 10 --skew
 python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedavg --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 
 # run fedprox with mu = 0.1
-python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 0.1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
+python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --algo_para 0.1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 
 # run fedprox with mu = 0.5
-python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 0.5 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
+python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --algo_para 0.5 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 
 # run fedprox with mu = 1
-python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
+python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --algo_para 1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 
 # run fedavg (origin), uniform sample and weighted average
 python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedavg --aggregate weighted_com --sample uniform --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
