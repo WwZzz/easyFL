@@ -1,4 +1,5 @@
-from benchmark.toolkits import BasicTaskGen, XTaskPipe, BasicTaskCalculator
+from benchmark.toolkits import BasicTaskGen, BasicTaskCalculator
+from benchmark.toolkits import XTaskPipe as TaskPipe
 import numpy as np
 import os.path
 import torch
@@ -14,7 +15,7 @@ class TaskGen(BasicTaskGen):
                                       seed=seed)
         self.dimension = dimension
         self.num_clients = num_clients
-        self.save_task = XTaskPipe.save_task
+        self.save_task = TaskPipe.save_task
         self.taskname = self.get_taskname()
         self.taskpath = os.path.join(self.task_rootpath, self.taskname)
         self.minvol = minvol
@@ -64,13 +65,9 @@ class TaskGen(BasicTaskGen):
             self.valid_cidxs[i].extend([did + i for i in range(self.minvol, len(es[i]))])
             did = did + len(es[i])
 
-class TaskPipe(XTaskPipe):
-    def __init__(self):
-        super(TaskPipe, self).__init__()
-
 class TaskCalculator(BasicTaskCalculator):
-    def __init__(self, device):
-        super(TaskCalculator, self).__init__(device)
+    def __init__(self, device, optimizer_name='sgd'):
+        super(TaskCalculator, self).__init__(device, optimizer_name)
 
     def train_one_step(self, model, data):
         tdata = self.data_to_device(data)

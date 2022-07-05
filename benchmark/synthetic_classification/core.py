@@ -39,7 +39,9 @@ The details of this dataset is described as below:
     (dist_id, skewness) in {(6, 0), (10, 0), (10, 0.5), (10, 1.0)} as the orininal setup
     IID or (alpha, beta) in {(0,0), (0.5, 0.5), (1, 1)}.
 """
-from benchmark.toolkits import BasicTaskGen, XYTaskPipe, ClassificationCalculator
+from benchmark.toolkits import BasicTaskGen
+from benchmark.toolkits import XYTaskPipe as TaskPipe
+from benchmark.toolkits import ClassificationCalculator as TaskCalculator
 from scipy.special import softmax
 import numpy as np
 import os.path
@@ -57,6 +59,7 @@ class TaskGen(BasicTaskGen):
         self.num_clients = num_clients
         self.minvol = minvol
         self.taskname = self.get_taskname()
+        self.save_task = TaskPipe.save_task
         self.taskpath = os.path.join(self.task_rootpath, self.taskname)
 
 
@@ -178,11 +181,3 @@ class TaskGen(BasicTaskGen):
             X_split[k] = X_k.tolist()
             y_split[k] = Y_k.tolist()
         return X_split, y_split
-
-class TaskPipe(XYTaskPipe):
-    def __init__(self):
-        super(TaskPipe, self).__init__()
-
-class TaskCalculator(ClassificationCalculator):
-    def __init__(self, device):
-        super(TaskCalculator, self).__init__(device)

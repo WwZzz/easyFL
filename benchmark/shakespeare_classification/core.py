@@ -4,7 +4,8 @@ from benchmark.toolkits import DefaultTaskGen, TupleDataset
 import collections
 import re
 import os
-from benchmark.toolkits import  XYTaskPipe, ClassificationCalculator
+from benchmark.toolkits import XYTaskPipe as TaskPipe
+from benchmark.toolkits import  ClassificationCalculator as TaskCalculator
 import numpy as np
 import os.path
 import ujson
@@ -43,7 +44,7 @@ class TaskGen(DefaultTaskGen):
         self.ALL_LETTERS = "\n !\"&'(),-.0123456789:;>?ABCDEFGHIJKLMNOPQRSTUVWXYZ[]abcdefghijklmnopqrstuvwxyz}"
         self.NUM_LETTERS = len(self.ALL_LETTERS)
         self.SEQ_LENGTH = 80
-        self.save_task = XYTaskPipe.save_task
+        self.save_task = TaskPipe.save_task
 
     def load_data(self):
         # download, read the raw dataset and store it as .json
@@ -121,7 +122,7 @@ class TaskGen(DefaultTaskGen):
             'x': xs,
             'y': ys
         }
-        XYTaskPipe.save_task(self)
+        TaskPipe.save_task(self)
 
     def _split_into_plays(self, shakespeare_full):
         """Splits the full data by play."""
@@ -239,14 +240,3 @@ class TaskGen(DefaultTaskGen):
 
     def Y_text_to_vec(self, Y):
         return [self.ALL_LETTERS.find(c) for c in Y]
-
-class TaskPipe(XYTaskPipe):
-    def __init__(self):
-        super(TaskPipe, self).__init__()
-
-class TaskCalculator(ClassificationCalculator):
-    def __init__(self, device):
-        super(TaskCalculator, self).__init__(device)
-
-
-

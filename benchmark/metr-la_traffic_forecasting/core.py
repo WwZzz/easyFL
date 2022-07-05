@@ -250,8 +250,8 @@ class TaskPipe(BasicTaskPipe):
         return train_datas, valid_datas, test_data, client_names
 
 class TaskCalculator(BasicTaskCalculator):
-    def __init__(self, device):
-        super(TaskCalculator, self).__init__(device)
+    def __init__(self, device, optimizer_name='sgd'):
+        super(TaskCalculator, self).__init__(device, optimizer_name)
         self.criterion = torch.nn.MSELoss()
         self.DataLoader = DataLoader
         self.batches_seen = 0
@@ -285,10 +285,3 @@ class TaskCalculator(BasicTaskCalculator):
 
     def get_data_loader(self, dataset, batch_size=64, shuffle=True, num_workers=0):
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
-
-
-
-
-
-
-

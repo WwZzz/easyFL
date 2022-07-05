@@ -1,5 +1,7 @@
 from torchvision import datasets, transforms
-from benchmark.toolkits import ClassificationCalculator, DefaultTaskGen, IDXTaskPipe
+from benchmark.toolkits import DefaultTaskGen
+from benchmark.toolkits import IDXTaskPipe as TaskPipe
+from benchmark.toolkits import ClassificationCalculator as TaskCalculator
 import numpy as np
 
 class TaskGen(DefaultTaskGen):
@@ -13,7 +15,7 @@ class TaskGen(DefaultTaskGen):
                                       seed=seed
                                       )
         self.num_classes = 62
-        self.save_task = IDXTaskPipe.save_task
+        self.save_task = TaskPipe.save_task
         self.source_dict = {
             'class_path': 'torchvision.datasets',
             'class_name': 'EMNIST',
@@ -57,12 +59,3 @@ class TaskGen(DefaultTaskGen):
             local_niid_datas = [data_idx.tolist() for data_idx in local_niid_datas]
             local_datas = [niid_k+iid_k for niid_k,iid_k in zip(local_niid_datas, local_datas)]
         return local_datas
-
-class TaskPipe(IDXTaskPipe):
-    def __init__(self):
-        super(TaskPipe, self).__init__()
-
-class TaskCalculator(ClassificationCalculator):
-    def __init__(self, device):
-        super(TaskCalculator, self).__init__(device)
-
