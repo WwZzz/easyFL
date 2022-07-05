@@ -25,38 +25,44 @@ And copy the standard local training function `train()` from `BasicClient` to `f
 
 **Second, handling hyper-parameters of FedProx.**
 
-add hyper-parameter `mu` as an attribute of `fedprox.Client`, and append the name `mu` to `fedprox.Server.paras_name`.
+```python
+class Server(BasicServer):
+    def __init__(self, option, model, clients, test_data = None):
+        super(Server, self).__init__(option, model, clients, test_data)
+        self.algo_para = {'mu':0.1}
+        self.init_algo_para(option['algo_para'])
+```
+Initialize the algorithm-dependent hyper-parameters as a dict of Server, and calling self.init_algo_para() with inputted values from `option`, which will set the parameters as attributions of both the server and clients.
 
 **Finally, add the proximal term to the loss.**
 
 calculate and add the proximal loss to the original loss before backward propagation.
 
 ```python
-def train(self, model):
- """the '"' hightlight additional lines of train() in fedprox compared to fedavg"""
- # 1
- """src_model = copy.deepcopy(model)"""
- # 2 (only for efficiency and can be removed)   
- """src_model.freeze_grad()"""
- model.train()
- data_loader = self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size)
- optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
-                                           weight_decay=self.weight_decay, momentum=self.momentum)
- for iter in range(self.num_steps):
-  batch_data = self.get_batch_data()
-  model.zero_grad()
-  loss = self.calculator.train_one_step(model, batch_data)
-  # 3
-  """loss_proximal = 0"""
-  # 4
-  """
-  for pm, ps in zip(model.parameters(), src_model.parameters()): loss_proximal+= torch.sum(torch.pow(pm-ps,2))
-  """
-  # 5
-  """loss += 0.5 * self.mu * loss_proximal"""
-  loss.backward()
-  optimizer.step()
- return
+@fmodule.with_multi_gpus
+def train(self, model): 
+    """the '"' hightlight additional lines of train() in fedprox compared to fedavg"""
+    # 1
+    """src_model = copy.deepcopy(model)"""
+    # 2 (only for efficiency and can be removed)   
+    """src_model.freeze_grad()"""
+    model.train()
+    optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+    for iter in range(self.num_steps):
+        # get a batch of data
+        batch_data = self.get_batch_data()
+        model.zero_grad()
+        # calculate the loss of the model on batched dataset through task-specified calculator
+        loss = self.calculator.train_one_step(model, batch_data)['loss']
+        # 3
+        """loss_proximal = 0"""
+        # 4
+        """for pm, ps in zip(model.parameters(), src_model.parameters()): loss_proximal += torch.sum(torch.pow(pm - ps, 2))"""
+        # 5
+        """loss = loss + 0.5 * self.mu * loss_proximal"""
+        loss.backward()
+        optimizer.step()
+    return
 ```
  
  That is to say, you only need 5 lines 
@@ -80,13 +86,13 @@ python generate_fedtask.py --benchmark synthetic_classification --dist 10 --skew
 python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedavg --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 
 # run fedprox with mu = 0.1
-python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 0.1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
+python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --algo_para 0.1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 
 # run fedprox with mu = 0.5
-python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 0.5 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
+python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --algo_para 0.5 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 
 # run fedprox with mu = 1
-python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --mu 1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
+python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedprox --algo_para 1 --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
 
 # run fedavg (origin), uniform sample and weighted average
 python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedavg --aggregate weighted_com --sample uniform --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
@@ -100,16 +106,19 @@ Scaffold additionally uses clients' control variates `c_i` and the global one `c
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
+        self.algo_para = {'eta':1}
+        self.init_algo_para(option['algo_para'])
         self.cg = self.model.zeros_like()
-        self.cg.freeze_grad()
-        self.eta = option['eta']
-        self.paras_name = ['eta']
         
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
-        self.c = fmodule.Model().zeros_like()
-        self.c.freeze_grad()
+        self.c = None
+        
+    def train(self, model, cg):
+        ...
+        if self.c is None: self.c = model.zeros_like()
+        ...
 ```
 **Second, change the communication procedure.**
 In each communication round of Fedavg, the server sends the global model to the selected clients and the selected clients upload the locally updated models to the clients. Compared to Fedavg, Scaffold additionally exchange the global and local controlling variates in each communication. Thus, there are two communicating procedures to be modified. The first one is the communciation from the server to the clients, which consists of a pair of functions: `Server.pack()` and `Client.unpack()`. The server package is realized as `dict` of Python, and the additional information is added by putting new key and value to the package. The reverse direction from the client to the server is realized similarly, where `Client.pack()` and `Server.unpack()` is needed to be modified. Since `BasicServer.unpack()` has been realized as default for converting the packages from different clients to the lists that contains each value specified by the keys of the packages, it's not necessary to rewrite this function.
@@ -141,33 +150,39 @@ We implement this by instead calculating the terms below to obtain the same resu
           ci <-- ci+ = ci + dc
           communicate (dy, dc)
 ```
-The whole codes for this part is shown as below (`train()` is copied from `BasicClient.train()` and modified by adding/changing total 7 lines):
+The whole codes for this part is shown as below (`train()` is copied from `BasicClient.train()` and modified by adding/changing total 9 lines):
 
 ```python
-    def train(self, model, cg):
- model.train()
- # 1
- src_model = copy.deepcopy(model)
- # 2
- src_model.freeze_grad()
- optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
-                                           weight_decay=self.weight_decay, momentum=self.momentum)
- for iter in range(self.num_steps):
-  batch_data = self.get_batch_data()
-  model.zero_grad()
-  loss = self.calculator.train_one_step(model, batch_data)
-  loss.backward()
-  # 3
-  for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()): pm.grad = pm.grad - pc + pcg
-  optimizer.step()
- # 4    
- dy = model - src_model
- # 5
- dc = -1.0 / (self.num_steps * self.learning_rate) * dy - cg
- # 6
- self.c = self.c + dc
- # 7
- return dy, dc
+ @fmodule.with_multi_gpus
+def train(self, model, cg):
+    model.train()
+    # global parameters
+    # 1
+    src_model = copy.deepcopy(model)
+    # 2
+    src_model.freeze_grad()
+    # 3
+    cg.freeze_grad()
+    # 4
+    if self.c is None: self.c = model.zeros_like()
+    # 5
+    self.c.freeze_grad()
+    optimizer = self.calculator.get_optimizer(model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+    for iter in range(self.num_steps):
+        batch_data = self.get_batch_data()
+        model.zero_grad()
+        loss = self.calculator.train_one_step(model, batch_data)['loss']
+        loss.backward()
+        # 6
+        for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()): pm.grad = pm.grad - pc + pcg
+        optimizer.step()
+    # 7
+    dy = model - src_model
+    # 8
+    dc = -1.0 / (self.num_steps * self.learning_rate) * dy - cg
+    # 9
+    self.c = self.c + dc
+    return dy, dc
 ```
 
 **Fourth, change the aggregation way of the server.**
@@ -216,35 +231,35 @@ import utils.fflow as flw
 
 
 class Client(BasicClient):
- def train(self, model):
-  model.train()
-  optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
+    def train(self, model):
+        model.train()
+        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
                                             weight_decay=self.weight_decay, momentum=self.momentum)
-  # 1
-  rec_test_loss = []
-  for iter in range(self.num_steps):
-   batch_data = self.get_batch_data()
-   # 2
-   if self.name == 'Client00':
-    # 3
-    test_loss = flw.logger.local_test(self.server, model)
-    # 4
-    rec_test_loss.append(test_loss)
-   model.zero_grad()
-   loss = self.calculator.train_one_step(model, batch_data)
-   loss.backward()
-   optimizer.step()
-  # 5
-  flw.logger.write('client00_local_testing_loss', rec_test_loss)
-  return
+        # 1
+        rec_test_loss = []
+        for iter in range(self.num_steps):
+            batch_data = self.get_batch_data()
+            # 2
+            if self.name == 'Client00':
+                # 3
+                test_loss = flw.logger.local_test(self.server, model)
+                # 4
+                rec_test_loss.append(test_loss)
+            model.zero_grad()
+            loss = self.calculator.train_one_step(model, batch_data)
+            loss.backward()
+            optimizer.step()
+        # 5
+        flw.logger.write('client00_local_testing_loss', rec_test_loss)
+        return
 
 
 class MyLogger(flw.Logger):
- def __init__(self):
-  super(MyLogger, self).__init__()
+    def __init__(self):
+        super(MyLogger, self).__init__()
 
- def local_test(self, server, model):
-  test_metric = server.test(model)
-  return test_metric['loss']
+    def local_test(self, server, model):
+        test_metric = server.test(model)
+        return test_metric['loss']
 ```
 In this way, the codes of `fedavg.py` is preserved, since all the addtional operations are made in another independent algorithm file with a different name. 
