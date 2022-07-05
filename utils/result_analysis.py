@@ -179,7 +179,7 @@ if __name__ == '__main__':
     dicts = read_data_into_dicts(task, records)
 
     # print table
-    print_table(records, dicts)
+    # print_table(records, dicts)
     # create legends with selected parameters specified by the second parameter of create_legend()
     legends = create_legend(records, [])
     # draw curves
