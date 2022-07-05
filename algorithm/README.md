@@ -106,16 +106,19 @@ Scaffold additionally uses clients' control variates `c_i` and the global one `c
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
+        self.algo_para = {'eta':1}
+        self.init_algo_para(option['algo_para'])
         self.cg = self.model.zeros_like()
-        self.cg.freeze_grad()
-        self.eta = option['eta']
-        self.paras_name = ['eta']
         
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
-        self.c = fmodule.Model().zeros_like()
-        self.c.freeze_grad()
+        self.c = None
+        
+    def train(self, model, cg):
+        ...
+        if self.c is None: self.c = model.zeros_like()
+        ...
 ```
 **Second, change the communication procedure.**
 In each communication round of Fedavg, the server sends the global model to the selected clients and the selected clients upload the locally updated models to the clients. Compared to Fedavg, Scaffold additionally exchange the global and local controlling variates in each communication. Thus, there are two communicating procedures to be modified. The first one is the communciation from the server to the clients, which consists of a pair of functions: `Server.pack()` and `Client.unpack()`. The server package is realized as `dict` of Python, and the additional information is added by putting new key and value to the package. The reverse direction from the client to the server is realized similarly, where `Client.pack()` and `Server.unpack()` is needed to be modified. Since `BasicServer.unpack()` has been realized as default for converting the packages from different clients to the lists that contains each value specified by the keys of the packages, it's not necessary to rewrite this function.
@@ -147,33 +150,39 @@ We implement this by instead calculating the terms below to obtain the same resu
           ci <-- ci+ = ci + dc
           communicate (dy, dc)
 ```
-The whole codes for this part is shown as below (`train()` is copied from `BasicClient.train()` and modified by adding/changing total 7 lines):
+The whole codes for this part is shown as below (`train()` is copied from `BasicClient.train()` and modified by adding/changing total 9 lines):
 
 ```python
-    def train(self, model, cg):
- model.train()
- # 1
- src_model = copy.deepcopy(model)
- # 2
- src_model.freeze_grad()
- optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
-                                           weight_decay=self.weight_decay, momentum=self.momentum)
- for iter in range(self.num_steps):
-  batch_data = self.get_batch_data()
-  model.zero_grad()
-  loss = self.calculator.train_one_step(model, batch_data)
-  loss.backward()
-  # 3
-  for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()): pm.grad = pm.grad - pc + pcg
-  optimizer.step()
- # 4    
- dy = model - src_model
- # 5
- dc = -1.0 / (self.num_steps * self.learning_rate) * dy - cg
- # 6
- self.c = self.c + dc
- # 7
- return dy, dc
+ @fmodule.with_multi_gpus
+def train(self, model, cg):
+    model.train()
+    # global parameters
+    # 1
+    src_model = copy.deepcopy(model)
+    # 2
+    src_model.freeze_grad()
+    # 3
+    cg.freeze_grad()
+    # 4
+    if self.c is None: self.c = model.zeros_like()
+    # 5
+    self.c.freeze_grad()
+    optimizer = self.calculator.get_optimizer(model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+    for iter in range(self.num_steps):
+        batch_data = self.get_batch_data()
+        model.zero_grad()
+        loss = self.calculator.train_one_step(model, batch_data)['loss']
+        loss.backward()
+        # 6
+        for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()): pm.grad = pm.grad - pc + pcg
+        optimizer.step()
+    # 7
+    dy = model - src_model
+    # 8
+    dc = -1.0 / (self.num_steps * self.learning_rate) * dy - cg
+    # 9
+    self.c = self.c + dc
+    return dy, dc
 ```
 
 **Fourth, change the aggregation way of the server.**
