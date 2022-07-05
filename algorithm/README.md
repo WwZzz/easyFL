@@ -222,35 +222,35 @@ import utils.fflow as flw
 
 
 class Client(BasicClient):
- def train(self, model):
-  model.train()
-  optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
+    def train(self, model):
+        model.train()
+        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
                                             weight_decay=self.weight_decay, momentum=self.momentum)
-  # 1
-  rec_test_loss = []
-  for iter in range(self.num_steps):
-   batch_data = self.get_batch_data()
-   # 2
-   if self.name == 'Client00':
-    # 3
-    test_loss = flw.logger.local_test(self.server, model)
-    # 4
-    rec_test_loss.append(test_loss)
-   model.zero_grad()
-   loss = self.calculator.train_one_step(model, batch_data)
-   loss.backward()
-   optimizer.step()
-  # 5
-  flw.logger.write('client00_local_testing_loss', rec_test_loss)
-  return
+        # 1
+        rec_test_loss = []
+        for iter in range(self.num_steps):
+            batch_data = self.get_batch_data()
+            # 2
+            if self.name == 'Client00':
+                # 3
+                test_loss = flw.logger.local_test(self.server, model)
+                # 4
+                rec_test_loss.append(test_loss)
+            model.zero_grad()
+            loss = self.calculator.train_one_step(model, batch_data)
+            loss.backward()
+            optimizer.step()
+        # 5
+        flw.logger.write('client00_local_testing_loss', rec_test_loss)
+        return
 
 
 class MyLogger(flw.Logger):
- def __init__(self):
-  super(MyLogger, self).__init__()
+    def __init__(self):
+        super(MyLogger, self).__init__()
 
- def local_test(self, server, model):
-  test_metric = server.test(model)
-  return test_metric['loss']
+    def local_test(self, server, model):
+        test_metric = server.test(model)
+        return test_metric['loss']
 ```
 In this way, the codes of `fedavg.py` is preserved, since all the addtional operations are made in another independent algorithm file with a different name. 
