@@ -74,7 +74,7 @@ To get the results, run the commands below:
 
 ```
 # generate federated synthetic(0.5, 0.5) data
-python generate_fedtask.py --dataset synthetic_classification --dist 10 --skew 0.5 --num_clients 30
+python generate_fedtask.py --benchmark synthetic_classification --dist 10 --skew 0.5 --num_clients 30
 
 # run fedavg (default), weighted sample and uniform average
 python main.py --task synthetic_classification_cnum30_dist10_skew0.5_seed0 --num_epochs 20 --algorithm fedavg --model lr --learning_rate 0.01 --batch_size 10 --num_rounds 200 --proportion 0.34 --gpu 0 --lr_scheduler 0
