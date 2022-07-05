@@ -155,7 +155,7 @@ if __name__ == '__main__':
         'fedavg',
     ]
     curve_names = [
-        'train_loss',
+        #'train_loss',
         'test_loss',
         'test_accuracy',
     ]
