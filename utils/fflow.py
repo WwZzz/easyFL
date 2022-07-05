@@ -30,7 +30,6 @@ def read_option():
     parser.add_argument('--num_rounds', help='number of communication rounds', type=int, default=20)
     parser.add_argument('--proportion', help='proportion of clients sampled per round', type=float, default=0.2)
     parser.add_argument('--learning_rate_decay', help='learning rate decay for the training process;', type=float, default=0.998)
-    parser.add_argument('--weight_decay', help='weight decay for the training process', type=float, default=0)
     parser.add_argument('--lr_scheduler', help='type of the global learning rate scheduler', type=int, default=-1)
     # hyper-parameters of local training
     parser.add_argument('--num_epochs', help='number of epochs when clients trainset on data;', type=int, default=5)
@@ -39,6 +38,7 @@ def read_option():
     parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=float, default='64')
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
     parser.add_argument('--momentum', help='momentum of local update', type=float, default=0)
+    parser.add_argument('--weight_decay', help='weight decay for the training process', type=float, default=0)
     # realistic machine config
     parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
     parser.add_argument('--gpu', nargs='*', help='GPU IDs and empty input is equal to using CPU', type=int)
