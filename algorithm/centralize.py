@@ -1,6 +1,7 @@
 import time
 import torch
-from .fedbase import BasicServer, BasicClient
+from .fedbase import BasicServer
+from .fedavg import Client
 import utils.fflow as flw
 import ujson
 import os
@@ -26,7 +27,7 @@ class Server(BasicServer):
     def run(self):
         # training
         self.model.train()
-        optimizer = self.calculator.get_optimizer(self.option['optimizer'], self.model, lr=self.option['learning_rate'],
+        optimizer = self.calculator.get_optimizer(self.model, lr=self.option['learning_rate'],
                                                   weight_decay=self.option['weight_decay'], momentum=self.option['momentum'])
         flw.logger.time_start('Total Time Cost')
         for iter in range(self.num_iters):
@@ -56,10 +57,6 @@ class Server(BasicServer):
             self.data_loader = iter(self.calculator.get_data_loader(self.train_data, batch_size=self.batch_size))
             batch_data = next(self.data_loader)
         return batch_data
-
-class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None):
-        super(Client, self).__init__(option, name, train_data, valid_data)
 
 class MyLogger(flw.Logger):
     def log(self, server=None, current_iter=-1):

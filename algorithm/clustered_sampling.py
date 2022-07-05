@@ -1,4 +1,5 @@
 from .fedbase import BasicServer, BasicClient
+from .fedavg import Client
 import numpy as np
 from utils import fmodule
 import copy
@@ -8,10 +9,10 @@ from scipy.cluster.hierarchy import linkage, fcluster
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
-        # m = self.clients_per_round, M = self.data_vol = sum(n_i), n_i = self.client_vols[i]
-        self.alg = option['alg']
+        # m = self.clients_per_round, M = self.total_data_vol = sum(n_i), n_i = self.local_data_vols[i]
+        self.algo_para = {'alg':1}
+        self.init_algo_para(option['algo_para'])
         self.W = None
-        self.paras_name=['alg']
         zero_model = fmodule._model_to_tensor(self.model-self.model).cpu().numpy()
         self.update_history = [copy.deepcopy(zero_model) for _ in range(self.num_clients)]
         self.distance_type = 'cos'
@@ -23,7 +24,7 @@ class Server(BasicServer):
         for model_k, cid in zip(models, self.selected_clients):
             self.update_history[cid]=fmodule._model_to_tensor(model_k-self.model).cpu().numpy()
         # aggregate: pk = 1/K as default where K=len(selected_clients)
-        self.model = self.aggregate(models, p = [1.0 * self.client_vols[cid]/self.data_vol for cid in self.selected_clients])
+        self.model = self.aggregate(models, p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients])
         return
 
     def update_w(self, m, M, ns, alg=1):
@@ -119,9 +120,9 @@ class Server(BasicServer):
                 distri_clusters[l] /= np.sum(distri_clusters[l])
             return distri_clusters.tolist()
 
-    def sample(self):
-        self.W = self.update_w(self.clients_per_round, self.data_vol, self.client_vols, self.alg)
-        all_clients = [cid for cid in range(self.num_clients)]
+    def sample(self, all_clients=[]):
+        self.W = self.update_w(self.clients_per_round, self.total_data_vol, self.local_data_vols, self.alg)
+        if len(all_clients)==0: all_clients = [cid for cid in range(self.num_clients)]
         selected_clients = []
         for k in range(self.clients_per_round):
             cid = np.random.choice(all_clients, 1, p=self.W[k])[0]
@@ -140,9 +141,3 @@ class Server(BasicServer):
                 return 0.0
             else:
                 return np.arccos(np.sum(g1*g2)/(np.sqrt(ng1*ng2)))
-
-class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None):
-        super(Client, self).__init__(option, name, train_data, valid_data)
-
-

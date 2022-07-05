@@ -13,26 +13,26 @@ class Server(BasicServer):
         super(Server, self).__init__(option, model, clients, test_data)
         if not "get_embedding" in dir(model):
             raise NotImplementedError("the model used by Moon should have the method `get_embedding` to obtain the intermediate result of forward")
-        self.paras_name = ['mu']
+        self.algo_para = {'mu': 0.1}
+        self.init_algo_para(option['algo_para'])
 
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
-        self.mu = option['mu']
         # the temperature (tau) is set 0.5 as default
-        # self.tau = option['tau']
         self.tau = 0.5
         self.local_model = None
         self.contrastive_loss = ModelContrastiveLoss(self.tau)
 
+    @fmodule.with_multi_gpus
     def train(self, model):
         # init global model and local model
         global_model = copy.deepcopy(model)
         global_model.freeze_grad()
         if self.local_model:
-            self.local_model.to(fmodule.device)
+            self.local_model.to(model.get_device())
         model.train()
-        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         for iter in range(self.num_steps):
             batch_data = self.get_batch_data()
             model.zero_grad()
@@ -65,4 +65,4 @@ class ModelContrastiveLoss(torch.nn.Module):
             neg_sim = self.cos(z, z_prev)
             logits = torch.cat((logits, neg_sim.reshape(-1, 1)), dim=1)
         logits /= self.temperature
-        return self.cross_entropy(logits, torch.zeros(z.size(0)).long().to(fmodule.device))
+        return self.cross_entropy(logits, torch.zeros(z.size(0)).long().to(logits.device))

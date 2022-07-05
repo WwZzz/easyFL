@@ -10,9 +10,9 @@ from utils import fmodule
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
+        self.algo_para = {'eta':1}
+        self.init_algo_para(option['algo_para'])
         self.cg = self.model.zeros_like()
-        self.eta = option['eta']
-        self.paras_name = ['eta']
 
     def pack(self, client_id):
         return {
@@ -43,9 +43,9 @@ class Server(BasicServer):
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
-        self.c = fmodule.Model().zeros_like()
-        self.c.freeze_grad()
-        
+        self.c = None
+
+    @fmodule.with_multi_gpus
     def train(self, model, cg):
         """
         The codes of Algorithm 1 that updates the control variate
@@ -63,7 +63,9 @@ class Client(BasicClient):
         src_model = copy.deepcopy(model)
         src_model.freeze_grad()
         cg.freeze_grad()
-        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        if self.c is None: self.c = model.zeros_like()
+        self.c.freeze_grad()
+        optimizer = self.calculator.get_optimizer(model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         for iter in range(self.num_steps):
             batch_data = self.get_batch_data()
             model.zero_grad()

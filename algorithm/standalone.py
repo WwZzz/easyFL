@@ -1,4 +1,5 @@
-from .fedbase import BasicServer, BasicClient
+from .fedbase import BasicServer
+from .fedavg import Client
 import utils.fflow as flw
 import os
 import numpy as np
@@ -19,10 +20,6 @@ class Server(BasicServer):
     def unpack(self, packages_received_from_clients):
         return [packages_received_from_clients[cid]['model'] for cid in range(self.num_clients)]
 
-class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None):
-        super(Client, self).__init__(option, name, train_data, valid_data)
-
 class MyLogger(flw.Logger):
     def log(self, server=None, models=[]):
         if server == None or models == []: return
@@ -37,7 +34,7 @@ class MyLogger(flw.Logger):
             # calculate weighted averaging and other statistics of metrics of validation datasets across clients
             for met_name, met_val in valid_metrics.items():
                 self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in
-                                                                   zip(server.client_vols, met_val)]) / server.data_vol)
+                                                                   zip(server.local_data_vols, met_val)]) / server.total_data_vol)
                 self.output['mean_valid_' + met_name].append(np.mean(met_val))
                 self.output['std_valid_' + met_name].append(np.std(met_val))
                 self.output['local_valid_'+met_name].append(met_val[cid])

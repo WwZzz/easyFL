@@ -6,13 +6,12 @@ import math
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
-        # algorithm hyper-parameters
+        # algorithm-dependent hyper-parameters
+        self.algo_para = {'alpha':0.1, 'tau':1}
+        self.init_algo_para(option['algo_para'])
         self.learning_rate = option['learning_rate']
-        self.alpha = option['alpha']
-        self.tau = option['tau']
         self.client_last_sample_round = [-1 for i in range(self.num_clients)]
         self.client_grads_history = [0 for i in range(self.num_clients)]
-        self.paras_name=['alpha','tau']
 
     def iterate(self, t):
         # sampling

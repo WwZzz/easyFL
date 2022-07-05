@@ -61,19 +61,14 @@ class AugSTNodeDataset(Dataset):
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.lr_gcn = 0.001
+        self.algo_para = {'lr_gcn':0.001, 'server_epoch':1, 'server_batch_size':48}
+        self.init_algo_para(option['algo_para'])
         self.weight_decay_gcn = option['weight_decay']
-        # self.server_batch_size = option['beta']
-        # self.server_epoch = option['tau']
-        self.server_epoch = 1
-        self.server_batch_size = 48
-        self.communicate_stage = 1
         self.client_encodings = [None for _ in self.clients]
         self.model_gru_num_layers = self.model.gru_num_layers
         self.model_hidden_size = self.model.hidden_size
         # init GCN owned by the server and its optimizer
-        self.calculator = utils.fmodule.TaskCalculator(utils.fmodule.device)
-        self.gcn = utils.fmodule.SvrModel(node_input_size=self.model_hidden_size, global_input_size=self.model_hidden_size).to(utils.fmodule.device)
+        self.gcn = utils.fmodule.SvrModel(node_input_size=self.model_hidden_size, global_input_size=self.model_hidden_size).to(self.device)
         self.optimizer = self.calculator.get_optimizer(model=self.gcn, lr=self.lr_gcn, weight_decay = self.weight_decay_gcn)
         # read graph edge information from dataset
         self.adj = self.test_data.get_adj()
@@ -104,8 +99,8 @@ class Server(BasicServer):
             graph_encoding = self.gcn(
                 Data(
                     x=h_encode.view(h_encode.shape[0], batch_num, node_num, h_encode.shape[2]).permute(2, 1, 0, 3),
-                    edge_index=self.masked_edge['edge_index'].to(utils.fmodule.device),
-                    edge_attr=self.masked_edge['edge_attr'].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).to(utils.fmodule.device)
+                    edge_index=self.masked_edge['edge_index'].to(self.device),
+                    edge_attr=self.masked_edge['edge_attr'].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).to(self.device)
                 )
             )
             updated_graph_encoding.append(graph_encoding.detach().clone().cpu())
@@ -140,8 +135,8 @@ class Server(BasicServer):
                 graph_encoding = self.gcn(
                     Data(
                         x=graph_encoding,
-                        edge_index=self.masked_edge['edge_index'].to(utils.fmodule.device),
-                        edge_attr=self.masked_edge['edge_attr'].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).to(utils.fmodule.device)
+                        edge_index=self.masked_edge['edge_index'].to(self.device),
+                        edge_attr=self.masked_edge['edge_attr'].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).to(self.device)
                     )
                 )
                 y_pred = self.model.forward_decoder(batch_data, h_encode, batches_seen=batches_seen, return_encoding=False, training=True, server_graph_encoding=graph_encoding)

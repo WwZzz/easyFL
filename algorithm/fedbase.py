@@ -1,28 +1,31 @@
 import numpy as np
+import utils.fmodule
 from utils import fmodule
 import copy
-from multiprocessing.dummy import Pool as ThreadPool
 import os
 import utils.fflow as flw
-import utils.network_simulator as ns
+import utils.systemic_simulator as ss
 import math
 import collections
+import torch.multiprocessing as mp
 
 class BasicServer:
-    def __init__(self, option, model, clients, test_data = None):
-        # basic setting
+    def __init__(self, option, model, clients, test_data=None):
+        # basic configuration
         self.task = option['task']
         self.name = option['algorithm']
         self.model = model
+        self.device = self.model.get_device()
         self.test_data = test_data
         self.eval_interval = option['eval_interval']
         self.num_threads = option['num_threads']
-        # clients settings
+        # server calculator
+        self.calculator = fmodule.TaskCalculator(self.device, optimizer_name = option['optimizer'])
+        # clients configuration
         self.clients = clients
         self.num_clients = len(self.clients)
-        self.client_vols = [c.datavol for c in self.clients]
-        self.data_vol = sum(self.client_vols)
-        self.clients_buffer = [{} for _ in range(self.num_clients)]
+        self.local_data_vols = [c.datavol for c in self.clients]
+        self.total_data_vol = sum(self.local_data_vols)
         self.selected_clients = []
         for c in self.clients:c.set_server(self)
         # hyper-parameters during training process
@@ -30,17 +33,13 @@ class BasicServer:
         self.decay_rate = option['learning_rate_decay']
         self.clients_per_round = max(int(self.num_clients * option['proportion']), 1)
         self.lr_scheduler_type = option['lr_scheduler']
-        self.current_round = -1
-        # sampling and aggregating methods
-        self.sample_option = option['sample']
-        self.agg_option = option['aggregate']
         self.lr = option['learning_rate']
-        # names of additional parameters
-        self.paras_name=[]
-        self.option = option
-        # server calculator
-        self.calculator = fmodule.TaskCalculator(fmodule.device)
+        self.sample_option = option['sample']
+        self.aggregation_option = option['aggregate']
+        # algorithm-dependent parameters
+        self.algo_para = {}
         # virtual clock for calculating time consuming across communication rounds
+        self.current_round = -1
         self.TIME_UNIT = 1
         self.TIME_ACCESS_BOUND = 100000
         self.TIME_LATENCY_BOUND = 100000
@@ -48,6 +47,8 @@ class BasicServer:
             'time_access':[],
             'time_sync':[]
         }
+        # all options
+        self.option = option
 
     def run(self):
         """
@@ -55,6 +56,7 @@ class BasicServer:
         """
         flw.logger.time_start('Total Time Cost')
         for round in range(self.num_rounds+1):
+            self.current_round = round
             print("--------------Round {}--------------".format(round))
             flw.logger.time_start('Time Cost')
             if flw.logger.check_if_log(round, self.eval_interval):
@@ -84,10 +86,10 @@ class BasicServer:
         # training
         models = self.communicate(self.selected_clients)['model']
         # aggregate: pk = 1/K as default where K=len(selected_clients)
-        self.model = self.aggregate(models, p=[1.0 * self.client_vols[cid]/self.data_vol for cid in self.selected_clients])
+        self.model = self.aggregate(models, p=[1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients])
         return
 
-    @ns.with_latency
+    @ss.with_dropout
     def communicate(self, selected_clients):
         """
         The whole simulating communication procedure with the selected clients.
@@ -107,11 +109,15 @@ class BasicServer:
                 response_from_client_id = self.communicate_with(client_id)
                 packages_received_from_clients.append(response_from_client_id)
         else:
-            # computing in parallel
-            pool = ThreadPool(min(self.num_threads, len(communicate_clients)))
-            packages_received_from_clients = pool.map(self.communicate_with, communicate_clients)
+            # computing in parallel with torch.multiprocessing
+            pool = mp.Pool(self.num_threads)
+            packages_received_from_clients = []
+            for client_id in communicate_clients:
+                self.clients[client_id].update_device(next(utils.fmodule.dev_manager))
+                packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=(int(client_id),)))
             pool.close()
             pool.join()
+            packages_received_from_clients = list(map(lambda x: x.get(), packages_received_from_clients))
         for i,cid in enumerate(communicate_clients): client_package_buffer[cid] = packages_received_from_clients[i]
         packages_received_from_clients = [client_package_buffer[cid] for cid in selected_clients if client_package_buffer[cid]]
         return self.unpack(packages_received_from_clients)
@@ -175,24 +181,30 @@ class BasicServer:
             for c in self.clients:
                 c.set_learning_rate(self.lr)
 
-    @ns.with_accessibility
-    def sample(self):
+    @ss.with_inactivity
+    def sample(self, all_clients=[]):
         """Sample the clients.
         :param
+
         :return
             a list of the ids of the selected clients
         """
-        all_clients = [cid for cid in range(self.num_clients)]
-        if self.clients_per_round==self.num_clients:
+        if len(all_clients)==0:
+            all_clients = [cid for cid in range(self.num_clients)]
+        if self.clients_per_round == self.num_clients:
             # full sampling
             return all_clients
         # sample clients
         elif self.sample_option == 'uniform':
             # original sample proposed by fedavg
-            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=False))
+            num_sample = min(self.clients_per_round, len(all_clients))
+            selected_clients = list(np.random.choice(all_clients, num_sample, replace=False))
         elif self.sample_option =='md':
             # the default setting that is introduced by FedProx
-            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=[nk / self.data_vol for nk in self.client_vols]))
+            client_vols = np.array(self.local_data_vols)[all_clients]
+            total_data_vol = sum(client_vols)
+            num_sample = min(self.clients_per_round, len(all_clients))
+            selected_clients = list(np.random.choice(all_clients, num_sample, replace=True, p = client_vols/total_data_vol))
         return selected_clients
 
     def aggregate(self, models: list, p=[]):
@@ -213,13 +225,13 @@ class BasicServer:
         N/K * Σpk * model_k             |1/K * Σmodel_k             |(1-Σpk) * w_old + Σpk * model_k  |Σ(pk/Σpk) * model_k
         """
         if len(models) == 0: return self.model
-        if self.agg_option == 'weighted_scale':
+        if self.aggregation_option == 'weighted_scale':
             K = len(models)
             N = self.num_clients
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)]) * N / K
-        elif self.agg_option == 'uniform':
+        elif self.aggregation_option == 'uniform':
             return fmodule._model_average(models)
-        elif self.agg_option == 'weighted_com':
+        elif self.aggregation_option == 'weighted_com':
             w = fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
             return (1.0-sum(p))*self.model + w
         else:
@@ -257,17 +269,28 @@ class BasicServer:
         else:
             return None
 
-    def wait_for_accessibility(self, selected_clients):
-        # always waiting for the selected clients to be active during sampling
-        time = 0
-        clients_ensured = set()
-        while True:
-            current_active_clients = [cid for cid in selected_clients if self.clients[cid].is_active()]
-            clients_ensured = clients_ensured.union(current_active_clients)
-            if len(clients_ensured)==len(set(selected_clients)):
-                break
-            time += self.TIME_UNIT
-        return selected_clients, time
+    def init_algo_para(self, algo_paras):
+        """
+        Init the algorithm-dependent hyper-parameters for the server and clients. The attribution of server.algo_para
+        should be firstly defined as the dict of parameters, where the key is the parameters name and the corresponding
+        value is the default value of this parameter.
+        :param
+            algo_paras: the list of inputted values of the parameters by argparse.Parser
+        :return:
+        """
+        # before calling this function, self.algo_para should be defined
+
+        if len(self.algo_para)==0:
+            return
+        elif algo_paras is not None:
+            assert len(self.algo_para) == len(algo_paras)
+            for para_name, value in zip(self.algo_para.keys(), algo_paras):
+                self.algo_para[para_name] = type(self.algo_para[para_name])(value)
+        for para_name, value in self.algo_para.items():
+            self.__setattr__(para_name, value)
+            for c in self.clients:
+                c.__setattr__(para_name, value)
+        return
 
 class BasicClient():
     def __init__(self, option, name='', train_data=None, valid_data=None):
@@ -278,7 +301,8 @@ class BasicClient():
         self.datavol = len(self.train_data)
         self.data_loader = None
         # local calculator
-        self.calculator = fmodule.TaskCalculator(device=fmodule.device)
+        self.device = next(fmodule.dev_manager)
+        self.calculator = fmodule.TaskCalculator(self.device, option['optimizer'])
         # hyper-parameters for training
         self.optimizer_name = option['optimizer']
         self.learning_rate = option['learning_rate']
@@ -299,6 +323,7 @@ class BasicClient():
         # server
         self.server = None
 
+    @fmodule.with_multi_gpus
     def train(self, model):
         """
         Standard local training procedure. Train the transmitted model with local training dataset.
@@ -307,7 +332,7 @@ class BasicClient():
         :return
         """
         model.train()
-        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        optimizer = self.calculator.get_optimizer(model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         for iter in range(self.num_steps):
             # get a batch of data
             batch_data = self.get_batch_data()
@@ -318,6 +343,7 @@ class BasicClient():
             optimizer.step()
         return
 
+    @ fmodule.with_multi_gpus
     def test(self, model, dataflag='valid'):
         """
         Evaluate the model with local data (e.g. training data or validating data).
@@ -431,7 +457,7 @@ class BasicClient():
         Get the latency amount of the client
         :return: self.latency_amount if client not dropping out
         """
-        return 1000000000 if self.is_drop() else self.network_latency_amount
+        return self.network_latency_amount
 
     def get_batch_data(self):
         """
@@ -448,3 +474,13 @@ class BasicClient():
         self.current_steps = (self.current_steps+1) % self.num_steps
         if self.current_steps == 0:self.data_loader = None
         return batch_data
+
+    def update_device(self, dev):
+        """
+        Update running-time GPU device to the inputted dev, including change the client's device and the task_calculator's device
+        :param
+            dev: target dev
+        :return:
+        """
+        self.device = dev
+        self.calculator = fmodule.TaskCalculator(dev, self.calculator.optimizer_name)

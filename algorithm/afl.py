@@ -7,12 +7,13 @@ import collections
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
-        # algorithm hyper-parameters
         self.dynamic_lambdas = np.ones(self.num_clients) * 1.0 / self.num_clients
         self.learning_rate = option['learning_rate']
-        self.learning_rate_lambda = option['learning_rate_lambda']
         self.result_model = copy.deepcopy(self.model)
-        self.paras_name = ['learning_rate_lambda']
+        # algorithm hyper-parameters
+        self.algo_para = {'learning_rate_lambda': 0.01}
+        self.init_algo_para(option['algo_para'])
+
 
     def iterate(self, t):
         # full sampling
@@ -57,7 +58,6 @@ class Server(BasicServer):
             return self.calculator.test(model, self.test_data)
         else:
             return None
-
 
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):

@@ -6,9 +6,9 @@ import torch
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.paras_name = ['alpha']
-        self.alpha = option['alpha']
-        self.h  = self.model.zeros_like()
+        self.algo_para = {'alpha': 0.1}
+        self.init_algo_para(option['algo_para'])
+        self.h = self.model.zeros_like()
 
     def aggregate(self, models, p=[]):
         self.h = self.h - self.alpha * (1.0 / self.num_clients * fmodule._model_sum(models) - self.model)
@@ -21,13 +21,14 @@ class Client(BasicClient):
         self.gradL = None
         self.alpha = option['alpha']
 
+    @ fmodule.with_multi_gpus
     def train(self, model):
         if self.gradL == None:self.gradL = model.zeros_like()
         # global parameters
         src_model = copy.deepcopy(model)
         src_model.freeze_grad()
         model.train()
-        optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         for iter in range(self.num_steps):
             batch_data = self.get_batch_data()
             model.zero_grad()

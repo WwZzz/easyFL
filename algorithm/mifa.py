@@ -1,14 +1,14 @@
 from .fedbase import BasicServer, BasicClient
+from .fedavg import Client
 from utils import fmodule
 
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
+        self.algo_para = {'c':1.0}
+        self.init_algo_para(option['algo_para'])
         self.update_table = [None for _ in range(self.num_clients)]
         self.initflag = False
-        # self.c = option['c']
-        # self.paras_name = ['c']
-        self.c = 1.0
         # choose all the clients that are active
         self.clients_per_round = self.num_clients
 
@@ -39,12 +39,5 @@ class Server(BasicServer):
 
     def aggregate(self):
         return self.model - self.lr * fmodule._model_average([update_i for update_i in self.update_table if update_i])
-
-class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None):
-        super(Client, self).__init__(option, name, train_data, valid_data)
-
-
-
 
 
