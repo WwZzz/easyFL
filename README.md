@@ -15,7 +15,7 @@ Our easyFL is a strong and reusable experimental platform for research on federa
 - [Remark](#Remark)
 - [Citation](#Citation)
 - [Contacts](#Contacts)
-- [FedRME](#FedRME)
+- [Publication Using easyFL](#Publication Using easyFL)
 - [References](#References)
 
 
@@ -223,13 +223,13 @@ Server-side options:
 
 * `lr_scheduler` is the global learning rate scheduler.
 
-* `learning_rate_decay` is the decay rate of the global learning rate.
+* `learning_rate_decay` is the decay rate of the learning rate.
 
 Client-side options:
 
 * `num_epochs` is the number of local training epochs.
 
-* `num_steps` is the number of local updating steps and the default value is -1. If this term is set to larger than 0, then `num_epochs` is invalid.
+* `num_steps` is the number of local updating steps and the default value is -1. If this term is set larger than 0, `num_epochs` is not valid.
 
 * `learning_rate ` is the step size when locally training.
 
@@ -245,9 +245,9 @@ Real Machine-Dependent options:
 
 * `seed ` is the initial random seed.
 
-* `gpu ` is the id of the GPU device. CPU is used if Without specifying this term. `--gpu 0` will only use device GPU 0, and `--gpu 0 1 2 3` will use the specified four GPUs. 
+* `gpu ` is the id of the GPU device. (e.g. CPU is used without specifying this term. `--gpu 0` will use device GPU 0, and `--gpu 0 1 2 3` will use the specified 4 GPUs when `num_threads`>0. 
 
-* `server_with_cpu ` is set False as default value, since all the tensor is kept on the memory of only one device can usually accelerate training.
+* `server_with_cpu ` is set False as default value,..
 
 * `test_batch_size ` is the batch_size used when evaluating models on validation datasets, which is limited by the free space of the used device.
 
