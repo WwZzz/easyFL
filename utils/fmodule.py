@@ -444,7 +444,7 @@ def with_multi_gpus(func):
                 for k,v in res.items():
                     nv = v.to(origin_device) if hasattr(v, 'get_device') or hasattr(v, 'device') else v
                     res[k] = nv
-            elif type(res)==tuple or list:
+            elif type(res)==tuple or type(res)==list:
                 new_res = []
                 for v in res:
                     nv = v.to(origin_device) if hasattr(v, 'get_device') or hasattr(v, 'device') else v
