@@ -1,3 +1,9 @@
+"""
+This is a non-official implementation of 'Measuring the Effects
+of Non-Identical Data Distribution for Federated Visual Classification'
+(http://arxiv.org/abs/1909.06335).
+"""
+
 from .fedavg import Client
 from .fedbase import BasicServer
 
