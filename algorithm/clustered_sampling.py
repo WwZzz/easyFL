@@ -1,3 +1,10 @@
+"""
+This is a non-official implementation of the work 'Clustered Sampling:
+Low-Variance and Improved Representativity for Clients Selection in
+Federated Learning (https://arxiv.org/abs/2105.05883)'. The official
+implementation is in https://github.com/Accenture//Labs-FederatedLearning/tree/clustered_sampling
+"""
+
 from .fedbase import BasicServer, BasicClient
 from .fedavg import Client
 import numpy as np

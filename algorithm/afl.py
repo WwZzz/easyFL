@@ -1,3 +1,10 @@
+"""
+This is a non-official implementation of AFL proposed in 'Agnostic
+Federated Learning (http://arxiv.org/abs/1902.00146)'. We refer to the
+Github repo fair_flearn ('https://github.com/litian96/fair_flearn') when
+implementing this algorithm.
+"""
+
 from utils import fmodule
 from .fedbase import BasicServer, BasicClient
 import numpy as np
