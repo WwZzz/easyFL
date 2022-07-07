@@ -111,7 +111,6 @@ class BasicServer:
         else:
             # computing in parallel with torch.multiprocessing
             pool = mp.Pool(self.num_threads)
-            packages_received_from_clients = []
             for client_id in communicate_clients:
                 self.clients[client_id].update_device(next(utils.fmodule.dev_manager))
                 packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=(int(client_id),)))
