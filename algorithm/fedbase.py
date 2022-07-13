@@ -89,6 +89,7 @@ class BasicServer:
         self.model = self.aggregate(models, p=[1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients])
         return
 
+    @ss.with_incomplete_update
     @ss.with_dropout
     def communicate(self, selected_clients):
         """
@@ -442,6 +443,16 @@ class BasicClient():
     def set_server(self, server=None):
         if server:
             self.server = server
+
+    def set_local_epochs(self, epochs=None):
+        if epochs is None: return
+        self.epochs = epochs
+        self.num_steps = self.epochs * math.ceil(len(self.train_data)/self.batch_size)
+        return
+
+    def set_batch_size(self, batch_size=None):
+        if batch_size is None: return
+        self.batch_size = batch_size
 
     def set_learning_rate(self, lr = None):
         """

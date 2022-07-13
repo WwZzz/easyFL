@@ -7,20 +7,14 @@ Here we implement three different network heterogeneity for a FL system:
 import numpy as np
 TIME_UNIT = 1
 
-
-def init_active_probability_distribution(clients):
-    return
-
-def init_dropping_probability_distribution(clients):
-    return
-
-def init_latency_amount_distribution(clients):
-    return
-
 def update_activity(server):
     return
 
+def update_local_computing_resource(server, clients = []):
+    return
+
 def init_network_mode(server, mode='ideal'):
+    global update_activity
     if mode=='ideal':
         for c in server.clients:
             c.network_active_rate = 1
@@ -72,7 +66,6 @@ def init_network_mode(server, mode='ideal'):
             t = server.current_round % 24
             for c in server.clients:
                 c.network_active_rate = fts[t] * c.qk
-        global update_activity
         update_activity = f
         Tks = [np.random.lognormal(0,0.25) for _ in server.clients]
         max_Tk = max(Tks)
@@ -88,11 +81,6 @@ def init_network_mode(server, mode='ideal'):
             c.network_active_rate = 1.0 * cvol / max_data_vol
             c.network_drop_rate = 0
             c.network_latency_amount = 0
-
-    elif mode=='custom':
-        init_active_probability_distribution(server.clients)
-        init_dropping_probability_distribution(server.clients)
-        init_latency_amount_distribution(server.clients)
     else:
         for c in server.clients:
             c.network_active_rate = 1
@@ -101,9 +89,52 @@ def init_network_mode(server, mode='ideal'):
         return
 
 def init_computing_mode(server, mode='ideal'):
-    if mode=='ideal':
+    global update_local_computing_resource
+    if mode == 'ideal':
         return
-    elif mode=='custom':
+
+    elif mode.startswith('FEDPROX'):
+        """
+        This setting follows the setting in the paper 'Federated Optimization in Heterogeneous Networks' 
+        (http://arxiv.org/abs/1812.06127). The string `mode` should be like `FEDPROX-pk` where `k` should be 
+        replaced by a float number. The `k` specifies the number of selected clients who perform incomplete updates
+        in each communication round. THe default value of `k` is 0.5 as the middle case of heterogeneity in the original
+        paper.
+        """
+        p = float(mode[mode.find('p')+1:]) if mode.find('p')!=-1 else 0.5
+        def f(server, clients=[]):
+            incomplete_clients = np.random.choice(clients, round(len(clients)*p), replace=False)
+            for cid in incomplete_clients:
+                server.clients[cid].num_steps = np.random.randint(low=1, high=server.clients[cid].num_steps)
+            return
+        update_local_computing_resource = f
+        return
+
+    elif mode.startswith('FEDNOVA-Uniform'):
+        """
+        This setting follows the setting in the paper 'Tackling the Objective Inconsistency Problem in 
+        Heterogeneous Federated Optimization' (http://arxiv.org/abs/2007.07481). The string `mode` should be like 
+        'FEDNOVA-Uniform(a,b)' where `a` is the minimal value of the number of local epochs and `b` is the maximal 
+        value. If this mode is active, the `num_epochs` and `num_steps` of clients will be disable.
+        """
+        a = int(mode[mode.find('(')+1: mode.find(',')])
+        b = int(mode[mode.find(',')+1: mode.find(')')])
+        def f(server, clients=[]):
+            for cid in server.clients:
+                server.clients[cid].set_local_epochs(np.random.randint(low=a, high=b))
+            return
+        update_local_computing_resource = f
+        return
+
+    elif mode.startswith('FEDNOVA-Fixed-Uniform'):
+        """Under this setting, the heterogeneity of computing resource is static across the whole training process."""
+        a = int(mode[mode.find('(')+1: mode.find(',')])
+        b = int(mode[mode.find(',')+1: mode.find(')')])
+        for cid in server.clients:
+            server.clients[cid].set_local_epochs(np.random.randint(low=a, high=b))
+        return
+
+    elif mode=='Fixed-Uniform':
         for c in server.clients:
             c.num_steps = max(1, int(c.num_steps*np.random.rand()))
         return
@@ -139,3 +170,13 @@ def with_latency(communicate):
         self.virtual_clock['time_sync'].append(time_sync)
         return communicate(self, selected_clients)
     return communicate_with_latency
+
+def with_incomplete_update(communicate):
+    def communicate_with_incomplete_update(self, selected_clients):
+        original_local_num_steps = [self.clients[cid].num_steps for cid in selected_clients]
+        update_local_computing_resource(self, selected_clients)
+        res = communicate(self, selected_clients)
+        for cid,onum_steps in zip(selected_clients, original_local_num_steps):
+            self.clients[cid].num_steps = onum_steps
+        return res
+    return communicate_with_incomplete_update
