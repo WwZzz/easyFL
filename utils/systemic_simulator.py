@@ -27,7 +27,8 @@ def init_network_mode(server, mode='ideal'):
         Presence of Arbitrary Device Unavailability' , where each client ci will be ready
         for join in a communcation round with the probability:
             pi = pmin * min({label kept by ci}) / max({all labels}) + ( 1 - pmin )
-        and the participation of client is independent for different rounds.
+        and the participation of client is independent for different rounds. The string mode
+        should be like 'MIFA-px' where x should be replaced by a float number.
         """
         import collections
         pmin = float(mode[mode.find('p')+1:]) if mode.find('p')!=-1 else 0.1
@@ -159,6 +160,7 @@ def with_inactivity(sample):
 # communication phase
 def with_dropout(communicate):
     def communicate_with_dropout(self, selected_clients):
+        for c in self.clients: c.dropped = False
         self.selected_clients = [selected_clients[i] for i in range(len(selected_clients)) if not self.clients[selected_clients[i]].is_drop()]
         return communicate(self, self.selected_clients)
     return communicate_with_dropout

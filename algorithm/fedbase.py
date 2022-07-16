@@ -320,6 +320,8 @@ class BasicClient():
         self.network_active_rate = 1
         self.network_drop_rate = 0
         self.network_latency_amount = 1
+        self.active = True
+        self.dropped = False
         # server
         self.server = None
 
@@ -405,7 +407,8 @@ class BasicClient():
         :return
             True if the client is active according to the active_rate else False
         """
-        return np.random.rand() <= self.network_active_rate
+        self.active = (np.random.rand() <= self.network_active_rate)
+        return self.active
 
     def is_drop(self):
         """
@@ -414,7 +417,8 @@ class BasicClient():
         :return
             True if the client drops out according to the drop_rate else False
         """
-        return (np.random.rand() < self.network_drop_rate)
+        self.dropped = (np.random.rand() < self.network_drop_rate)
+        return self.dropped
 
     def train_loss(self, model):
         """

@@ -74,7 +74,7 @@ def initialize(option):
     bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
     # init gpu
     gpus = option['gpu']
-    utils.fmodule.dev_list = [torch.device('cpu')] if len(gpus)==0 else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in gpus]
+    utils.fmodule.dev_list = [torch.device('cpu')] if gpus is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in gpus]
     utils.fmodule.dev_manager = utils.fmodule.get_device()
     utils.fmodule.TaskCalculator = getattr(importlib.import_module(bmk_core_path), 'TaskCalculator')
     # The Model is defined in bmk_model_path as default, whose filename is option['model'] and the classname is 'Model'
