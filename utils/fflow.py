@@ -69,7 +69,7 @@ def initialize(option):
     # init fedtask
     print("init fedtask...", end='')
     # dynamical initializing the configuration with the benchmark
-    bmk_name = option['task'][:option['task'].find('cnum')-1].lower()
+    bmk_name = option['task'][:option['task'].find('cnum')-1]
     bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
     bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
     # init gpu
@@ -202,11 +202,11 @@ class DefaultLogger(Logger):
         for met_name, met_val in test_metric.items():
             self.output['test_' + met_name].append(met_val)
         # calculate weighted averaging of metrics of training datasets across clients
-        train_metrics = server.test_on_clients(self.current_round, 'train')
+        train_metrics = server.test_on_clients('train')
         for met_name, met_val in train_metrics.items():
             self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.local_data_vols, met_val)]) / server.total_data_vol)
         # calculate weighted averaging and other statistics of metrics of validation datasets across clients
-        valid_metrics = server.test_on_clients(self.current_round, 'valid')
+        valid_metrics = server.test_on_clients('valid')
         for met_name, met_val in valid_metrics.items():
             self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.local_data_vols, met_val)]) / server.total_data_vol)
             self.output['mean_valid_' + met_name].append(np.mean(met_val))

@@ -68,6 +68,7 @@ class TaskGen(BasicTaskGen):
 class TaskCalculator(BasicTaskCalculator):
     def __init__(self, device, optimizer_name='sgd'):
         super(TaskCalculator, self).__init__(device, optimizer_name)
+        self.DataLoader = DataLoader
 
     def train_one_step(self, model, data):
         tdata = self.data_to_device(data)
@@ -83,14 +84,16 @@ class TaskCalculator(BasicTaskCalculator):
         return loss.item()
 
     @torch.no_grad()
-    def test(self, model, data):
+    def test(self, model, data, batch_size=1):
         tdata = self.data_to_device(data)
         outputs = model(tdata)
         loss = 0.5 * torch.mean(outputs)
         return {'loss': loss.item()}
 
     def data_to_device(self, data):
-        return data.to(self.device)
+        return data[0].to(self.device)
 
-    def get_data_loader(self, dataset, batch_size=64, shuffle=True):
-        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    def get_data_loader(self, dataset, batch_size=64, shuffle=True, num_workers=0):
+        if self.DataLoader == None:
+            raise NotImplementedError("DataLoader Not Found.")
+        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
