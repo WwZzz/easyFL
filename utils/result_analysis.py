@@ -136,6 +136,19 @@ def statistic_on_dicts(dicts, key='test_loss', name='mean', option={'axis':0}):
     return func_on_dicts(dicts, key, f, option)
 
 def cfg_to_records(config):
+    cfg_template = {
+        'flt': {},
+        'legend_flt': [],
+        'ploter': {},
+        'info': {},
+    }
+    # check cfg
+    cfg_keys = config.keys()
+    if 'task' not in cfg_keys or 'header' not in cfg_keys:
+        raise NotImplementedError
+    for k in cfg_template:
+        if k not in cfg_keys:
+            config[k] = cfg_template[k]
     task, header, flt = config['task'], config['header'], config['flt']
     rec_names = set()
     for h in header: rec_names = rec_names.union(set(scan_records(task, h, flt)))
