@@ -47,12 +47,13 @@ ploter:
   group_plot:
     - x: communication_round
       y: test_loss
-
+  bar:
+    - x: client_id
+      y: valid_loss_dist
 info:
   final_value:
     - valid_loss
     - test_loss
-    - train_loss
   min_value:
     - test_loss
   group_mean_with_std:
@@ -69,19 +70,19 @@ info:
 #               |                    | final plot will be like:
 #               |                    |       plt.plot(rec_dict[config['x']], rec_dict[config['y']])
 #               |--------------------|--------------------------------------------------
-#  `ploter`:    |     scatter        |to be finished
+#  `ploter`:    |     scatter        | to be finished
 #               |--------------------|--------------------------------------------------
-#               |    group_plot      |to be finished
+#               |    group_plot      | to be finished
 #               |--------------------|--------------------------------------------------
-#               |       bar          |to be finished
+#               |       bar          | to be finished
 #               |--------------------|--------------------------------------------------
-#               |     trace_2d       |to be finished
+#               |     trace_2d       | to be finished
 #---------------------------------------------------------------------------------------
-#               |    final_value     |to be finished
+#               |    final_value     | to be finished
 #               |--------------------|--------------------------------------------------
-#  `former`:    |    max_value       |to be finished
+#  `former`:    |    max_value       | to be finished
 #               |--------------------|--------------------------------------------------
-#               |    min_value       |to be finished
+#               |    min_value       | to be finished
 #               |--------------------|--------------------------------------------------
-#               | group_mean_with_std|to be finished
+#               | group_mean_with_std| to be finished
 #---------------------------------------------------------------------------------------

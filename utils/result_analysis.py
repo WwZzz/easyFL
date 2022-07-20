@@ -256,11 +256,17 @@ class Drawer(Analyser):
             plt.annotate(pname, tuple(p))
 
     def bar(self, plot_obj):
+        fig = plt.figure()
+        fig_size = fig.get_size_inches()
+        new_fig_size = (fig_size[0]*len(self.records), fig_size[1])
+        fig.set_size_inches(new_fig_size)
         group_width = 0.8
+        group_interval = 0.2
         gp = 'x' if 'group' not in plot_obj.keys() else plot_obj['group']
-        data = [d[plot_obj['y']][-1]['loss'] for d in self.rec_dicts]
+        data = [d[plot_obj['y']] for d in self.rec_dicts]
         x = np.array(self.rec_dicts[0][plot_obj['x']])
         x_names = [str(xi) for xi in x]
+        x = np.array([xi*(group_width+group_interval) for xi in x])
         rec_names = [d['legend'] for d in self.rec_dicts]
         if gp=='x':
             bar_in_group = rec_names
@@ -270,6 +276,9 @@ class Drawer(Analyser):
             data = np.array(data).T.tolist()
             bar_in_group = x_names
             group_name = rec_names
+            group_width = 1.0 * group_width * len(bar_in_group) / len(group_name)
+            group_interval = 1.0 * group_interval * len(bar_in_group) / len(group_name)
+            x = np.array([_*(group_width+group_interval) for _ in range(len(group_name))])
             xlabel = gp
         num_groups = len(data[0])
         group_size = len(data)
@@ -278,7 +287,7 @@ class Drawer(Analyser):
             data_across_group = data[bk]
             label = bar_in_group[bk]
             plt.bar(x + bk * bar_width, data_across_group, width=bar_width, label=label, fc=self.colors[bk])
-        plt.xticks([_ for _ in range(num_groups)], group_name)
+        plt.xticks(x+group_width/2.0, group_name)
         plt.legend()
         plt.xlabel(xlabel)
         plt.ylabel(plot_obj['y'])
