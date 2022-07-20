@@ -239,11 +239,10 @@ class BasicServer:
             p = [pk/sump for pk in p]
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
 
-    def test_on_clients(self, round, dataflag='valid'):
+    def test_on_clients(self, dataflag='valid'):
         """
         Validate accuracies and losses on clients' local datasets
         :param
-            round: the current communication round
             dataflag: choose train data or valid data to evaluate
         :return
             metrics: a dict contains the lists of each metric_value of the clients

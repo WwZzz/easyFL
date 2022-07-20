@@ -51,7 +51,7 @@ class Server(BasicServer):
             res.append(max(p[i] + lmbd, 0))
         return res
 
-    def test_on_clients(self, round, dataflag='valid'):
+    def test_on_clients(self, dataflag='valid'):
         all_metrics = collections.defaultdict(list)
         for c in self.clients:
             client_metrics = c.test(self.result_model, dataflag)
