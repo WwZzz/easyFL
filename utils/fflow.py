@@ -138,7 +138,7 @@ def output_filename(option, server):
     for para,pv in server.algo_para.items(): header = header + para + "{}_".format(pv)
     output_name = header + "M{}_R{}_B{}_".format(option['model'], option['num_rounds'],option['batch_size'])+ \
                   ("E{}".format(option['num_epochs']) if option['num_steps']<0 else "K{}".format(option['num_steps']))+\
-                  "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_NET{}_CMP{}_.json".format(
+                  "_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_NET{}_CMP{}_.json".format(
                       option['learning_rate'],
                       option['proportion'],
                       option['seed'],
