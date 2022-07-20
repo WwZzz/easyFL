@@ -44,8 +44,8 @@ class BasicServer:
         self.TIME_ACCESS_BOUND = 100000
         self.TIME_LATENCY_BOUND = 100000
         self.virtual_clock = {
-            'time_access':[],
-            'time_sync':[]
+            'time_access': [],
+            'time_sync': [],
         }
         # all options
         self.option = option

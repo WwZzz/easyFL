@@ -137,8 +137,8 @@ def output_filename(option, server):
     header = "{}_".format(option["algorithm"])
     for para,pv in server.algo_para.items(): header = header + para + "{}_".format(pv)
     output_name = header + "M{}_R{}_B{}_".format(option['model'], option['num_rounds'],option['batch_size'])+ \
-                  ("E{}".format(option['num_epochs']) if option['num_steps']<0 else "K{}".format(option['num_steps']))+\
-                  "_LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_NET{}_CMP{}_.json".format(
+                  ("E{}_".format(server.clients[0].epochs)) + \
+                  "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_NET{}_CMP{}_.json".format(
                       option['learning_rate'],
                       option['proportion'],
                       option['seed'],
@@ -179,6 +179,7 @@ class Logger:
     def save(self, filepath):
         """Save the self.output as .json file"""
         if len(self.output)==0: return
+        self.arrange_output()
         with open(filepath, 'w') as outf:
             ujson.dump(dict(self.output), outf)
             
@@ -188,7 +189,10 @@ class Logger:
         self.output[var_name].append(var_value)
         return
 
-    def log(self, server=None):
+    def log(self, *args, **kwargs):
+        pass
+
+    def arrange_output(self):
         pass
 
 class DefaultLogger(Logger):
@@ -201,17 +205,24 @@ class DefaultLogger(Logger):
         test_metric = server.test()
         for met_name, met_val in test_metric.items():
             self.output['test_' + met_name].append(met_val)
-        # calculate weighted averaging of metrics of training datasets across clients
+        # calculate weighted averaging of metrics on training datasets across clients
         train_metrics = server.test_on_clients('train')
         for met_name, met_val in train_metrics.items():
+            self.output['train_' + met_name + '_dist'].append(met_val)
             self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.local_data_vols, met_val)]) / server.total_data_vol)
-        # calculate weighted averaging and other statistics of metrics of validation datasets across clients
+        # calculate weighted averaging and other statistics of metrics on validation datasets across clients
         valid_metrics = server.test_on_clients('valid')
         for met_name, met_val in valid_metrics.items():
+            self.output['valid_'+met_name+'_dist'].append(met_val)
             self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.local_data_vols, met_val)]) / server.total_data_vol)
             self.output['mean_valid_' + met_name].append(np.mean(met_val))
             self.output['std_valid_' + met_name].append(np.std(met_val))
         # output to stdout
         for key, val in self.output.items():
-            if key == 'meta': continue
+            if key == 'meta' or 'dist' in key: continue
             print(self.temp.format(key, val[-1]))
+
+    def arrange_output(self):
+        for key in self.output.keys():
+            if '_dist' in key:
+                self.output[key] = self.output[key][-1]
