@@ -1,11 +1,11 @@
 #=======================================================================================
 # The first part of `config.yml` is to used to load and filter the saved experimental
-# records.
+# records. `*` means necessary.
 #=======================================================================================
-#  `task`:      string as default.    The task name of records. Only the records in
+#  * `task`:      string as default.    The task name of records. Only the records in
 #                                       `fedtask/taskname/record` will be considered.
 #---------------------------------------------------------------------------------------
-#  `header`:    list as default.      The name of algorithms. e.g. `header`=['fedavg']
+#  * `header`:    list as default.      The name of algorithms. e.g. `header`=['fedavg']
 #                                       will only read records runned with fedavg.
 #---------------------------------------------------------------------------------------
 #  `flt`:       dict as default.      The filter excluding records whose hyper-parameters
