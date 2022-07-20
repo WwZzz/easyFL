@@ -309,8 +309,12 @@ class BasicClient():
         self.batch_size = int(option['batch_size']) if option['batch_size']>=1 else int(len(self.train_data)*option['batch_size'])
         self.momentum = option['momentum']
         self.weight_decay = option['weight_decay']
-        self.epochs = option['num_epochs']
-        self.num_steps = option['num_steps'] if option['num_steps']>0 else self.epochs * math.ceil(len(self.train_data)/self.batch_size)
+        if option['num_steps']>0:
+            self.num_steps = option['num_steps']
+            self.epochs = 1.0 * self.num_steps/(math.ceil(len(self.train_data)/self.batch_size))
+        else:
+            self.epochs = option['num_epochs']
+            self.num_steps = self.epochs * math.ceil(len(self.train_data) / self.batch_size)
         self.model = None
         self.test_batch_size = option['test_batch_size']
         self.loader_num_workers = option['num_workers']
