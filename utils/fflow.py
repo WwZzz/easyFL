@@ -55,7 +55,7 @@ def read_option():
     parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
     # logger setting
     parser.add_argument('--logger', help='the Logger in utils.logging.logger_name will be loaded', type=str, default='basic_logger')
-
+    parser.add_argument('--log_level', help='the level of logger', type=str, default='INFO')
     try: option = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
     return option
@@ -74,7 +74,7 @@ def initialize(option):
     for log_name, log_path in logger_order.items():
         try:
             Logger = getattr(importlib.import_module(log_path), 'Logger')
-            logger = Logger(name=log_name, level=logging.INFO)
+            logger = Logger(name=log_name, level=option['log_level'])
             break
         except:
             continue

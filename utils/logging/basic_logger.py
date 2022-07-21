@@ -12,7 +12,7 @@ class Logger(logging.Logger):
         self.temp = "{:<30s}{:.4f}"
         self.time_costs = []
         self.time_buf = {}
-        self.formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        self.formatter = logging.Formatter('%(asctime)s %(filename)s %(funcName)s [line:%(lineno)d] %(levelname)s %(message)s')
         self.head = logging.StreamHandler()
         self.head.setLevel(logging.INFO)
         self.head.setFormatter(self.formatter)
