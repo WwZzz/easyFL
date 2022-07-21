@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 
 class TaskGen(BasicTaskGen):
-    def __init__(self, dimension=2, dist_id = 5, num_clients = 30, skewness = 0.5, minvol=10, rawdata_path ='./benchmark/RAW_DATA/distributedQP', local_hld_rate=0.2, seed=0):
+    def __init__(self, dimension=2, dist_id = 5, num_clients = 30, skewness = 0.5, minvol=100, rawdata_path ='./benchmark/RAW_DATA/distributedQP', local_hld_rate=0.2, seed=0):
         super(TaskGen, self).__init__(benchmark='distributedQP',
                                       dist_id=dist_id,
                                       skewness=skewness,
