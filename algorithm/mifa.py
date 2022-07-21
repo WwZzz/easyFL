@@ -1,6 +1,7 @@
 from .fedbase import BasicServer, BasicClient
 from .fedavg import Client
 from utils import fmodule
+import utils.fflow as flw
 
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
@@ -17,7 +18,7 @@ class Server(BasicServer):
         s = len([u for u in self.update_table if u])
         # c==0 infers that updating starts immediately
         if s < self.c*self.num_clients: return False
-        print("G_i Initialized For {}/{} The Clients.".format(s,self.num_clients))
+        flw.logger.info("G_i Initialized For {}/{} The Clients.".format(s,self.num_clients))
         self.initflag = True
         return True
 

@@ -365,7 +365,6 @@ class Former(Analyser):
         self.group_tb.add_column(fieldname=key, column=res)
         return
 
-
 def read_option():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', help='the configuration of result analysis;', type=str, default='res_config.yml')

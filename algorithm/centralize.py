@@ -3,10 +3,11 @@ import torch
 from .fedbase import BasicServer
 from .fedavg import Client
 import utils.fflow as flw
+import utils.logging.basic_logger as bl
 import ujson
 import os
 import math
-
+from tqdm import tqdm
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
@@ -30,23 +31,24 @@ class Server(BasicServer):
         optimizer = self.calculator.get_optimizer(self.model, lr=self.option['learning_rate'],
                                                   weight_decay=self.option['weight_decay'], momentum=self.option['momentum'])
         flw.logger.time_start('Total Time Cost')
-        for iter in range(self.num_iters):
+        for epoch in tqdm(range(self.epochs)):
             # evaluate
-            if flw.logger.check_if_log(iter, self.eval_interval):
+            if flw.logger.check_if_log(epoch, self.eval_interval):
+                flw.logger.info('Evaluate model of epoch {}'.format(epoch))
                 flw.logger.time_start('Eval Time Cost')
-                flw.logger.log(self, current_iter=iter)
+                flw.logger.log_per_round(current_iter=epoch)
                 flw.logger.time_end('Eval Time Cost')
-            batch_data = self.get_batch_data()
-            self.model.zero_grad()
-            # calculate the loss of the model on batched dataset through task-specified calculator
-            loss = self.calculator.train_one_step(self.model, batch_data)
-            loss.backward()
-            optimizer.step()
-        flw.logger.time_start('Eval Time Cost')
-        flw.logger.log(self, current_iter=self.num_iters)
-        flw.logger.time_end('Eval Time Cost')
+            flw.logger.info('Starting to train model at epoch {}'.format(epoch))
+            for iter in tqdm(range(self.num_iters_per_epoch)):
+                batch_data = self.get_batch_data()
+                self.model.zero_grad()
+                # calculate the loss of the model on batched dataset through task-specified calculator
+                loss = self.calculator.train_one_step(self.model, batch_data)['loss']
+                loss.backward()
+                optimizer.step()
+            flw.logger.info('Ending training model of epoch {}'.format(epoch))
         flw.logger.time_end('Total Time Cost')
-        flw.logger.save(self)
+        flw.logger.save_output_as_json(self)
 
     def get_batch_data(self):
         if not self.data_loader:
@@ -58,29 +60,24 @@ class Server(BasicServer):
             batch_data = next(self.data_loader)
         return batch_data
 
-class MyLogger(flw.Logger):
-    def log(self, server=None, current_iter=-1):
-        if len(self.output) == 0:
-            self.output['meta'] = server.option
-        test_metrics = server.calculator.test(server.model, server.test_data, server.batch_size)
-        train_metrics = server.calculator.test(server.model, server.train_data, server.batch_size)
-        valid_metrics = server.calculator.test(server.model, server.valid_data, server.batch_size)
+class Logger(bl.Logger):
+    def log_per_round(self,current_iter):
+        test_metrics = self.server.calculator.test(self.server.model, self.server.test_data, self.server.batch_size)
+        train_metrics = self.server.calculator.test(self.server.model, self.server.train_data, self.server.batch_size)
+        valid_metrics = self.server.calculator.test(self.server.model, self.server.valid_data, self.server.batch_size)
         for met_name, met_value in test_metrics.items():
-            self.write('test_'+met_name, met_value)
+            self.write_var_into_output('test_'+met_name, met_value)
         for met_name, met_value in train_metrics.items():
-            self.write('train_'+met_name, met_value)
+            self.write_var_into_output('train_'+met_name, met_value)
         for met_name, met_value in valid_metrics.items():
-            self.write('valid_'+met_name, met_value)
-        print('----------Iter {}/{} :: Epoch {}/{}-------------'.format(current_iter%server.num_iters_per_epoch, server.num_iters_per_epoch,current_iter//server.num_iters_per_epoch, server.epochs))
-        for key, val in self.output.items():
-            if key == 'meta': continue
-            print(self.temp.format(key, val[-1]))
+            self.write_var_into_output('valid_'+met_name, met_value)
+        self.show_current_output()
 
-    def save(self, server):
+    def save_output_as_json(self, filepath):
         """Save the self.output as .json file"""
-        rec_path = os.path.join('fedtask', server.option['task'], 'record', flw.output_filename(server.option, server))
-        model_name = server.option['model']+'_iter'+str(server.num_iters)+'_'+server.option['algorithm']+'_'+time.strftime("%Y-%m-%d-%H-%M-%S",time.localtime())+'.pth'
-        model_path = os.path.join('fedtask', server.option['task'], 'record', model_name)
+        rec_path = os.path.join('fedtask', self.meta['task'], 'record', flw.output_filename(self.meta, self.server))
+        model_name = self.meta['model']+'_iter'+str(self.server.epochs)+'_'+self.meta['algorithm']+'_'+time.strftime("%Y-%m-%d-%H-%M-%S",time.localtime())+'.pth'
+        model_path = os.path.join('fedtask', self.meta['task'], 'record', model_name)
         with open(rec_path, 'w') as outf:
             ujson.dump(dict(self.output), outf)
-        torch.save({'model':server.model.state_dict()}, model_path)
+        torch.save({'model':self.server.model.state_dict()}, model_path)

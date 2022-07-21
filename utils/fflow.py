@@ -10,6 +10,7 @@ import ujson
 import time
 import collections
 import utils.systemic_simulator as ss
+import logging
 
 sample_list=['uniform', 'md']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
@@ -47,12 +48,13 @@ def read_option():
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
-    parser.add_argument('--project', help='name of this project for wandb;', type=str, default='unknown_project')
     # the simulating systemic configuration of clients that helps constructing the heterogeity in the network condition & computing power
     parser.add_argument('--network_config', help="configuration of the availability of clients", type=str, default = 'ideal')
     parser.add_argument('--computing_config', help="configuration of the computing power of clients", type=str, default = 'ideal')
     # algorithm-dependent hyper-parameters
     parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
+    # logger setting
+    parser.add_argument('--logger', help='the Logger in utils.logging.logger_name will be loaded', type=str, default='basic_logger')
 
     try: option = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
@@ -66,71 +68,82 @@ def setup_seed(seed):
     torch.cuda.manual_seed_all(123+seed)
 
 def initialize(option):
-    # init fedtask
-    print("init fedtask...", end='')
-    # dynamical initializing the configuration with the benchmark
+    # init logger from 1) Logger in algorithm/fedxxx.py, 2) Logger in utils/logging/logger_name.py 3) Logger in utils/logging/basic_logger.py
+    logger_order = {'{}Logger'.format(option['algorithm']):'%s.%s' % ('algorithm', option['algorithm']),option['logger']:'.'.join(['utils', 'logging', option['logger']]),'basic_logger':'.'.join(['utils', 'logging', 'basic_logger'])}
+    global logger
+    for log_name, log_path in logger_order.items():
+        try:
+            Logger = getattr(importlib.import_module(log_path), 'Logger')
+            logger = Logger(name=log_name, level=logging.INFO)
+            break
+        except:
+            continue
+    logger.info('Using Logger in `{}`'.format(log_path))
+    logger.info("Initializing fedtask: {}".format(option['task']))
+    # benchmark
     bmk_name = option['task'][:option['task'].find('cnum')-1]
     bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
     bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
-    # init gpu
-    gpus = option['gpu']
-    utils.fmodule.dev_list = [torch.device('cpu')] if gpus is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in gpus]
-    utils.fmodule.dev_manager = utils.fmodule.get_device()
-    utils.fmodule.TaskCalculator = getattr(importlib.import_module(bmk_core_path), 'TaskCalculator')
-    # The Model is defined in bmk_model_path as default, whose filename is option['model'] and the classname is 'Model'
-    # If an algorithm change the backbone for a task, a modified model should be defined in the path 'algorithm/method_name.py', whose classname is option['model']
+    # read federated task by TaskPipe
+    # init partitioned dataset
+    TaskPipe = getattr(importlib.import_module(bmk_core_path), 'TaskPipe')
+    train_datas, valid_datas, test_data, client_names = TaskPipe.load_task(os.path.join('fedtask', option['task']))
+    # init model
     try:
         utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
     except ModuleNotFoundError:
         utils.fmodule.Model = getattr(importlib.import_module('.'.join(['algorithm', option['algorithm']])), option['model'])
-    if not option['server_with_cpu']:
-        model = utils.fmodule.Model().to(utils.fmodule.dev_list[0])
-    else:
-        model = utils.fmodule.Model()
     # init the model that owned by the server (e.g. the model trained in the server-side)
     try:
         utils.fmodule.SvrModel = getattr(importlib.import_module(bmk_model_path), 'SvrModel')
+        logger.info('The server keeping the `SvrModel` in `{}`'.format(bmk_model_path))
     except:
         utils.fmodule.SvrModel = utils.fmodule.Model
     # init the model that owned by the client (e.g. the personalized model whose type may be different from the global model)
     try:
         utils.fmodule.CltModel = getattr(importlib.import_module(bmk_model_path), 'CltModel')
+        logger.info('Clients keeping the `CltModel` in `{}`'.format(bmk_model_path))
     except:
         utils.fmodule.CltModel = utils.fmodule.Model
+    # init devices
+    gpus = option['gpu']
+    utils.fmodule.dev_list = [torch.device('cpu')] if gpus is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in gpus]
+    utils.fmodule.dev_manager = utils.fmodule.get_device()
+    utils.fmodule.TaskCalculator = getattr(importlib.import_module(bmk_core_path), 'TaskCalculator')
+    logger.info('Initializing devices: '+','.join([str(dev) for dev in utils.fmodule.dev_list])+' will be used for this running.')
+    # The Model is defined in bmk_model_path as default, whose filename is option['model'] and the classname is 'Model'
+    # If an algorithm change the backbone for a task, a modified model should be defined in the path 'algorithm/method_name.py', whose classname is option['model']
+    if not option['server_with_cpu']:
+        model = utils.fmodule.Model().to(utils.fmodule.dev_list[0])
+    else:
+        model = utils.fmodule.Model()
     # load pre-trained model
     try:
         if option['pretrain'] != '':
             model.load_state_dict(torch.load(option['pretrain'])['model'])
+            logger.info('The pretrained model parameters in {} will be loaded'.format(option['pretrain']))
     except:
-        print("Invalid Model Configuration.")
+        logger.warn("Invalid Model Configuration.")
         exit(1)
-    # read federated task by TaskPipe
-    TaskPipe = getattr(importlib.import_module(bmk_core_path), 'TaskPipe')
-    train_datas, valid_datas, test_data, client_names = TaskPipe.load_task(os.path.join('fedtask', option['task']))
-    num_clients = len(client_names)
-    print("done")
 
     # init client
-    print('init clients...', end='')
+    num_clients = len(client_names)
     client_path = '%s.%s' % ('algorithm', option['algorithm'])
+    logger.info('Initializing clients: '+'{} clients of `{}` being created.'.format(num_clients, client_path+'.Client'))
     Client=getattr(importlib.import_module(client_path), 'Client')
     clients = [Client(option, name=client_names[cid], train_data=train_datas[cid], valid_data=valid_datas[cid]) for cid in range(num_clients)]
-    print('done')
 
     # init server
-    print("init server...", end='')
     server_path = '%s.%s' % ('algorithm', option['algorithm'])
-    server = getattr(importlib.import_module(server_path), 'Server')(option, model, clients, test_data = test_data)
+    logger.info('Initializing server: '+'1 server of `{}` being created.'.format(server_path + '.Server'))
+    server_module = importlib.import_module(server_path)
+    server = getattr(server_module, 'Server')(option, model, clients, test_data = test_data)
+
     # init virtual systemic configuration including network state and the distribution of computing power
+    logger.info('Initializing systemic heterogeneity: '+'Network Environment: {} \\ Computing Power Allocation: {}'.format(option['network_config'], option['computing_config']))
     ss.init_systemic_config(server, option)
-    # init logger
-    try:
-        Logger = getattr(importlib.import_module(server_path), 'MyLogger')
-    except AttributeError:
-        Logger = DefaultLogger
-    global logger
-    logger = Logger()
-    print('done')
+    logger.register_variable(server=server, clients=clients, meta=option)
+    logger.info('Ready to start.')
     return server
 
 def output_filename(option, server):
@@ -148,81 +161,3 @@ def output_filename(option, server):
                       option['computing_config']
                   )
     return output_name
-
-class Logger:
-    def __init__(self):
-        self.output = collections.defaultdict(list)
-        self.current_round = -1
-        self.temp = "{:<30s}{:.4f}"
-        self.time_costs = []
-        self.time_buf={}
-
-    def check_if_log(self, round, eval_interval=-1):
-        """For evaluating every 'eval_interval' rounds, check whether to log at 'round'."""
-        self.current_round = round
-        return eval_interval > 0 and (round == 0 or round % eval_interval == 0)
-
-    def time_start(self, key = ''):
-        """Create a timestamp of the event 'key' starting"""
-        if key not in [k for k in self.time_buf.keys()]:
-            self.time_buf[key] = []
-        self.time_buf[key].append(time.time())
-
-    def time_end(self, key = ''):
-        """Create a timestamp that ends the event 'key' and print the time interval of the event."""
-        if key not in [k for k in self.time_buf.keys()]:
-            raise RuntimeError("Timer end before start.")
-        else:
-            self.time_buf[key][-1] =  time.time() - self.time_buf[key][-1]
-            print("{:<30s}{:.4f}".format(key+":", self.time_buf[key][-1]) + 's')
-
-    def save(self, filepath):
-        """Save the self.output as .json file"""
-        if len(self.output)==0: return
-        self.arrange_output()
-        with open(filepath, 'w') as outf:
-            ujson.dump(dict(self.output), outf)
-            
-    def write(self, var_name=None, var_value=None):
-        """Add variable 'var_name' and its value var_value to logger"""
-        if var_name==None: raise RuntimeError("Missing the name of the variable to be logged.")
-        self.output[var_name].append(var_value)
-        return
-
-    def log(self, *args, **kwargs):
-        pass
-
-    def arrange_output(self):
-        pass
-
-class DefaultLogger(Logger):
-    def __init__(self):
-        super(DefaultLogger, self).__init__()
-
-    def log(self, server=None, current_round=-1):
-        if len(self.output) == 0:
-            self.output['meta'] = server.option
-        test_metric = server.test()
-        for met_name, met_val in test_metric.items():
-            self.output['test_' + met_name].append(met_val)
-        # calculate weighted averaging of metrics on training datasets across clients
-        train_metrics = server.test_on_clients('train')
-        for met_name, met_val in train_metrics.items():
-            self.output['train_' + met_name + '_dist'].append(met_val)
-            self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.local_data_vols, met_val)]) / server.total_data_vol)
-        # calculate weighted averaging and other statistics of metrics on validation datasets across clients
-        valid_metrics = server.test_on_clients('valid')
-        for met_name, met_val in valid_metrics.items():
-            self.output['valid_'+met_name+'_dist'].append(met_val)
-            self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(server.local_data_vols, met_val)]) / server.total_data_vol)
-            self.output['mean_valid_' + met_name].append(np.mean(met_val))
-            self.output['std_valid_' + met_name].append(np.std(met_val))
-        # output to stdout
-        for key, val in self.output.items():
-            if key == 'meta' or 'dist' in key: continue
-            print(self.temp.format(key, val[-1]))
-
-    def arrange_output(self):
-        for key in self.output.keys():
-            if '_dist' in key:
-                self.output[key] = self.output[key][-1]

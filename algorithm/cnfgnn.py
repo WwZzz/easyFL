@@ -19,6 +19,7 @@ from torch.utils.data import Dataset, TensorDataset
 from torch_geometric.data import DataLoader, Data
 import torch.nn as nn
 import utils.fflow as flw
+import utils.logging.basic_logger as bl
 
 class AugSTNodeDataset(Dataset):
     """
@@ -156,21 +157,15 @@ class Server(BasicServer):
             client.train_data.update_graph_encodings(train_encodings[:, cid:cid+1, :, :])
             client.valid_data.update_graph_encodings(valid_encodings[:, cid:cid+1, :, :])
 
-class MyLogger(flw.Logger):
-    def __init__(self):
-        super(MyLogger, self).__init__()
-
-    def log(self, server=None, current_round=-1):
+class Logger(bl.Logger):
+    def log_per_round(self, *args, **kwargs):
         if len(self.output) == 0:
-            self.output['meta'] = server.option
-        test_metric = server.test()
+            self.output['meta'] = self.server.option
+        test_metric = self.server.test()
         for met_name, met_val in test_metric.items():
             self.output['test_' + met_name].append(met_val)
         # output to stdout
-        for key, val in self.output.items():
-            if key == 'meta': continue
-            print(self.temp.format(key, val[-1]))
-        return
+        self.show_current_output()
 
     def test(self, server, model):
         test_metric = server.test(model)

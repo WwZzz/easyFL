@@ -234,7 +234,7 @@ class Client(BasicClient):
     def train(self, model):
         model.train()
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
-                                            weight_decay=self.weight_decay, momentum=self.momentum)
+                                                  weight_decay=self.weight_decay, momentum=self.momentum)
         # 1
         rec_test_loss = []
         for iter in range(self.num_steps):
@@ -250,7 +250,7 @@ class Client(BasicClient):
             loss.backward()
             optimizer.step()
         # 5
-        flw.logger.write('client00_local_testing_loss', rec_test_loss)
+        flw.logger.write_var_into_output('client00_local_testing_loss', rec_test_loss)
         return
 
 

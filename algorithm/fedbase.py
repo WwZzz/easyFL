@@ -57,21 +57,21 @@ class BasicServer:
         flw.logger.time_start('Total Time Cost')
         for round in range(self.num_rounds+1):
             self.current_round = round
-            print("--------------Round {}--------------".format(round))
+            flw.logger.info("--------------Round {}--------------".format(round))
             flw.logger.time_start('Time Cost')
             if flw.logger.check_if_log(round, self.eval_interval):
                 flw.logger.time_start('Eval Time Cost')
-                flw.logger.log(self, current_round=round)
+                flw.logger.log_per_round()
                 flw.logger.time_end('Eval Time Cost')
             # federated train
             self.iterate(round)
             # decay learning rate
             self.global_lr_scheduler(round)
             flw.logger.time_end('Time Cost')
-        print("=================End==================")
+        flw.logger.info("=================End==================")
         flw.logger.time_end('Total Time Cost')
         # save results as .json file
-        flw.logger.save(os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)))
+        flw.logger.save_output_as_json(os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)))
         return
 
     def iterate(self, t):
