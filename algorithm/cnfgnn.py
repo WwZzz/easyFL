@@ -19,7 +19,7 @@ from torch.utils.data import Dataset, TensorDataset
 from torch_geometric.data import DataLoader, Data
 import torch.nn as nn
 import utils.fflow as flw
-import utils.logging.basic_logger as bl
+import utils.logger.basic_logger as bl
 
 class AugSTNodeDataset(Dataset):
     """

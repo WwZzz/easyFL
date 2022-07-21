@@ -50,6 +50,9 @@ class Logger(logging.Logger):
         self.output[var_name].append(var_value)
         return
 
+    def initialize(self, *args, **kwargs):
+        return
+
     def register_variable(self, **kwargs):
         """Initialze the logger in utils.fflow.initialize()"""
         for k, v in kwargs.items():
@@ -86,7 +89,10 @@ class Logger(logging.Logger):
                 self.output[key] = self.output[key][-1]
         return
 
-    def show_current_output(self):
+    def show_current_output(self, yes_key=['train', 'test', 'valid'], no_key=['dist']):
         for key, val in self.output.items():
-            if key == 'meta' or 'dist' in key: continue
-            self.info(self.temp.format(key, val[-1]))
+            a = [(yk in key) for yk in yes_key]
+            nf = [(nk not in key) for nk in no_key]
+            a.extend(nf)
+            if not np.any(a):
+                self.info(self.temp.format(key, val[-1]))

@@ -1,7 +1,7 @@
 from .fedbase import BasicServer
 from .fedavg import Client
 import utils.fflow as flw
-import utils.logging.basic_logger as bl
+import utils.logger.basic_logger as bl
 import os
 import numpy as np
 

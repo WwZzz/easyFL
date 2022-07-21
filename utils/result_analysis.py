@@ -26,6 +26,7 @@ import os
 import numpy as np
 import collections
 import yaml
+import math
 
 def read_data_into_dicts(task, records):
     path = '../fedtask/'+task+'/record'
@@ -291,6 +292,30 @@ class Drawer(Analyser):
         plt.legend()
         plt.xlabel(xlabel)
         plt.ylabel(plot_obj['y'])
+        return
+
+    def scatter(self, plot_obj):
+        pos_key = plot_obj['position']
+        xlabel = plot_obj['xlabel'] if 'xlabel' in plot_obj.keys() else 'x'
+        ylabel = plot_obj['ylabel'] if 'ylabel' in plot_obj.keys() else 'y'
+        max_row_figs = 4
+        # reset figure size
+        rows = int(math.ceil(len(records)/max_row_figs))
+        cols = min(len(records), max_row_figs)
+        fig = plt.figure()
+        fig_size = fig.get_size_inches()
+        new_fig_size = (fig_size[0]*cols, fig_size[1]*rows)
+        num_figs = len(self.records)
+        fig, ax = plt.subplots(rows, cols, figsize=new_fig_size)
+        for id, rec in enumerate(self.records):
+            dict = self.records[rec]
+            position = dict[pos_key]
+            px, py = [p[0] for p in position], [p[1] for p in position]
+            plt.subplot(rows, cols, id+1)
+            plt.scatter(px, py)
+            plt.xlabel(xlabel)
+            plt.ylabel(ylabel)
+            plt.title(pos_key+dict['legend'])
         return
 
 class Former(Analyser):

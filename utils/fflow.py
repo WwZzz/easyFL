@@ -54,7 +54,7 @@ def read_option():
     # algorithm-dependent hyper-parameters
     parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
     # logger setting
-    parser.add_argument('--logger', help='the Logger in utils.logging.logger_name will be loaded', type=str, default='basic_logger')
+    parser.add_argument('--logger', help='the Logger in utils.logger.logger_name will be loaded', type=str, default='basic_logger')
     parser.add_argument('--log_level', help='the level of logger', type=str, default='INFO')
     try: option = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
@@ -68,16 +68,16 @@ def setup_seed(seed):
     torch.cuda.manual_seed_all(123+seed)
 
 def initialize(option):
-    # init logger from 1) Logger in algorithm/fedxxx.py, 2) Logger in utils/logging/logger_name.py 3) Logger in utils/logging/basic_logger.py
-    logger_order = {'{}Logger'.format(option['algorithm']):'%s.%s' % ('algorithm', option['algorithm']),option['logger']:'.'.join(['utils', 'logging', option['logger']]),'basic_logger':'.'.join(['utils', 'logging', 'basic_logger'])}
+    # init logger from 1) Logger in algorithm/fedxxx.py, 2) Logger in utils/logger/logger_name.py 3) Logger in utils/logger/basic_logger.py
+    logger_order = {'{}Logger'.format(option['algorithm']):'%s.%s' % ('algorithm', option['algorithm']),option['logger']:'.'.join(['utils', 'logger', option['logger']]),'basic_logger':'.'.join(['utils', 'logger', 'basic_logger'])}
     global logger
     for log_name, log_path in logger_order.items():
         try:
             Logger = getattr(importlib.import_module(log_path), 'Logger')
-            logger = Logger(name=log_name, level=option['log_level'])
             break
         except:
             continue
+    logger = Logger(name=log_name, level=option['log_level'])
     logger.info('Using Logger in `{}`'.format(log_path))
     logger.info("Initializing fedtask: {}".format(option['task']))
     # benchmark
@@ -143,6 +143,7 @@ def initialize(option):
     logger.info('Initializing systemic heterogeneity: '+'Network Environment: {} \\ Computing Power Allocation: {}'.format(option['network_config'], option['computing_config']))
     ss.init_systemic_config(server, option)
     logger.register_variable(server=server, clients=clients, meta=option)
+    logger.initialize()
     logger.info('Ready to start.')
     return server
 

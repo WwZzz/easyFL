@@ -1,4 +1,4 @@
-import utils.logging.basic_logger as bl
+import utils.logger.basic_logger as bl
 import numpy as np
 
 class Logger(bl.Logger):
