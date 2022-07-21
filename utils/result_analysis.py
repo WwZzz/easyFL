@@ -177,7 +177,6 @@ class Drawer(Analyser):
     def __init__(self, records, save_figure=False):
         super().__init__(records)
         self.colors = [c for c in mpl.colors.CSS4_COLORS.keys()]
-        random.seed(44)
         random.shuffle(self.colors)
         self.save_figure = save_figure
 
@@ -187,8 +186,6 @@ class Drawer(Analyser):
                 f = eval('self.'+func)
                 for plot_obj in ploter[func]:
                     f(plot_obj)
-                    title = self.task if 'title' not in plot_obj.keys() else plot_obj['title']
-                    plt.title(title)
                     if self.save_figure:
                         res_name = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H:%M:%S')
                         res_name = res_name + func + "-".join([k+v for k,v in plot_obj.items() if type(v) is str])+'.png'
@@ -207,6 +204,8 @@ class Drawer(Analyser):
         plt.legend()
         plt.xlabel(plot_obj['x'])
         plt.ylabel(plot_obj['y'])
+        title = self.task if 'title' not in plot_obj.keys() else plot_obj['title']
+        plt.title(title)
         plt.tight_layout()
         return
 
@@ -220,23 +219,26 @@ class Drawer(Analyser):
             draw_curve_with_range(x, mean_val, min_val, max_val, legend=rec_dicts[0]['legend'], color=self.colors[id])
         plt.xlabel(plot_obj['x'])
         plt.ylabel(plot_obj['y'])
+        title = self.task if 'title' not in plot_obj.keys() else plot_obj['title']
+        plt.title(title)
         plt.tight_layout()
         return
 
     def trace_2d(self, plot_obj, strong_end = True):
         # plot trace
-        default_size = 5
+        default_size = 0.5
         default_linewidth = 1
         for id, rec in enumerate(self.records):
             dict = self.records[rec]
             trace = dict[plot_obj['trace']]
             tx = [pos[0] for pos in trace]
             ty = [pos[1] for pos in trace]
-            plt.plot(tx, ty, color=self.colors[id], label=dict['legend'])
+            plt.plot(tx, ty, color=self.colors[id], label=dict['legend'], linewidth=0.2)
             plt.scatter(tx, ty, color=self.colors[id], s=default_size, linewidths=default_linewidth)
             if strong_end:
                 end_x, end_y = [tx[0], tx[-1]], [ty[0], ty[-1]]
-                plt.scatter(end_x, end_y, s=3*default_size, color=self.colors[id], linewidths=default_linewidth*2)
+                plt.scatter(end_x, end_y, s=3*default_size, color=self.colors[id])
+                plt.scatter(end_x, end_y, s=3*default_size, color='none', edgecolors='red', linewidths=default_linewidth)
             plt.legend()
         # plot emphasized scatters
         keys = plot_obj['scatter']
@@ -255,6 +257,8 @@ class Drawer(Analyser):
         plt.scatter(px, py, color='black', marker='o', linewidths=3*default_linewidth, s=4*default_size)
         for pname, p in zip(pos_name, pos):
             plt.annotate(pname, tuple(p))
+        title = self.task if 'title' not in plot_obj.keys() else plot_obj['title']
+        plt.title(title)
 
     def bar(self, plot_obj):
         fig = plt.figure()
@@ -292,6 +296,8 @@ class Drawer(Analyser):
         plt.legend()
         plt.xlabel(xlabel)
         plt.ylabel(plot_obj['y'])
+        title = self.task if 'title' not in plot_obj.keys() else plot_obj['title']
+        plt.title(title)
         return
 
     def scatter(self, plot_obj):
@@ -315,7 +321,7 @@ class Drawer(Analyser):
             plt.scatter(px, py)
             plt.xlabel(xlabel)
             plt.ylabel(ylabel)
-            plt.title(pos_key+dict['legend'])
+            plt.title(pos_key+'\\'+dict['legend'])
         return
 
 class Former(Analyser):
@@ -390,17 +396,23 @@ class Former(Analyser):
         self.group_tb.add_column(fieldname=key, column=res)
         return
 
+def setup_seed(seed=0):
+    random.seed(seed+45)
+    np.random.seed(seed+21)
+
 def read_option():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', help='the configuration of result analysis;', type=str, default='res_config.yml')
     parser.add_argument('--save_figure', help='set True to save the plotted figures', action="store_true", default=False)
     parser.add_argument('--save_text', help='set True to save the printed tables', type=float, default=0)
+    parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
     try: option = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
     return option
 
 if __name__ == '__main__':
     option = read_option()
+    setup_seed(option['seed'])
     with open(option['config']) as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     records = cfg_to_records(cfg)
