@@ -380,6 +380,7 @@ if __name__ == '__main__':
     with open(option['config']) as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     records = cfg_to_records(cfg)
+    if len(records)==0: exit(1)
     # set legends for record in records
     set_legend(records, cfg['legend_flt'])
     # visualize results for experimental records
