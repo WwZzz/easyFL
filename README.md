@@ -194,11 +194,11 @@ To generate these fedtasks, run the command below
 
 ```
 # I.I.D.
-python generated_fedtask.py --dist 0 --skew 0 --num_client 100 --benchmark cifar100_classification
+python generated_fedtask.py --dist 0 --skew 0 --num_clients 100 --benchmark cifar100_classification
 # skew=0.39,0.69,0.79
-python generated_fedtask.py --dist 1 --skew 0.39 --num_client 10 --benchmark mnist_classification
+python generated_fedtask.py --dist 1 --skew 0.39 --num_clients 10 --benchmark mnist_classification
 # varying skew from 0.0 to 1.0
-python generated_fedtask.py --dist 2 --skew 0.0 --num_client 100 --benchmark cifar10_classification
+python generated_fedtask.py --dist 2 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
 ```
 
 ### Options
