@@ -66,7 +66,7 @@ Please read `utils.fmodule` for more details.
 ## result_analysis
 The result-analysis is designed for analyzing the experimental records in a customized manner. To achieve this goal, we developed two useful processes: 1) records_filter, 2) records_analyser. And both the two processes are totally controlled by a simple `.yml` file. Now we firstly show how to customize the `yml` to decide the behavior of result_analysis.py.
 
-Example:
+Example: `utils/example.yml`
 
 ```yaml
 #filter
@@ -97,6 +97,23 @@ info:
 For this `.yml` file, the filter will firstly scan all the experimental records in `fedtask/mnist_classification_cnum100_dist0_skew0_seed0/record` according the value of `task`. Then, the `header` will only preserve the records whose name starts with `fedavg` or `fedprox`. Thirdly, the `flt` will filter the records according to the value of the specified hyperparameters. In this case, only records whose `batch_size < 512` and `learning_rate==0.1` will be preserved. For the survived records, the `legend_flt` will decide their legend when plotting (e.g. `fedavg B 64` will be shown as legend for records that running with fedavg and batchsize is 64). 
 
 After the records are selected, the `analyser` will make analysis on them. We use `ploter` to visualize the results based on `matplotlib`, and we use `info` to output the information as a table to the screen. In this case, `plot` will call the method with the same name of `Drawer` that is defined in `result_analysis.py`, and each element of the list of `plot` will be regarded as a `plot_object`, which is the input of `Drawer.plot`. Here we define `plot` to draw data with curves. The `info` is similar. All the key of the dicts of `ploter` and `info` will be handled respectively by `Drawer` and `Former` with the same-name methods.
+
+Now we run the commands below:
+```sh
+# fedavg
+python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.1 --proportion 0.1 --batch_size 10 --eval_interval 1 --gpu 0 --logger simple_logger
+# fedprox mu=0.1
+python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedprox --algo_para 0.1 --num_rounds 20 --num_epochs 5 --learning_rate 0.1 --proportion 0.1 --batch_size 10 --eval_interval 1 --gpu 0 --logger simple_logger
+# result_analyze
+cd utils
+python result_analysis.py --config example.yml --save_figure
+```
+<p float="left">
+   <img src="https://github.com/WwZzz/myfigs/blob/master/result_analysis_example_1.png" width="230" />
+</p>
+<p float="left">
+   <img src="https://github.com/WwZzz/myfigs/blob/master/result_analysis_example_2.png" width="460" />
+</p>
 
 ## systemic_simulator
 
