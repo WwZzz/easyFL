@@ -110,8 +110,6 @@ python result_analysis.py --config example.yml --save_figure
 ```
 <p float="left">
    <img src="https://github.com/WwZzz/myfigs/blob/master/result_analysis_example_1.png" width="230" />
-</p>
-<p float="left">
    <img src="https://github.com/WwZzz/myfigs/blob/master/result_analysis_example_2.png" width="460" />
 </p>
 
