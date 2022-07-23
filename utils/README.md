@@ -12,9 +12,57 @@ Here we provide five necessary modules for users to better use easyFL. Firstly, 
 * `logger` is a package that contains several general loggers' implementions which decide things to be recorded during running-time. The new logger should be added as a new file `xxxlogger.py` here.
 
 # fmodule
-This module is designed for performing operations on `torch.nn.Module` in a user-friendly and easy manner, since the models will be frequently aggregated, plused, scaled during federated optimization. To achieve this, we create a new class `FModule` inheritting from `torch.nn.Module` and realize several common operations on this class. 
+This module is designed for performing operations on `torch.nn.Module` in a user-friendly and easy manner, since the models will be frequently aggregated, plused, scaled during federated optimization. To achieve this, we create a new class `FModule` inheritting from `torch.nn.Module` and realize several common operations on this class. Here we provide a few examples to show how to use this module. The following code should be run in the python console under the working dictionary of this project.
 
-`fmodule` means federated module, which provides a new class `FModule` that inheritting from `torch.nn.Module`.
+Example:
+
+```python
+>>> from utils.fmodule import FModule
+>>> import torch.nn as nn
+
+# create the class of model inheritting from utils.fmodule.FModule
+>>> class Model(FModule):
+>>>   def __init__(self):
+>>>       super().__init__()
+>>>       self.w = nn.Linear(2,2)
+# create instances of Model
+>>> m1, m2 = Model(), Model()
+>>> m1.w.weight, m1.w.bias, m2.w.weight, m2.w.bias
+```
+Then the parameters of model `m1` and `m2` will be printed on the screen like this
+
+```
+(Parameter containing:
+tensor([[-0.4528,  0.0502],
+        [ 0.3343,  0.6270]], requires_grad=True), Parameter containing:
+tensor([ 0.2749, -0.1444], requires_grad=True), Parameter containing:
+tensor([[ 0.1559,  0.5991],
+        [ 0.0758, -0.0572]], requires_grad=True), Parameter containing:
+tensor([-0.0408,  0.6844], requires_grad=True))
+```
+Now we try to add the two model, 
+
+```python
+>>> m3 = m1 + m2
+>>> m3.w.weight, m3.w.bias
+>>> m3.w.weight==m1.w.weight+m2.w.weight, m3.w.bias==m1.w.bias+m2.w.bias
+```
+
+and we will obtain:
+```
+(Parameter containing:
+tensor([[-0.2969,  0.6493],
+        [ 0.4101,  0.5698]], requires_grad=True), Parameter containing:
+tensor([0.2341, 0.5400], requires_grad=True))
+
+(tensor([[True, True],
+        [True, True]]), tensor([True, True]))
+```
+The result is correct as we add the parameters of the two model manually.
+
+Apart from `add`, we also provide operations including: `dot`, `sub`, `normalize`, `scale`, `cos_sim`, `average`...
+Please read `utils.fmodule` for more details.
+
 # result_analysis
 
 # systemic_simulator
