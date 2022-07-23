@@ -94,7 +94,9 @@ info:
     - valid_loss
 ```
 
-### records_
+For this `.yml` file, the filter will firstly scan all the experimental records in `fedtask/mnist_classification_cnum100_dist0_skew0_seed0/record` according the value of `task`. Then, the `header` will only preserve the records whose name starts with `fedavg` or `fedprox`. Thirdly, the `flt` will filter the records according to the value of the specified hyperparameters. In this case, only records whose `batch_size < 512` and `learning_rate==0.1` will be preserved. For the survived records, the `legend_flt` will decide their legend when plotting (e.g. `fedavg B 64` will be shown as legend for records that running with fedavg and batchsize is 64). 
+
+After the records are selected, the `analyser` will make analysis on them. We use `ploter` to visualize the results based on `matplotlib`, and we use `info` to output the information as a table to the screen. In this case, `plot` will call the method with the same name of `Drawer` that is defined in `result_analysis.py`, and each element of the list of `plot` will be regarded as a `plot_object`, which is the input of `Drawer.plot`. Here we define `plot` to draw data with curves. The `info` is similar. All the key of the dicts of `ploter` and `info` will be handled respectively by `Drawer` and `Former` with the same-name methods.
 
 ## systemic_simulator
 
