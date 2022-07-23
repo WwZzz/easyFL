@@ -85,7 +85,7 @@ legend_flt:
 ploter:
   plot:
     - x: communication_round
-      y: test_loss
+      y: valid_loss
   bar:
     - x: client_id
       y: valid_loss_dist
