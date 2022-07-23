@@ -11,7 +11,7 @@ Here we provide five necessary modules for users to better use easyFL. Firstly, 
 
 * `logger` is a package that contains several general loggers' implementions which decide things to be recorded during running-time. The new logger should be added as a new file `xxxlogger.py` here.
 
-# fmodule
+## fmodule
 This module is designed for performing operations on `torch.nn.Module` in a user-friendly and easy manner, since the models will be frequently aggregated, plused, scaled during federated optimization. To achieve this, we create a new class `FModule` inheritting from `torch.nn.Module` and realize several common operations on this class. Here we provide a few examples to show how to use this module. The following code should be run in the python console under the working dictionary of this project.
 
 Example:
@@ -63,10 +63,41 @@ The result is correct as we add the parameters of the two model manually.
 Apart from `add`, we also provide operations including: `dot`, `sub`, `normalize`, `scale`, `cos_sim`, `average`...
 Please read `utils.fmodule` for more details.
 
-# result_analysis
+## result_analysis
+The result-analysis is designed for analyzing the experimental records in a customized manner. To achieve this goal, we developed two useful processes: 1) records_filter, 2) records_analyser. And both the two processes are totally controlled by a simple `.yml` file. Now we firstly show how to customize the `yml` to decide the behavior of result_analysis.py.
 
-# systemic_simulator
+Example:
 
-# logger
+```yaml
+#filter
+task:
+  mnist_classification_cnum100_dist0_skew0_seed0
+header:
+  - fedavg
+  - fedprox
+flt:
+  B: <512
+  LR: '0.1'
+legend_flt:
+  - B
 
-# fflow
+#analyser
+ploter:
+  plot:
+    - x: communication_round
+      y: test_loss
+  bar:
+    - x: client_id
+      y: valid_loss_dist
+info:
+  final_value:
+    - valid_loss
+```
+
+### records_
+
+## systemic_simulator
+
+## logger
+
+## fflow
