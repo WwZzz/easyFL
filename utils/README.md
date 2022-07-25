@@ -116,5 +116,49 @@ python result_analysis.py --config example.yml --save_figure
 ## systemic_simulator
 
 ## logger
+The logger is used to log any variables of interest during the training period and directly inherits from the python's native module `logging`. To customize the logger, we suggest you to create a new logger in `utils.logger` by creating a new file `xxx_logger.py` and designing a new class `Logger` inheritting from `utils.logger.basic_logger.Logger`. When loading the logger, the system will firstly search for the particular logger firstly in `algorithm/fedxxx.py` according to the external inputted options. If not found, the system will load `logger` from `utils.logging.logger_name.Logger`. After loading the particular logger, the system initialization procedure will automatically register the instance server, clients, options as attributes of the logger, which is necessary for the logger to access to the running-time variables during the training process. To save the training time variables and finally make analysis on them, the logger provide a buffer `output` of type `collections.defaultdict(list)` to store everything of interest. To fill the output, the logger will initialize itself by calling its method `initialize`, and log varibales of interest at the beginning of each communication round by calling `log_per_round`. Finally, the logger will call `organize_output` before saving the buffer `output` as `.json` file. Therefore, the major behaviors of a logger totally depend on three parts: `initialize`, `log_per_round` and `organize_output`.
 
+Now we take an example to show how to customize your logger. 
+
+Example: `utils.logger.simple_logger.py`
+
+```python
+import utils.logger.basic_logger as bl
+import numpy as np
+
+class Logger(bl.Logger):
+    """This logger only records metrics on validation dataset at each round"""
+
+    def initialize(self, *args, **kwargs):
+        """This method is used to record the stastic variables that won't change across rounds (e.g. local data size)"""
+        for c in self.clients:
+            self.output['client_datavol'].append(len(c.train_data))
+             
+    def log_per_round(self, *args, **kwargs):
+        valid_metrics = self.server.test_on_clients('valid')
+        for met_name, met_val in valid_metrics.items():
+            self.output['valid_'+met_name+'_dist'].append(met_val)
+            self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(self.server.local_data_vols, met_val)]) / self.server.total_data_vol)
+            self.output['mean_valid_' + met_name].append(np.mean(met_val))
+            self.output['std_valid_' + met_name].append(np.std(met_val))
+        # output to stdout
+        self.show_current_output()
+        
+    def organize_output(self, *args, **kwargs):
+        """This method will be called before saving self.output"""
+        self.output['meta'] = self.meta
+        for key in self.output.keys():
+            if '_dist' in key:
+                self.output[key] = self.output[key][-1]
+        return
+```
+
+At the initialize phase, the simple logger records the clients' local data sizes into `output`. And at each round, it tests the global model on each client's validation dataset, and records the metrics. After training is finished, this logger will organize the recorded round-wise results into expected ones, which can be directly used by `result_analysis.py`. For example, self.output['valid_loss'] is a round-wise validation loss value list. The analyser can write `.yml` file as 
+```yaml
+ploter:
+  plot:
+    - x: communication_round
+      y: valid_loss
+```
+ Then, running the `result_analysis.py` with this yml file will plot the curves of selected records.
 ## fflow
