@@ -41,8 +41,30 @@ class Logger(logging.Logger):
         """Save the self.output as .json file"""
         if len(self.output) == 0: return
         self.organize_output()
-        with open(filepath, 'w') as outf:
-            ujson.dump(dict(self.output), outf)
+        self.output_to_jsonable_dict()
+        try:
+            with open(filepath, 'w') as outf:
+                ujson.dump(dict(self.output), outf)
+        except:
+            self.error('Failed to save flw.logger.output as results')
+
+    def check_is_jsonable(self, x):
+        try:
+            ujson.dumps(x)
+            return True
+        except:
+            return False
+
+    def output_to_jsonable_dict(self):
+        for key, value in self.output.items():
+            if not self.check_is_jsonable(value):
+                try:
+                    self.output[key] = str(self.output[key])
+                    self.warning("flw.logger.output['{}'] is not jsonable, and is automatically converted to string.".format(key))
+                except:
+                    del self.output[key]
+                    self.warning("Automatically remove flw.logger.output['{}'] from logger, because it is not jsonable and is failed to convert into string. ".format(key))
+        return
 
     def write_var_into_output(self, var_name=None, var_value=None):
         """Add variable 'var_name' and its value var_value to logger"""
