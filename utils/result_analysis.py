@@ -179,6 +179,13 @@ class Drawer(Analyser):
         self.colors = [c for c in mpl.colors.CSS4_COLORS.keys()]
         random.shuffle(self.colors)
         self.save_figure = save_figure
+        self.default_plot_para = {
+            'cmap': 'hsv',
+            's': 1,
+            'linewidths': 1,
+            'linewidth': 1,
+            'marker': '-',
+        }
 
     def draw(self, ploter):
         for func in ploter:
@@ -226,14 +233,14 @@ class Drawer(Analyser):
 
     def trace_2d(self, plot_obj, strong_end = True):
         # plot trace
-        default_size = 0.5
+        default_size = 1
         default_linewidth = 1
         for id, rec in enumerate(self.records):
             dict = self.records[rec]
             trace = dict[plot_obj['trace']]
             tx = [pos[0] for pos in trace]
             ty = [pos[1] for pos in trace]
-            plt.plot(tx, ty, color=self.colors[id], label=dict['legend'], linewidth=0.2)
+            plt.plot(tx, ty, color=self.colors[id], label=dict['legend'], linewidth=0.5*default_linewidth)
             plt.scatter(tx, ty, color=self.colors[id], s=default_size, linewidths=default_linewidth)
             if strong_end:
                 end_x, end_y = [tx[0], tx[-1]], [ty[0], ty[-1]]
@@ -302,26 +309,41 @@ class Drawer(Analyser):
 
     def scatter(self, plot_obj):
         pos_key = plot_obj['position']
+        color = plot_obj['color'] if 'color' in plot_obj.keys() else 'r'
         xlabel = plot_obj['xlabel'] if 'xlabel' in plot_obj.keys() else 'x'
         ylabel = plot_obj['ylabel'] if 'ylabel' in plot_obj.keys() else 'y'
-        max_row_figs = 4
-        # reset figure size
-        rows = int(math.ceil(len(records)/max_row_figs))
-        cols = min(len(records), max_row_figs)
-        fig = plt.figure()
-        fig_size = fig.get_size_inches()
-        new_fig_size = (fig_size[0]*cols, fig_size[1]*rows)
-        num_figs = len(self.records)
-        fig, ax = plt.subplots(rows, cols, figsize=new_fig_size)
+        # max_row_figs = 4
+        # # reset figure size
+        # rows = int(math.ceil(len(records)/max_row_figs))
+        # cols = min(len(records), max_row_figs)
+        # fig = plt.figure()
+        # fig_size = fig.get_size_inches()
+        # new_fig_size = (fig_size[0]*cols, fig_size[1]*rows)
+        # num_figs = len(self.records)
+        # fig, ax = plt.subplots(rows, cols, figsize=new_fig_size)
         for id, rec in enumerate(self.records):
             dict = self.records[rec]
             position = dict[pos_key]
             px, py = [p[0] for p in position], [p[1] for p in position]
-            plt.subplot(rows, cols, id+1)
-            plt.scatter(px, py)
+            # plt.subplot(rows, cols, id+1)
+            plt.scatter(px, py, color=color)
             plt.xlabel(xlabel)
             plt.ylabel(ylabel)
             plt.title(pos_key+'\\'+dict['legend'])
+        return
+
+    def figure_attr(self, plt_obj):
+        plt_attr = {'xlabel': plt.xlabel, 'ylabel':plt.ylabel, 'title':plt.title, 'xlim':plt.xlim, 'ylim':plt.ylim}
+        for key in plt_obj:
+            if key in plt_attr:
+                plt_attr[key](**plt_obj[key])
+
+    def combination(self, plot_objs):
+        for func in plot_objs:
+            if hasattr(self, func):
+                f = eval('self.'+func)
+                for plot_obj in plot_objs[func]:
+                    f(plot_obj)
         return
 
 class Former(Analyser):
