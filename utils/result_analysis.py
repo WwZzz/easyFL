@@ -63,11 +63,12 @@ def draw_curves_from_records(records, curve='train_loss'):
     # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=1)
     return
 
-def draw_curve_with_range(x, y, y_bottom, y_top, legend='', color=''):
+def draw_curve_with_range(x, y, y_bottom, y_top, legend='', color='', ax=None):
     assert len(y) == len(y_bottom) and len(y_bottom) == len(y_top)
-    plt.plot(x, y, color=color, label=legend)
-    plt.fill_between(x, y_top, y_bottom, color=color, alpha=0.3)
-    plt.legend()
+    if ax==None: ax=plt
+    ax.plot(x, y, color=color, label=legend)
+    ax.fill_between(x, y_top, y_bottom, color=color, alpha=0.3)
+    ax.legend()
 
 def filename_filter(fnames=[], filter={}):
     if filter:
@@ -174,25 +175,71 @@ class Analyser:
             records[rec]['client_id'] = [cid for cid in range(int(get_key_from_record_name(records[rec]['meta']['task'], 'cnum')))]
 
 class Drawer(Analyser):
+    _axes_keywords = ['xlim','ylim','axis','xlabel','ylabel','title',]
+
     def __init__(self, records, save_figure=False):
         super().__init__(records)
         self.colors = [c for c in mpl.colors.CSS4_COLORS.keys()]
         random.shuffle(self.colors)
         self.save_figure = save_figure
-        self.default_plot_para = {
-            'cmap': 'hsv',
-            's': 1,
-            'linewidths': 1,
-            'linewidth': 1,
-            'marker': '-',
+        self.default_option = {
+            'plot': {
+                'linestyle': '-',
+                'marker':None,
+                'linewidth':1,
+                'markersize':1,
+            },
+            'scatter':{
+                's':1,
+                'cmap': 'viridis',
+                'alpha':0,
+                'color':'r',
+            },
         }
+
+    def load_axes_option(self, plot_obj):
+        axes_keys = [k for k in plot_obj.keys() if k in self._axes_keywords]
+        for key in axes_keys:
+            f = eval('plt.'+key)
+            f(plot_obj[key])
+        # if 'title' not in axes_keys:
+        #     plt.title(self.task)
+
+    def get_current_axes(self, plot_obj, id):
+        if 'splited' in plot_obj.keys():
+            return plot_obj['_axes'][id]
+        else:
+            return plt
+
+    def set_figure(self, plot_obj):
+        if 'splited' in plot_obj.keys():
+            num_cols = plot_obj['num_cols'] if 'num_cols' in plot_obj.keys() else 4
+            # reset figure size
+            rows = int(math.ceil(len(records)/num_cols))
+            cols = min(len(records), num_cols)
+            fig_size = mpl.rcParams['figure.figsize']
+            new_fig_size = (fig_size[0]*cols, fig_size[1]*rows)
+            num_figs = len(self.records)
+            fig, ax = plt.subplots(rows, cols, figsize=new_fig_size)
+            plot_obj['_num_rows'] = rows
+            plot_obj['_num_cols'] = cols
+            plot_obj['_num_axes'] = num_figs
+            if not isinstance(ax, np.ndarray):
+                plot_obj['_axes'] = np.array([ax])
+            else:
+                plot_obj['_axes'] = ax.reshape(-1)
+        else:
+            fig = plt.figure()
+        plot_obj['_figure'] = fig
 
     def draw(self, ploter):
         for func in ploter:
             if hasattr(self, func):
                 f = eval('self.'+func)
                 for plot_obj in ploter[func]:
+                    self.set_figure(plot_obj)
                     f(plot_obj)
+                    self.load_axes_option(plot_obj)
                     if self.save_figure:
                         res_name = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H:%M:%S')
                         res_name = res_name + func + "-".join([k+v for k,v in plot_obj.items() if type(v) is str])+'.png'
@@ -203,31 +250,28 @@ class Drawer(Analyser):
     def plot(self, plot_obj):
         max_x = -1
         for id, rec in enumerate(self.records):
+            ax = self.get_current_axes(plot_obj, id)
             dict = self.records[rec]
             x = dict[plot_obj['x']]
             y = dict[plot_obj['y']]
-            plt.plot(x, y, label=dict['legend'], linewidth=1, c=self.colors[id])
+            ax.plot(x, y, label=dict['legend'], linewidth=1, c=self.colors[id])
             max_x = x[-1] if x[-1] > max_x else max_x
         plt.legend()
-        plt.xlabel(plot_obj['x'])
-        plt.ylabel(plot_obj['y'])
-        title = self.task if 'title' not in plot_obj.keys() else plot_obj['title']
-        plt.title(title)
         plt.tight_layout()
         return
 
     def group_plot(self, plot_obj):
         for id, item in enumerate(self.grouped_records.items()):
+            ax = self.get_current_axes(plot_obj, id)
             group_name, rec_dicts = item
             x = rec_dicts[0][plot_obj['x']]
             min_val = statistic_on_dicts(rec_dicts, name='min', key=plot_obj['y'])
             max_val = statistic_on_dicts(rec_dicts, name='max', key=plot_obj['y'])
             mean_val = statistic_on_dicts(rec_dicts, name='mean', key=plot_obj['y'])
-            draw_curve_with_range(x, mean_val, min_val, max_val, legend=rec_dicts[0]['legend'], color=self.colors[id])
-        plt.xlabel(plot_obj['x'])
-        plt.ylabel(plot_obj['y'])
-        title = self.task if 'title' not in plot_obj.keys() else plot_obj['title']
-        plt.title(title)
+            ax.plot(x, mean_val, color=self.colors[id], label=rec_dicts[0]['legend'])
+            ax.fill_between(x, max_val, min_val, color=self.colors[id], alpha=0.3)
+            ax.legend()
+            # draw_curve_with_range(x, mean_val, min_val, max_val, legend=rec_dicts[0]['legend'], color=self.colors[id], ax=ax)
         plt.tight_layout()
         return
 
@@ -264,11 +308,9 @@ class Drawer(Analyser):
         plt.scatter(px, py, color='black', marker='o', linewidths=3*default_linewidth, s=4*default_size)
         for pname, p in zip(pos_name, pos):
             plt.annotate(pname, tuple(p))
-        title = self.task if 'title' not in plot_obj.keys() else plot_obj['title']
-        plt.title(title)
 
     def bar(self, plot_obj):
-        fig = plt.figure()
+        fig = plot_obj['_figure']
         fig_size = fig.get_size_inches()
         new_fig_size = (fig_size[0]*len(self.records), fig_size[1])
         fig.set_size_inches(new_fig_size)
@@ -299,6 +341,7 @@ class Drawer(Analyser):
             data_across_group = data[bk]
             label = bar_in_group[bk]
             plt.bar(x + bk * bar_width, data_across_group, width=bar_width, label=label, fc=self.colors[bk])
+
         plt.xticks(x+group_width/2.0, group_name)
         plt.legend()
         plt.xlabel(xlabel)
@@ -310,33 +353,14 @@ class Drawer(Analyser):
     def scatter(self, plot_obj):
         pos_key = plot_obj['position']
         color = plot_obj['color'] if 'color' in plot_obj.keys() else 'r'
-        xlabel = plot_obj['xlabel'] if 'xlabel' in plot_obj.keys() else 'x'
-        ylabel = plot_obj['ylabel'] if 'ylabel' in plot_obj.keys() else 'y'
-        # max_row_figs = 4
-        # # reset figure size
-        # rows = int(math.ceil(len(records)/max_row_figs))
-        # cols = min(len(records), max_row_figs)
-        # fig = plt.figure()
-        # fig_size = fig.get_size_inches()
-        # new_fig_size = (fig_size[0]*cols, fig_size[1]*rows)
-        # num_figs = len(self.records)
-        # fig, ax = plt.subplots(rows, cols, figsize=new_fig_size)
         for id, rec in enumerate(self.records):
+            ax = self.get_current_axes(plot_obj, id)
             dict = self.records[rec]
             position = dict[pos_key]
             px, py = [p[0] for p in position], [p[1] for p in position]
-            # plt.subplot(rows, cols, id+1)
-            plt.scatter(px, py, color=color)
-            plt.xlabel(xlabel)
-            plt.ylabel(ylabel)
-            plt.title(pos_key+'\\'+dict['legend'])
+            ax.scatter(px, py, color=color)
+            ax.set_title(self.rec_dicts[id]['legend'])
         return
-
-    def figure_attr(self, plt_obj):
-        plt_attr = {'xlabel': plt.xlabel, 'ylabel':plt.ylabel, 'title':plt.title, 'xlim':plt.xlim, 'ylim':plt.ylim}
-        for key in plt_obj:
-            if key in plt_attr:
-                plt_attr[key](**plt_obj[key])
 
     def combination(self, plot_objs):
         for func in plot_objs:
@@ -345,6 +369,8 @@ class Drawer(Analyser):
                 for plot_obj in plot_objs[func]:
                     f(plot_obj)
         return
+
+
 
 class Former(Analyser):
     def __init__(self, records, save_text=False):
@@ -358,6 +384,7 @@ class Former(Analyser):
             'final': lambda x: x[-1],
             'min': lambda x: np.min(x),
             'max': lambda x: np.max(x),
+            'var': lambda x: np.var(x)
         }
 
     def func_on_list_of_key(self, key, funcname='final'):
@@ -407,6 +434,9 @@ class Former(Analyser):
 
     def min_value(self, key):
         self.func_on_list_of_key(key, 'min')
+
+    def var(self, key):
+        self.func_on_list_of_key(key, 'var')
 
     def group_mean_with_std(self, key):
         res = []
