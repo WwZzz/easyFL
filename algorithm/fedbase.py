@@ -403,24 +403,24 @@ class BasicClient():
             "model" : model,
         }
 
-    def is_active(self):
+    def is_active(self, random_module=np.random):
         """
         Check if the client is active to participate training.
         :param
         :return
             True if the client is active according to the active_rate else False
         """
-        self.active = (np.random.rand() <= self.network_active_rate)
+        self.active = (random_module.rand() <= self.network_active_rate)
         return self.active
 
-    def is_drop(self):
+    def is_drop(self, random_module=np.random):
         """
         Check if the client drops out during communicating.
         :param
         :return
             True if the client drops out according to the drop_rate else False
         """
-        self.dropped = (np.random.rand() < self.network_drop_rate)
+        self.dropped = (random_module.rand() < self.network_drop_rate)
         return self.dropped
 
     def train_loss(self, model):
