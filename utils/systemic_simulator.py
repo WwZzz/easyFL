@@ -6,11 +6,17 @@ Here we implement three different network heterogeneity for a FL system:
 """
 import numpy as np
 TIME_UNIT = 1
+random_seed_gen = None
 
-def update_activity(server):
+def seed_generator(seed=0):
+    while True:
+        yield seed+1
+        seed+=1
+
+def update_activity(server, random_module=np.random):
     return
 
-def update_local_computing_resource(server, clients = []):
+def update_local_computing_resource(server, clients=[], random_module=np.random):
     return
 
 def init_network_mode(server, mode='ideal'):
@@ -61,7 +67,7 @@ def init_network_mode(server, mode='ideal'):
             c.network_latency_amount = 0
 
     elif mode=='F3AST-Smartphones':
-        def f(server):
+        def f(server, random_module=np.random):
             times = np.linspace(start=0, stop=2*np.pi, num=24)
             fts = 0.4 * np.sin(times) + 0.5
             t = server.current_round % 24
@@ -103,10 +109,10 @@ def init_computing_mode(server, mode='ideal'):
         paper.
         """
         p = float(mode[mode.find('p')+1:]) if mode.find('p')!=-1 else 0.5
-        def f(server, clients=[]):
-            incomplete_clients = np.random.choice(clients, round(len(clients)*p), replace=False)
+        def f(server, clients=[], random_module=np.random):
+            incomplete_clients = random_module.choice(clients, round(len(clients)*p), replace=False)
             for cid in incomplete_clients:
-                server.clients[cid].num_steps = np.random.randint(low=1, high=server.clients[cid].num_steps)
+                server.clients[cid].num_steps = random_module.randint(low=1, high=server.clients[cid].num_steps)
             return
         update_local_computing_resource = f
         return
@@ -120,9 +126,9 @@ def init_computing_mode(server, mode='ideal'):
         """
         a = int(mode[mode.find('(')+1: mode.find(',')])
         b = int(mode[mode.find(',')+1: mode.find(')')])
-        def f(server, clients=[]):
+        def f(server, clients=[], random_module=np.random):
             for cid in server.clients:
-                server.clients[cid].set_local_epochs(np.random.randint(low=a, high=b))
+                server.clients[cid].set_local_epochs(random_module.randint(low=a, high=b))
             return
         update_local_computing_resource = f
         return
@@ -145,14 +151,18 @@ def init_systemic_config(server, option):
     init_network_mode(server, option['network_config'])
     # init computing power distribution
     init_computing_mode(server, option['computing_config'])
+    global random_seed_gen
+    random_seed_gen = seed_generator(option['seed'])
 
 # sampling phase
 def with_inactivity(sample):
     def sample_with_active(self, all_clients=None):
-        update_activity(self)
+        global random_seed_gen
+        random_module = np.random.RandomState(next(random_seed_gen))
+        update_activity(self, random_module)
         active_clients = []
         while len(active_clients)==0:
-            active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active()]
+            active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active(random_module)]
         selected_clients = sample(self, all_clients=active_clients)
         return selected_clients
     return sample_with_active
@@ -175,10 +185,13 @@ def with_latency(communicate):
 
 def with_incomplete_update(communicate):
     def communicate_with_incomplete_update(self, selected_clients):
+        global random_seed_gen
+        random_module = np.random.RandomState(next(random_seed_gen))
         original_local_num_steps = [self.clients[cid].num_steps for cid in selected_clients]
-        update_local_computing_resource(self, selected_clients)
+        update_local_computing_resource(self, selected_clients, random_module=random_module)
         res = communicate(self, selected_clients)
         for cid,onum_steps in zip(selected_clients, original_local_num_steps):
+            self.clients[cid].computing_resource = 1.0 * self.clients[cid].num_steps / onum_steps
             self.clients[cid].num_steps = onum_steps
         return res
     return communicate_with_incomplete_update
