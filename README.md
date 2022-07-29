@@ -190,6 +190,16 @@ Here the partitioned dataset obeys the dirichlet(alpha * p) distirbution. The da
    <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="230" />
 </p>
 
+#### Di ~ Dirichlet(αP) and imbalance where dist=4
+In this case, the label distribution is the same as `dist=2`. However, there exist severe data imbalance, where the local data sizes vary across clients. The hyperparameter `skewness` also controls the non-i.i.d. degree of the partition.
+
+<p float="left">
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew0.2_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew0.5_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew0.75_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew1.0_seed0.jpg" width="230" />
+</p>
+
 To generate these fedtasks, run the command below
 
 ```
@@ -199,6 +209,8 @@ python generated_fedtask.py --dist 0 --skew 0 --num_clients 100 --benchmark cifa
 python generated_fedtask.py --dist 1 --skew 0.39 --num_clients 10 --benchmark mnist_classification
 # varying skew from 0.0 to 1.0
 python generated_fedtask.py --dist 2 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
+# Imbalace & dirichlet, and the skew also varies from 0.2 to 1.0
+python generated_fedtask.py --dist 4 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
 ```
 
 ### Options
