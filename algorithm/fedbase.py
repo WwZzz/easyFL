@@ -71,7 +71,7 @@ class BasicServer:
         flw.logger.info("=================End==================")
         flw.logger.time_end('Total Time Cost')
         # save results as .json file
-        flw.logger.save_output_as_json(os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)))
+        flw.logger.save_output_as_json()
         return
 
     def iterate(self, t):
