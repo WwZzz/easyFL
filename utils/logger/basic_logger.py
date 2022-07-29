@@ -3,9 +3,24 @@ import collections
 import ujson
 import time
 import numpy as np
+import os
 
 class Logger(logging.Logger):
-    def __init__(self, *args, **kwargs):
+
+    _LEVEL = {
+        "DEBUG": logging.DEBUG,
+
+        "INFO": logging.INFO,
+
+        "WARNING": logging.WARNING,
+
+        "ERROR": logging.ERROR,
+
+        "CRITICAL": logging.CRITICAL,
+    }
+
+    def __init__(self, meta, *args, **kwargs):
+        self.meta = meta
         super(Logger, self).__init__(*args, **kwargs)
         self.output = collections.defaultdict(list)
         self.current_round = -1
@@ -13,10 +28,22 @@ class Logger(logging.Logger):
         self.time_costs = []
         self.time_buf = {}
         self.formatter = logging.Formatter('%(asctime)s %(filename)s %(funcName)s [line:%(lineno)d] %(levelname)s %(message)s')
-        self.head = logging.StreamHandler()
-        self.head.setLevel(logging.INFO)
-        self.head.setFormatter(self.formatter)
-        self.addHandler(self.head)
+        self.handler_list = []
+        if not self.meta['no_log_console']:
+            self.streamhandler = logging.StreamHandler()
+            self.streamhandler.setFormatter(self.formatter)
+            self.streamhandler.setLevel(self._LEVEL[self.meta['log_level'].upper()])
+            self.addHandler(self.streamhandler)
+        if self.meta['log_file']:
+            log_dir = self.get_log_path()
+            self.log_path = os.path.join(log_dir, self.get_time_string()+self.get_output_name('.log'))
+            if not os.path.exists(self.get_log_path()):
+                os.mkdir(log_dir)
+            self.filehandler = logging.FileHandler(self.log_path)
+            self.filehandler.setFormatter(self.formatter)
+            self.filehandler.setLevel(self._LEVEL[self.meta['log_level'].upper()])
+            self.addHandler(self.filehandler)
+
 
     def check_if_log(self, round, eval_interval=-1):
         """For evaluating every 'eval_interval' rounds, check whether to log at 'round'."""
@@ -37,11 +64,13 @@ class Logger(logging.Logger):
             self.time_buf[key][-1] = time.time() - self.time_buf[key][-1]
             self.info("{:<30s}{:.4f}".format(key + ":", self.time_buf[key][-1]) + 's')
 
-    def save_output_as_json(self, filepath):
+    def save_output_as_json(self, filepath=None):
         """Save the self.output as .json file"""
         if len(self.output) == 0: return
         self.organize_output()
         self.output_to_jsonable_dict()
+        if filepath is None:
+            filepath = os.path.join(self.get_output_path(),self.get_output_name())
         try:
             with open(filepath, 'w') as outf:
                 ujson.dump(dict(self.output), outf)
@@ -72,13 +101,58 @@ class Logger(logging.Logger):
         self.output[var_name].append(var_value)
         return
 
-    def initialize(self, *args, **kwargs):
-        return
-
     def register_variable(self, **kwargs):
         """Initialze the logger in utils.fflow.initialize()"""
         for k, v in kwargs.items():
             setattr(self, k, v)
+        return
+
+    def show_current_output(self, yes_key=['train', 'test', 'valid'], no_key=['dist']):
+        for key, val in self.output.items():
+            a = [(yk in key) for yk in yes_key]
+            nf = [(nk not in key) for nk in no_key]
+            a.extend(nf)
+            if not np.any(a):
+                self.info(self.temp.format(key, val[-1]))
+
+    def get_output_name(self, suffix='.json'):
+        if not hasattr(self, 'meta'): raise NotImplementedError('logger has no attr named "meta"')
+        header = "{}_".format(self.meta["algorithm"])
+        if hasattr(self, 'server'):
+            for para, pv in self.server.algo_para.items():
+                header = header + para + "{}_".format(pv)
+        else:
+            if self.meta['algo_para'] is not None:
+                header = header + 'algopara_'+'|'.join([str(p) for p in self.meta['algo_para']])
+
+        output_name = header + "M{}_R{}_B{}_".format(self.meta['model'], self.meta['num_rounds'], self.meta['batch_size'])
+        if hasattr(self, 'clients'):
+            output_name = output_name + ("E{}_".format(self.clients[0].epochs))
+        else:
+            output_name = output_name + ("E{}_".format(self.meta['num_epochs'] if self.meta['num_steps']<0 else self.num_steps))
+        output_name = output_name + "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_NET{}_CMP{}".format(
+                          self.meta['learning_rate'],
+                          self.meta['proportion'],
+                          self.meta['seed'],
+                          self.meta['lr_scheduler'] + self.meta['learning_rate_decay'],
+                          self.meta['weight_decay'],
+                          self.meta['network_config'],
+                          self.meta['computing_config']
+                      ) + suffix
+        return output_name
+
+    def get_output_path(self):
+        if not hasattr(self, 'meta'): raise NotImplementedError('logger has no attr named "meta"')
+        return os.path.join('fedtask', self.meta['task'], 'record')
+
+    def get_log_path(self):
+        if not hasattr(self, 'meta'): raise NotImplementedError('logger has no attr named "meta"')
+        return os.path.join('fedtask', self.meta['task'], 'log')
+
+    def get_time_string(self):
+        return time.strftime('%Y-%m-%d-%H-%M-%S')
+
+    def initialize(self, *args, **kwargs):
         return
 
     def log_per_round(self, *args, **kwargs):
@@ -110,11 +184,3 @@ class Logger(logging.Logger):
             if '_dist' in key:
                 self.output[key] = self.output[key][-1]
         return
-
-    def show_current_output(self, yes_key=['train', 'test', 'valid'], no_key=['dist']):
-        for key, val in self.output.items():
-            a = [(yk in key) for yk in yes_key]
-            nf = [(nk not in key) for nk in no_key]
-            a.extend(nf)
-            if not np.any(a):
-                self.info(self.temp.format(key, val[-1]))
