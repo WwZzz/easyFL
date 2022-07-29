@@ -1,5 +1,5 @@
 """
-The synthetic_classification dataset is generated following the setup in 'Federated Optimization in Heterogeneous Networks'.
+The synthetic_regression dataset is generated following the setup in 'Federated Optimization in Heterogeneous Networks'.
 (The link for this paper is https://arxiv.org/abs/1812.06127).
 The details of this dataset is described as below:
 
@@ -9,7 +9,7 @@ The details of this dataset is described as below:
         where for the locally optimal model (i.e. P(Y_k|X_k)): 
             W_k~N(u_k, 1), b_k~N(u_k, 1), u_k~N(0, alpha)
         and for the local data D_k={(x_ki, y_ki)} (i.e. P(X_k)): 
-            X_k~N(v_k, Sigma), v_k[j]~N(B_k, 1) for all j in range(60), B_k~N(0, beta), Sigma=Diag([i^(-1.2) for i in range(60)])
+            X_k~N(v_k, Sigma), v_k[j]~N(B_k, 1) for all j in range(Dimension), B_k~N(0, beta), Sigma=Diag([i^(-1.2) for i in range(Dimension)])
 
     Thus, alpha controls how differently the features are distributed (i.e. P(X)), 
     and beta controls how differently the locally optimal models are distributed (i.e. P(Y|X)).
@@ -40,7 +40,7 @@ The details of this dataset is described as below:
     IID or (alpha, beta) in {(0,0), (0.5, 0.5), (1, 1)}.
 """
 from benchmark.toolkits import BasicTaskGen
-from benchmark.toolkits import XYTaskPipe as TaskPipe
+from benchmark.toolkits import XYTaskPipe
 from benchmark.toolkits import ClassificationCalculator as TaskCalculator
 from scipy.special import softmax
 import numpy as np
@@ -48,7 +48,7 @@ import os.path
 import ujson
 class TaskGen(BasicTaskGen):
     def __init__(self, num_classes=10, dimension=60, dist_id = 0, num_clients = 30, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/RAW_DATA/SYNTHETIC', seed=0):
-        super(TaskGen, self).__init__(benchmark='synthetic_classification',
+        super(TaskGen, self).__init__(benchmark='synthetic_regression',
                                       dist_id=dist_id,
                                       skewness=skewness,
                                       rawdata_path=rawdata_path,
@@ -62,7 +62,6 @@ class TaskGen(BasicTaskGen):
         self.save_task = TaskPipe.save_task
         self.taskpath = os.path.join(self.task_rootpath, self.taskname)
 
-
     def run(self):
         if not self._check_task_exist():
             self.create_task_directories()
@@ -70,7 +69,7 @@ class TaskGen(BasicTaskGen):
             print("Task Already Exists.")
             return
 
-        xs, ys = self.gen_data(self.num_clients)
+        xs, ys, optimals = self.gen_data(self.num_clients)
         x_trains = [di[:int(0.75 * len(di))] for di in xs]
         y_trains = [di[:int(0.75 * len(di))] for di in ys]
         x_valids = [di[int(0.75 * len(di)):int(0.90 * len(di))] for di in xs]
@@ -98,7 +97,8 @@ class TaskGen(BasicTaskGen):
                 'dvalid': {
                     'x': x_valids[cid],
                     'y': y_valids[cid]
-                }
+                },
+                'optimal': optimals[cid]
             }
         with open(os.path.join(self.taskpath, 'data.json'), 'w') as outf:
             ujson.dump(feddata, outf)
@@ -170,6 +170,8 @@ class TaskGen(BasicTaskGen):
 
         X_split = [[] for _ in range(num_clients)]
         y_split = [[] for _ in range(num_clients)]
+        optimal_local = [np.concatenate((wk,bk.reshape(1, bk.shape[0])), axis=0).tolist() for wk, bk in zip(W, b)]
+
         for k in range(num_clients):
             # X_ki~N(v_k, Sigma)
             X_k = np.random.multivariate_normal(V[k], Sigma, samples_per_user[k])
@@ -180,4 +182,18 @@ class TaskGen(BasicTaskGen):
                 Y_k[i] = np.argmax(softmax(tmp))
             X_split[k] = X_k.tolist()
             y_split[k] = Y_k.tolist()
-        return X_split, y_split
+        return X_split, y_split, optimal_local
+
+
+class TaskPipe(XYTaskPipe):
+    @classmethod
+    def load_task(cls, task_path):
+        with open(os.path.join(task_path, 'data.json'), 'r') as inf:
+            feddata = ujson.load(inf)
+        test_data = cls.TaskDataset(feddata['dtest']['x'], feddata['dtest']['y'])
+        train_datas = [cls.TaskDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
+        valid_datas = [cls.TaskDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
+        for train_data, valid_data, name in zip(train_datas,valid_datas,feddata['client_names']):
+            train_data.optimal_model = valid_data.optimal_model = feddata[name]['optimal']
+        return train_datas, valid_datas, test_data, feddata['client_names']
+
