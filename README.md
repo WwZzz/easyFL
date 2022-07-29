@@ -281,7 +281,7 @@ Additional hyper-parameters for particular federated algorithms:
 
 Logger's setting
 
-* `logger` is used to selected the logger, where the logger shard the same name with this term will be loaded.
+* `logger` is used to selected the logger that has the same name with this term.
 
 * `log_level` shares the same meaning with the LEVEL in the python's native module logging.
 
