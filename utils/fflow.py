@@ -56,6 +56,9 @@ def read_option():
     # logger setting
     parser.add_argument('--logger', help='the Logger in utils.logger.logger_name will be loaded', type=str, default='basic_logger')
     parser.add_argument('--log_level', help='the level of logger', type=str, default='INFO')
+    parser.add_argument('--log_file', help='bool controls whether log to file and default value is False', action="store_true", default=False)
+    parser.add_argument('--no_log_console', help='bool controls whether log to screen and default value is True', action="store_true", default=False)
+
     try: option = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
     return option
@@ -77,7 +80,7 @@ def initialize(option):
             break
         except:
             continue
-    logger = Logger(name=log_name, level=option['log_level'])
+    logger = Logger(meta=option, name=log_name, level=option['log_level'])
     logger.info('Using Logger in `{}`'.format(log_path))
     logger.info("Initializing fedtask: {}".format(option['task']))
     # benchmark
