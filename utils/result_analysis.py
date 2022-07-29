@@ -176,7 +176,12 @@ class Analyser:
 
 class Drawer(Analyser):
     _axes_keywords = ['xlim','ylim','axis','xlabel','ylabel','title',]
+    _default_option = {
+        'plot': ['linestyle', 'marker', 'linewidth', 'markersize',],
+        'scatter': ['s', 'cmap', 'alpha', 'color',],
+        'group_plot': ['linestyle', 'marker', 'linewidth', 'markersize',],
 
+    }
     def __init__(self, records, save_figure=False):
         super().__init__(records)
         self.colors = [c for c in mpl.colors.CSS4_COLORS.keys()]
@@ -185,7 +190,7 @@ class Drawer(Analyser):
         self.default_option = {
             'plot': {
                 'linestyle': '-',
-                'marker':None,
+                'marker':'o',
                 'linewidth':1,
                 'markersize':1,
             },
@@ -197,16 +202,22 @@ class Drawer(Analyser):
             },
         }
 
+    def load_ploter_option(self, funcname, plot_obj):
+        default_keys = [k for k in self.default_option[funcname].keys()]
+        res_option = {}
+        for key in plot_obj.keys():
+            if key in default_keys:
+                res_option[key] = plot_obj[key]
+        return res_option
+
     def load_axes_option(self, plot_obj):
         axes_keys = [k for k in plot_obj.keys() if k in self._axes_keywords]
         for key in axes_keys:
             f = eval('plt.'+key)
             f(plot_obj[key])
-        # if 'title' not in axes_keys:
-        #     plt.title(self.task)
 
     def get_current_axes(self, plot_obj, id):
-        if 'splited' in plot_obj.keys():
+        if '_axes' in plot_obj.keys():
             return plot_obj['_axes'][id]
         else:
             return plt
@@ -249,12 +260,13 @@ class Drawer(Analyser):
 
     def plot(self, plot_obj):
         max_x = -1
+        ploter_option = self.load_ploter_option('plot', plot_obj)
         for id, rec in enumerate(self.records):
             ax = self.get_current_axes(plot_obj, id)
             dict = self.records[rec]
             x = dict[plot_obj['x']]
             y = dict[plot_obj['y']]
-            ax.plot(x, y, label=dict['legend'], linewidth=1, c=self.colors[id])
+            ax.plot(x, y, label=dict['legend'], c=self.colors[id], **ploter_option)
             max_x = x[-1] if x[-1] > max_x else max_x
         plt.legend()
         plt.tight_layout()
@@ -341,25 +353,23 @@ class Drawer(Analyser):
             data_across_group = data[bk]
             label = bar_in_group[bk]
             plt.bar(x + bk * bar_width, data_across_group, width=bar_width, label=label, fc=self.colors[bk])
-
         plt.xticks(x+group_width/2.0, group_name)
         plt.legend()
-        plt.xlabel(xlabel)
         plt.ylabel(plot_obj['y'])
-        title = self.task if 'title' not in plot_obj.keys() else plot_obj['title']
-        plt.title(title)
         return
 
     def scatter(self, plot_obj):
         pos_key = plot_obj['position']
-        color = plot_obj['color'] if 'color' in plot_obj.keys() else 'r'
+        # color = plot_obj['color'] if 'color' in plot_obj.keys() else 'r'
+        ploter_option = self.load_ploter_option('scatter', plot_obj)
         for id, rec in enumerate(self.records):
             ax = self.get_current_axes(plot_obj, id)
             dict = self.records[rec]
             position = dict[pos_key]
             px, py = [p[0] for p in position], [p[1] for p in position]
-            ax.scatter(px, py, color=color)
-            ax.set_title(self.rec_dicts[id]['legend'])
+            ax.scatter(px, py, **ploter_option)
+            if hasattr(ax, 'set_title'):
+                ax.set_title(self.rec_dicts[id]['legend'])
         return
 
     def combination(self, plot_objs):
@@ -367,6 +377,9 @@ class Drawer(Analyser):
             if hasattr(self, func):
                 f = eval('self.'+func)
                 for plot_obj in plot_objs[func]:
+                    plot_obj['_figure'] = plot_objs['_figure']
+                    if '_axes' in plot_objs.keys():
+                        plot_obj['_axes'] = plot_objs['_axes']
                     f(plot_obj)
         return
 
