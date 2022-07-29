@@ -264,7 +264,18 @@ Simulating systemic configuration: 1) network heterogeneity, 2) computing power 
 * `computing_config` controls the computing resources of all the clients. See `utils.systemic_simulator` for more details. 
 
 Additional hyper-parameters for particular federated algorithms:
+
 * `algo_para` is used to receive the algorithm-dependent hyper-parameters from command lines. Usage: 1) The hyper-parameter will be set as the default value defined in Server.__init__() if not specifying this term, 2) For algorithms with one or more parameters, use `--algo_para v1 v2 ...` to specify the values for the parameters. The input order depends on the dict `Server.algo_para` defined in `Server.__init__()`.
+
+Logger's setting
+
+* `logger` is used to selected the logger, where the logger shard the same name with this term will be loaded.
+
+* `log_level` shares the same meaning with the LEVEL in the python's native module logging.
+
+* `log_file` controls whether to store the running-time information into `.log` in `fedtask/taskname/log/`, default value is false.
+
+* `no_log_console` controls whether to show the running time information on the console, and default value is false.
 
 ## Architecture
 
