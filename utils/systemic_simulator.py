@@ -88,6 +88,18 @@ def init_network_mode(server, mode='ideal'):
             c.network_active_rate = 1.0 * cvol / max_data_vol
             c.network_drop_rate = 0
             c.network_latency_amount = 0
+
+    elif mode.startswith('SmallFirst'):
+        k = float(mode[mode.find('k') + 1:]) if mode.find('k') != -1 else 0
+        prop = server.local_data_vols
+        max_data_vol = max(prop)
+        prop = 1.0*np.array(prop)/max_data_vol
+        prop = np.exp(-k*np.array(prop))
+        for c, pc in zip(server.clients, prop):
+            c.network_active_rate = pc
+            c.network_drop_rate = 0
+            c.network_latency_amount = 0
+
     else:
         for c in server.clients:
             c.network_active_rate = 1
