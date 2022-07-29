@@ -6,14 +6,15 @@ balance:
     label skew:     1 Quantity:  each party owns data samples of a fixed number of labels.
                     2 Dirichlet: each party is allocated a proportion of the samples of each label according to Dirichlet distribution.
                     3 Shard: each party is allocated the same numbers of shards that is sorted by the labels of the data
+                    4 Dirichlet-Imbalance: the label distribution is the same to dist2 but the local data sizes vary a lot.
 -----------------------------------------------------------------------------------
 depends on partitions:
-    feature skew:   4 Noise: each party owns data samples of a fixed number of labels.
+    feature skew:
                     5 ID: For Shakespeare\FEMNIST, we divide and assign the writers (and their characters) into each party randomly and equally.
 -----------------------------------------------------------------------------------
 imbalance:
     iid:            6 Vol: only the vol of local dataset varies.
-    niid:           7 Vol: for generating synthetic_classification data
+    niid:           7 Vol: for generating synthetic_regression data
 """
 
 import ujson
@@ -92,7 +93,7 @@ class BasicTaskGen:
     def save_task(self, *args, **kwargs):
         """Save the federated dataset to the task_path/data.
         This algorithm should be implemented as the way to read
-        data from disk that is defined by DataReader.read_task()
+        data from disk that is defined in TaskPipe.read_task()
         """
         pass
 
@@ -119,6 +120,7 @@ class BasicTaskGen:
         taskpath = os.path.join(self.task_rootpath, taskname)
         os.mkdir(taskpath)
         os.mkdir(os.path.join(taskpath, 'record'))
+        os.mkdir(os.path.join(taskpath, 'log'))
 
     def _check_task_exist(self):
         """Check whether the task already exists."""
@@ -314,7 +316,95 @@ class DefaultTaskGen(BasicTaskGen):
                     local_datas[i].extend(all_idxs[rand * shardsize:(rand + 1) * shardsize])
 
         elif self.dist_id == 4:
-            pass
+            """label_skew_dirichlet with imbalance data size. The data"""
+            # calculate alpha = (-4log(skewness + epsilon))**4
+            MIN_ALPHA = 0.01
+            alpha = (-4 * np.log(self.skewness + 10e-8)) ** 4
+            alpha = max(alpha, MIN_ALPHA)
+            # ensure imbalance data sizes
+            total_data_size = len(self.train_data)
+            mean_datasize = total_data_size/self.num_clients
+            mu = np.log(mean_datasize) - 0.5
+            sigma = 1
+            samples_per_client = np.random.lognormal(mu, sigma, (self.num_clients)).astype(int)
+            thresold = int(0.1*total_data_size)
+            delta = int(0.1 * thresold)
+            crt_data_size = sum(samples_per_client)
+            # force current data size to match the total data size
+            while crt_data_size != total_data_size:
+                if crt_data_size - total_data_size >= thresold:
+                    maxid = np.argmax(samples_per_client)
+                    samples = np.random.lognormal(mu, sigma, (self.num_clients))
+                    new_size_id = np.argmin([np.abs(crt_data_size-samples_per_client[maxid]+s) for s in samples])
+                    samples_per_client[maxid] = samples[new_size_id]
+                elif crt_data_size - total_data_size >= delta:
+                    maxid = np.argmax(samples_per_client)
+                    samples_per_client[maxid] -= delta
+                elif crt_data_size - total_data_size >0:
+                    maxid = np.argmax(samples_per_client)
+                    samples_per_client[maxid] -= (crt_data_size - total_data_size)
+                elif total_data_size - crt_data_size >= delta:
+                    minid = np.argmin(samples_per_client)
+                    samples_per_client[minid] += delta
+                elif total_data_size - crt_data_size >= delta:
+                    minid = np.argmin(samples_per_client)
+                    samples = np.random.lognormal(mu, sigma, (self.num_clients))
+                    new_size_id = np.argmin([np.abs(crt_data_size-samples_per_client[minid]+s) for s in samples])
+                    samples_per_client[minid] = samples[new_size_id]
+                else:
+                    minid = np.argmin(samples_per_client)
+                    samples_per_client[minid] += (total_data_size - crt_data_size)
+                crt_data_size = sum(samples_per_client)
+            # count the label distribution
+            labels = [self.train_data[did][-1] for did in range(len(self.train_data))]
+            lb_counter = collections.Counter(labels)
+            p = np.array([1.0 * v / len(self.train_data) for v in lb_counter.values()])
+            lb_dict = {}
+            labels = np.array(labels)
+            for lb in range(len(lb_counter.keys())):
+                lb_dict[lb] = np.where(labels == lb)[0]
+            proportions = [np.random.dirichlet(alpha * p) for _ in range(self.num_clients)]
+            while np.any(np.isnan(proportions)):
+                proportions = [np.random.dirichlet(alpha * p) for _ in range(self.num_clients)]
+            sorted_cid_map = {k:i for k,i in zip(np.argsort(samples_per_client), [_ for _ in range(self.num_clients)])}
+            crt_id = 0
+            while True:
+                # generate dirichlet distribution till ||E(proportion) - P(D)||<=1e-5*self.num_classes
+                mean_prop = np.sum([pi*di for pi,di in zip(proportions, samples_per_client)], axis=0)
+                mean_prop = mean_prop/mean_prop.sum()
+                error_norm = ((mean_prop - p) ** 2).sum()
+                print("Error: {:.8f}".format(error_norm))
+                if error_norm <= 1e-2 / self.num_classes:
+                    break
+                excid = sorted_cid_map[crt_id]
+                crt_id = (crt_id+1)%self.num_clients
+                sup_prop = [np.random.dirichlet(alpha * p) for _ in range(self.num_clients)]
+                del_prop = np.sum([pi * di for pi, di in zip(proportions, samples_per_client)], axis=0)
+                del_prop -= samples_per_client[excid]*proportions[excid]
+                alter_norms = []
+                for cid in range(self.num_clients):
+                    if np.any(np.isnan(sup_prop[cid])):
+                        continue
+                    alter_prop = del_prop + samples_per_client[excid]*sup_prop[cid]
+                    alter_prop = alter_prop/alter_prop.sum()
+                    error_alter = ((alter_prop - p) ** 2).sum()
+                    alter_norms.append(error_alter)
+                if len(alter_norms) > 0:
+                    alcid = np.argmin(alter_norms)
+                    proportions[excid] = sup_prop[alcid]
+            local_datas = [[] for _ in range(self.num_clients)]
+            self.dirichlet_dist = []  # for efficiently visualizing
+            for lb in lb_counter.keys():
+                lb_idxs = lb_dict[lb]
+                lb_proportion = np.array([pi[lb]*si for pi,si in zip(proportions, samples_per_client)])
+                lb_proportion = lb_proportion / lb_proportion.sum()
+                lb_proportion = (np.cumsum(lb_proportion) * len(lb_idxs)).astype(int)[:-1]
+                lb_datas = np.split(lb_idxs, lb_proportion)
+                self.dirichlet_dist.append([len(lb_data) for lb_data in lb_datas])
+                local_datas = [local_data + lb_data.tolist() for local_data, lb_data in zip(local_datas, lb_datas)]
+            self.dirichlet_dist = np.array(self.dirichlet_dist).T
+            for i in range(self.num_clients):
+                np.random.shuffle(local_datas[i])
 
         elif self.dist_id == 5:
             """feature_skew_id"""
@@ -365,22 +455,24 @@ class DefaultTaskGen(BasicTaskGen):
         if hasattr(self, 'dirichlet_dist'):
             client_dist = self.dirichlet_dist.tolist()
             data_columns = [sum(cprop) for cprop in client_dist]
+            row_map = {k:i for k,i in zip(np.argsort(data_columns), [_ for _ in range(self.num_clients)])}
             for cid, cprop in enumerate(client_dist):
                 offset = 0
-                y_bottom = cid - client_height/2.0
-                y_top = cid + client_height/2.0
+                y_bottom = row_map[cid] - client_height/2.0
+                y_top = row_map[cid] + client_height/2.0
                 for lbi in range(len(cprop)):
                     plt.fill_between([offset,offset+cprop[lbi]], y_bottom, y_top, facecolor = colors[lbi])
                     # plt.barh(cid, cprop[lbi], client_height, left=offset, color=)
                     offset += cprop[lbi]
         else:
             data_columns = [len(cidx) for cidx in train_cidxs]
+            row_map = {k:i for k,i in zip(np.argsort(data_columns), [_ for _ in range(self.num_clients)])}
             for cid, cidxs in enumerate(train_cidxs):
                 labels = [int(self.train_data[did][-1]) for did in cidxs]
                 lb_counter = collections.Counter(labels)
                 offset = 0
-                y_bottom = cid - client_height/2.0
-                y_top = cid + client_height/2.0
+                y_bottom = row_map[cid] - client_height/2.0
+                y_top = row_map[cid] + client_height/2.0
                 for lbi in range(self.num_classes):
                     plt.fill_between([offset,offset+lb_counter[lbi]], y_bottom, y_top, facecolor = colors[lbi])
                     offset += lb_counter[lbi]
@@ -503,7 +595,7 @@ class ClassificationCalculator(BasicTaskCalculator):
 #      datasets in torchvision and torchspeech. Examples can be found in mnist_classification\core.py, cifar\core.py.
 #
 #   2) Save the partitioned data itself into .json file. Then read the data. The advantage of this way is the flexibility.
-#      Examples can be found in emnist_classification\core.py, synthetic_classification\core.py, distributedQP\core.py.
+#      Examples can be found in emnist_classification\core.py, synthetic_regression\core.py, distributedQP\core.py.
 
 class BasicTaskPipe:
     """
