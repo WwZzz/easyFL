@@ -190,6 +190,16 @@ Here the partitioned dataset obeys the dirichlet(alpha * p) distirbution. The da
    <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="230" />
 </p>
 
+#### Di ~ Dirichlet(αP) and imbalance where dist=4
+In this case, the label distribution is the same as `dist=2`. However, there exist severe data imbalance, where the local data sizes vary across clients. The hyperparameter `skewness` also controls the non-i.i.d. degree of the partition.
+
+<p float="left">
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew0.2_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew0.5_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew0.75_seed0.jpg" width="230" />
+   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew1.0_seed0.jpg" width="230" />
+</p>
+
 To generate these fedtasks, run the command below
 
 ```
@@ -199,6 +209,8 @@ python generated_fedtask.py --dist 0 --skew 0 --num_clients 100 --benchmark cifa
 python generated_fedtask.py --dist 1 --skew 0.39 --num_clients 10 --benchmark mnist_classification
 # varying skew from 0.0 to 1.0
 python generated_fedtask.py --dist 2 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
+# Imbalace & dirichlet, and the skew also varies from 0.2 to 1.0
+python generated_fedtask.py --dist 4 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
 ```
 
 ### Options
@@ -264,7 +276,18 @@ Simulating systemic configuration: 1) network heterogeneity, 2) computing power 
 * `computing_config` controls the computing resources of all the clients. See `utils.systemic_simulator` for more details. 
 
 Additional hyper-parameters for particular federated algorithms:
+
 * `algo_para` is used to receive the algorithm-dependent hyper-parameters from command lines. Usage: 1) The hyper-parameter will be set as the default value defined in Server.__init__() if not specifying this term, 2) For algorithms with one or more parameters, use `--algo_para v1 v2 ...` to specify the values for the parameters. The input order depends on the dict `Server.algo_para` defined in `Server.__init__()`.
+
+Logger's setting
+
+* `logger` is used to selected the logger that has the same name with this term.
+
+* `log_level` shares the same meaning with the LEVEL in the python's native module logging.
+
+* `log_file` controls whether to store the running-time information into `.log` in `fedtask/taskname/log/`, default value is false.
+
+* `no_log_console` controls whether to show the running time information on the console, and default value is false.
 
 ## Architecture
 
