@@ -37,10 +37,10 @@ class VirtualClock:
     def communication_timer(self, due_response):
         client_reach_time = {cid: self.client_time_active[-1][cid] + self.client_time_response[-1][cid] for cid in self.client_time_response[-1].keys()}
         # filter clients within the due
-        effective_clients = []
+        effective_clients = [cid for cid in client_reach_time.keys() if client_reach_time[cid]<=(len(self.active_stamps[-1])+due_response)]
         while len(effective_clients)==0:
-            effective_clients = [cid for cid in client_reach_time.keys() if client_reach_time[cid]<=(len(self.active_stamps[-1])+due_response)]
             due_response += 1
+            effective_clients = [cid for cid in client_reach_time.keys() if client_reach_time[cid]<=(len(self.active_stamps[-1])+due_response)]
         if len(effective_clients)==len(client_reach_time):
             cost = max(max([time_reached for time_reached in client_reach_time.values()]), len(self.active_stamps[-1]))
         else:
