@@ -35,18 +35,12 @@ class BasicServer:
         self.lr_scheduler_type = option['lr_scheduler']
         self.lr = option['learning_rate']
         self.sample_option = option['sample']
+        self.due_active = np.inf if option['due_active']<0 else option['due_active']*ss.VirtualClock._TIME_UNIT
+        self.due_response = 3*ss.VirtualClock._TIME_UNIT if option['due_response']<0 else option['due_response']*ss.VirtualClock._TIME_UNIT
         self.aggregation_option = option['aggregate']
         # algorithm-dependent parameters
         self.algo_para = {}
-        # virtual clock for calculating time consuming across communication rounds
         self.current_round = -1
-        self.TIME_UNIT = 1
-        self.TIME_ACCESS_BOUND = 100000
-        self.TIME_LATENCY_BOUND = 100000
-        self.virtual_clock = {
-            'time_access': [],
-            'time_sync': [],
-        }
         # all options
         self.option = option
 
@@ -89,8 +83,9 @@ class BasicServer:
         self.model = self.aggregate(models, p=[1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients])
         return
 
-    @ss.with_incomplete_update
     @ss.with_dropout
+    @ss.with_due
+    @ss.with_incomplete_update
     def communicate(self, selected_clients):
         """
         The whole simulating communication procedure with the selected clients.
@@ -182,29 +177,24 @@ class BasicServer:
                 c.set_learning_rate(self.lr)
 
     @ss.with_inactivity
-    def sample(self, all_clients=[]):
+    def sample(self):
         """Sample the clients.
         :param
-
         :return
             a list of the ids of the selected clients
         """
-        if len(all_clients)==0:
-            all_clients = [cid for cid in range(self.num_clients)]
+        all_clients = [cid for cid in range(self.num_clients)]
+        # full sampling with unlimited communication resources of the server
         if self.clients_per_round == self.num_clients:
-            # full sampling
             return all_clients
         # sample clients
         elif self.sample_option == 'uniform':
             # original sample proposed by fedavg
-            num_sample = min(self.clients_per_round, len(all_clients))
-            selected_clients = list(np.random.choice(all_clients, num_sample, replace=False))
+            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=False))
         elif self.sample_option =='md':
-            # the default setting that is introduced by FedProx
-            client_vols = np.array(self.local_data_vols)[all_clients]
-            total_data_vol = sum(client_vols)
-            num_sample = min(self.clients_per_round, len(all_clients))
-            selected_clients = list(np.random.choice(all_clients, num_sample, replace=True, p = client_vols/total_data_vol))
+            # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local data sizes
+            p = np.array(self.local_data_vols)/self.total_data_vol
+            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=p))
         return selected_clients
 
     def aggregate(self, models: list, p=[]):
@@ -291,6 +281,15 @@ class BasicServer:
                 c.__setattr__(para_name, value)
         return
 
+    @property
+    def active_clients(self):
+        """
+        Return all the available clients at current round.
+        :param
+        :return: a list of indices of currently available clients
+        """
+        return [cid for cid in range(self.num_clients) if self.clients[cid].active]
+
 class BasicClient():
     def __init__(self, option, name='', train_data=None, valid_data=None):
         self.name = name
@@ -322,7 +321,7 @@ class BasicClient():
         # system setting
         self.network_active_rate = 1
         self.network_drop_rate = 0
-        self.network_latency_amount = 1
+        self.time_response = 1
         self.active = True
         self.dropped = False
         # server
@@ -448,7 +447,7 @@ class BasicClient():
         self.model = model
 
     def set_server(self, server=None):
-        if server:
+        if server is not None:
             self.server = server
 
     def set_local_epochs(self, epochs=None):
@@ -469,12 +468,12 @@ class BasicClient():
         """
         self.learning_rate = lr if lr else self.learning_rate
 
-    def get_network_latency(self):
+    def get_time_response(self):
         """
         Get the latency amount of the client
         :return: self.latency_amount if client not dropping out
         """
-        return self.network_latency_amount
+        return np.inf if self.dropped else self.time_response
 
     def get_batch_data(self):
         """
