@@ -81,9 +81,9 @@ def init_network_mode(server, mode='ideal'):
     global update_activity
     if mode=='ideal':
         for c in server.clients:
-            c.network_active_rate = 0.5
-            c.network_drop_rate = 0.6
-            c.time_response = 5
+            c.network_active_rate = 1
+            c.network_drop_rate = 0
+            c.time_response = 0
 
     elif mode.startswith('MIFA'):
         """
