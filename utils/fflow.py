@@ -48,9 +48,11 @@ def read_option():
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
-    # the simulating systemic configuration of clients that helps constructing the heterogeity in the network condition & computing power
+    # the simulating systemic configuration of clients and the server that helps constructing the heterogeity in the network condition & computing power
     parser.add_argument('--network_config', help="configuration of the availability of clients", type=str, default = 'ideal')
     parser.add_argument('--computing_config', help="configuration of the computing power of clients", type=str, default = 'ideal')
+    parser.add_argument('--due_active', help="the server will wait for inactive clients for no more than this term multiplying the unit time;", type=int, default=0)
+    parser.add_argument('--due_response', help="the server will wait for the responses from the active clients for no more than this term", type=int, default=100)
     # algorithm-dependent hyper-parameters
     parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
     # logger setting
