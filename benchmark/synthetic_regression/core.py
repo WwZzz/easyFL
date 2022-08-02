@@ -42,10 +42,10 @@ The details of this dataset is described as below:
 from benchmark.toolkits import BasicTaskGen
 from benchmark.toolkits import XYTaskPipe
 from benchmark.toolkits import ClassificationCalculator as TaskCalculator
-from scipy.special import softmax
 import numpy as np
 import os.path
 import ujson
+
 class TaskGen(BasicTaskGen):
     def __init__(self, num_classes=10, dimension=60, dist_id = 0, num_clients = 30, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/RAW_DATA/SYNTHETIC', seed=0):
         super(TaskGen, self).__init__(benchmark='synthetic_regression',
@@ -179,7 +179,7 @@ class TaskGen(BasicTaskGen):
             for i in range(samples_per_user[k]):
                 # Y_ki = argmax(softmax(W_k x_ki + b_k))
                 tmp = np.dot(X_k[i], W[k]) + b[k]
-                Y_k[i] = np.argmax(softmax(tmp))
+                Y_k[i] = np.argmax(self.softmax(tmp))
             X_split[k] = X_k.tolist()
             y_split[k] = Y_k.tolist()
         return X_split, y_split, optimal_local
