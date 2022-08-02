@@ -127,9 +127,9 @@ class Server(BasicServer):
                 distri_clusters[l] /= np.sum(distri_clusters[l])
             return distri_clusters.tolist()
 
-    def sample(self, all_clients=[]):
+    def sample(self):
         self.W = self.update_w(self.clients_per_round, self.total_data_vol, self.local_data_vols, self.alg)
-        if len(all_clients)==0: all_clients = [cid for cid in range(self.num_clients)]
+        all_clients = [cid for cid in range(self.num_clients)]
         selected_clients = []
         for k in range(self.clients_per_round):
             cid = np.random.choice(all_clients, 1, p=self.W[k])[0]
