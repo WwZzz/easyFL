@@ -32,7 +32,7 @@ prettytable>=2.1.0
 ujson>=4.0.2
 ```
 
-Additional dependencies are only necessaryfor particular algorithms like fedmgda+ and cluster_sampling. 
+Additional dependencies are only necessary for particular algorithms like fedmgda+ and clustered_sampling. 
 ```
 cvxopt>=1.2.0
 scipy>=1.3.1
