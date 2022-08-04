@@ -126,10 +126,11 @@ class Logger(logging.Logger):
                 header = header + 'algopara_'+'|'.join([str(p) for p in self.meta['algo_para']])
 
         output_name = header + "M{}_R{}_B{}_".format(self.meta['model'], self.meta['num_rounds'], self.meta['batch_size'])
-        if hasattr(self, 'clients'):
-            output_name = output_name + ("E{}_".format(self.clients[0].epochs))
+        if self.meta['num_steps']<0:
+            output_name = output_name + ("E{}_".format(self.meta['num_epochs']))
         else:
-            output_name = output_name + ("E{}_".format(self.meta['num_epochs'] if self.meta['num_steps']<0 else self.num_steps))
+            output_name = output_name + ("K{}_".format(self.meta['num_steps']))
+
         output_name = output_name + "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_NET{}_CMP{}".format(
                           self.meta['learning_rate'],
                           self.meta['proportion'],
