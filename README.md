@@ -27,13 +27,16 @@ The project is implemented using Python3 with dependencies below:
 numpy>=1.17.2
 pytorch>=1.3.1
 torchvision>=0.4.2
-cvxopt>=1.2.0
-scipy>=1.3.1
 matplotlib>=3.1.1
 prettytable>=2.1.0
 ujson>=4.0.2
 ```
 
+Additional dependencies are only necessary for particular algorithms like fedmgda+ and clustered_sampling. 
+```
+cvxopt>=1.2.0
+scipy>=1.3.1
+```
 ## QuickStart
 
 **First**, run the command below to get the splited dataset MNIST:
