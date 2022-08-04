@@ -94,7 +94,7 @@ def scan_records(task, header = '', filter = {}):
     path = '../fedtask/' + task + '/record'
     files = os.listdir(path)
     # check headers
-    files = [f for f in files if f.startswith(header+'_') and f.endswith('.json')]
+    files = [f for f in files if f.startswith(header) and f.endswith('.json')]
     return filename_filter(files, filter)
 
 def get_key_from_record_name(record_name, key =''):
@@ -460,6 +460,23 @@ class Former(Analyser):
             res.append(str(mean_val)+'±'+str(std_val))
         self.group_tb.add_column(fieldname=key, column=res)
         return
+
+    def group_func_value(self, key, group_func):
+        res = []
+        for id, item in enumerate(self.grouped_records.items()):
+            group_name, rec_dicts = item
+            names = ['mean', 'std', 'var', 'min', 'max']
+            group_res = {name: statistic_on_dicts(rec_dicts, name=name, key=key) for name in names}
+            res.append(group_res)
+        self.group_tb.add_column(fieldname=key, column=res)
+
+    def group_final_value(self, group_res):
+        return str(group_res['mean'][-1])
+
+    def group_max_value(self, group_res):
+        return str(group_res['max'][-1])
+
+
 
 def setup_seed(seed=0):
     random.seed(seed+45)
