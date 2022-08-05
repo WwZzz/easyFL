@@ -30,6 +30,7 @@ torchvision>=0.4.2
 matplotlib>=3.1.1
 prettytable>=2.1.0
 ujson>=4.0.2
+pyyaml
 ```
 
 Additional dependencies are only necessary for particular algorithms like fedmgda+ and clustered_sampling. 
