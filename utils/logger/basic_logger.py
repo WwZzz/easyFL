@@ -1,9 +1,12 @@
 import logging
 import collections
-import ujson
 import time
 import numpy as np
 import os
+try:
+    import ujson as json
+except:
+    import json
 
 class Logger(logging.Logger):
 
@@ -29,6 +32,7 @@ class Logger(logging.Logger):
         self.time_buf = {}
         self.formatter = logging.Formatter('%(asctime)s %(filename)s %(funcName)s [line:%(lineno)d] %(levelname)s %(message)s')
         self.handler_list = []
+        self.overwrite = not self.meta['no_overwrite']
         if not self.meta['no_log_console']:
             self.streamhandler = logging.StreamHandler()
             self.streamhandler.setFormatter(self.formatter)
@@ -71,15 +75,25 @@ class Logger(logging.Logger):
         self.output_to_jsonable_dict()
         if filepath is None:
             filepath = os.path.join(self.get_output_path(),self.get_output_name())
+        if not self.overwrite:
+            if os.path.exists(filepath):
+                with open(filepath, 'r') as inf:
+                    original_record = json.loads(inf.read())
+                o_keys = set(original_record.keys())
+                output_keys = set(self.output.keys())
+                new_keys = list(output_keys.difference(o_keys))
+                for k in new_keys:
+                    original_record[k] = self.output[k]
+                self.output = original_record
         try:
             with open(filepath, 'w') as outf:
-                ujson.dump(dict(self.output), outf)
+                json.dump(dict(self.output), outf)
         except:
             self.error('Failed to save flw.logger.output as results')
 
     def check_is_jsonable(self, x):
         try:
-            ujson.dumps(x)
+            json.dumps(x)
             return True
         except:
             return False
@@ -111,8 +125,7 @@ class Logger(logging.Logger):
         for key, val in self.output.items():
             a = [(yk in key) for yk in yes_key]
             nf = [(nk not in key) for nk in no_key]
-            a.extend(nf)
-            if not np.any(a):
+            if np.all(nf) and np.any(a):
                 self.info(self.temp.format(key, val[-1]))
 
     def get_output_name(self, suffix='.json'):

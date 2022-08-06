@@ -12,7 +12,7 @@ import collections
 import utils.systemic_simulator as ss
 import logging
 
-sample_list=['uniform', 'md']
+sample_list=['uniform', 'md', 'full']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
 optimizer_list=['SGD', 'Adam']
 logger = None
@@ -60,6 +60,7 @@ def read_option():
     parser.add_argument('--log_level', help='the level of logger', type=str, default='INFO')
     parser.add_argument('--log_file', help='bool controls whether log to file and default value is False', action="store_true", default=False)
     parser.add_argument('--no_log_console', help='bool controls whether log to screen and default value is True', action="store_true", default=False)
+    parser.add_argument('--no_overwrite', help='bool controls whether to overwrite the old result', action="store_true", default=False)
 
     try: option = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
