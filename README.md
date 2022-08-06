@@ -30,6 +30,7 @@ torchvision>=0.4.2
 matplotlib>=3.1.1
 prettytable>=2.1.0
 ujson>=4.0.2
+pyyaml
 ```
 
 Additional dependencies are only necessary for particular algorithms like fedmgda+ and clustered_sampling. 
@@ -207,13 +208,13 @@ To generate these fedtasks, run the command below
 
 ```
 # I.I.D.
-python generated_fedtask.py --dist 0 --skew 0 --num_clients 100 --benchmark cifar100_classification
+python generate_fedtask.py --dist 0 --skew 0 --num_clients 100 --benchmark cifar100_classification
 # skew=0.39,0.69,0.79
-python generated_fedtask.py --dist 1 --skew 0.39 --num_clients 10 --benchmark mnist_classification
+python generate_fedtask.py --dist 1 --skew 0.39 --num_clients 10 --benchmark mnist_classification
 # varying skew from 0.0 to 1.0
-python generated_fedtask.py --dist 2 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
+python generate_fedtask.py --dist 2 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
 # Imbalace & dirichlet, and the skew also varies from 0.2 to 1.0
-python generated_fedtask.py --dist 4 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
+python generate_fedtask.py --dist 4 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
 ```
 
 ### Options
