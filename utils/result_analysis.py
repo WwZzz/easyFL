@@ -59,7 +59,6 @@ def draw_curves_from_records(records, curve='train_loss'):
         plt.plot(x, y, label=dict['legend'], linewidth=1)
         max_x = x[-1] if x[-1]>max_x else max_x
     plt.legend()
-    plt.tight_layout()
     # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=1)
     return
 
@@ -152,8 +151,8 @@ def cfg_to_records(config):
         if k not in cfg_keys:
             config[k] = cfg_template[k]
     task, header, flt = config['task'], config['header'], config['flt']
-    rec_names = set()
-    for h in header: rec_names = rec_names.union(set(scan_records(task, h, flt)))
+    rec_names = []
+    for h in header: rec_names.extend(scan_records(task, h, flt))
     rec_names = list(rec_names)
     dicts = read_data_into_dicts(task, rec_names)
     records = {}
@@ -269,7 +268,6 @@ class Drawer(Analyser):
             ax.plot(x, y, label=dict['legend'], c=self.colors[id], **ploter_option)
             max_x = x[-1] if x[-1] > max_x else max_x
         plt.legend()
-        plt.tight_layout()
         return
 
     def group_plot(self, plot_obj):
@@ -284,7 +282,6 @@ class Drawer(Analyser):
             ax.fill_between(x, max_val, min_val, color=self.colors[id], alpha=0.3)
             ax.legend()
             # draw_curve_with_range(x, mean_val, min_val, max_val, legend=rec_dicts[0]['legend'], color=self.colors[id], ax=ax)
-        plt.tight_layout()
         return
 
     def trace_2d(self, plot_obj, strong_end = True):
@@ -428,6 +425,8 @@ class Former(Analyser):
                 key_list = info[func] if type(info[func]) is list else [info[func]]
                 for info_key in key_list:
                     f(info_key)
+        self.tb.float_format = "2.2"
+        self.group_tb.float_format = "2.2"
         print(self.tb)
         print(self.group_tb)
         if self.save_text:
@@ -457,7 +456,7 @@ class Former(Analyser):
             group_name, rec_dicts = item
             mean_val = statistic_on_dicts(rec_dicts, name='mean', key=key)[-1]
             std_val = statistic_on_dicts(rec_dicts, name='std', key=key)[-1]
-            res.append(str(mean_val)+'±'+str(std_val))
+            res.append("{:.2f}".format(mean_val)+'±'+"{:.2f}".format(std_val))
         self.group_tb.add_column(fieldname=key, column=res)
         return
 
