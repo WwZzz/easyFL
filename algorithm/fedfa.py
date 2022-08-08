@@ -36,6 +36,10 @@ class Server(BasicServer):
         self.model = wnew - self.m * self.eta
         return
 
+    def aggregate(self, models, p):
+        return fmodule._model_average(models, p)
+
+
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)

@@ -31,7 +31,7 @@ class Server(BasicServer):
         for model_k, cid in zip(models, self.selected_clients):
             self.update_history[cid]=fmodule._model_to_tensor(model_k-self.model).cpu().numpy()
         # aggregate: pk = 1/K as default where K=len(selected_clients)
-        self.model = self.aggregate(models, p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients])
+        self.model = self.aggregate(models)
         return
 
     def update_w(self, m, M, ns, alg=1):

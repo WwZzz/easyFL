@@ -17,7 +17,7 @@ class Server(BasicServer):
     def iterate(self, t):
         self.selected_clients = self.sample()
         models = self.communicate(self.selected_clients)['model']
-        new_model = self.aggregate(models, p=[1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients])
+        new_model = self.aggregate(models)
         self.v = self.beta*self.v + (self.model - new_model)
         self.model = self.model - self.v
         return
