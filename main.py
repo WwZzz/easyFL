@@ -9,7 +9,11 @@ def main():
     # initialize server, clients and fedtask
     server = flw.initialize(option)
     # start federated optimization
-    server.run()
+    try:
+        server.run()
+    except:
+        # log the exception that happens during training-time
+        flw.logger.exception("Exception Logged")
 
 if __name__ == '__main__':
     torch.multiprocessing.set_start_method('spawn')
