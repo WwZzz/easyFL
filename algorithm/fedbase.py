@@ -80,7 +80,7 @@ class BasicServer:
         # training
         models = self.communicate(self.selected_clients)['model']
         # aggregate: pk = 1/K as default where K=len(selected_clients)
-        self.model = self.aggregate(models, p=[1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients])
+        self.model = self.aggregate(models)
         return
 
     @ss.with_dropout
@@ -185,7 +185,7 @@ class BasicServer:
         """
         all_clients = [cid for cid in range(self.num_clients)]
         # full sampling with unlimited communication resources of the server
-        if self.clients_per_round == self.num_clients:
+        if self.sample_option == 'full':
             return all_clients
         # sample clients
         elif self.sample_option == 'uniform':
@@ -197,7 +197,7 @@ class BasicServer:
             selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=p))
         return selected_clients
 
-    def aggregate(self, models: list, p=[]):
+    def aggregate(self, models: list):
         """
         Aggregate the locally improved models.
         :param
@@ -216,15 +216,18 @@ class BasicServer:
         """
         if len(models) == 0: return self.model
         if self.aggregation_option == 'weighted_scale':
+            p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients]
             K = len(models)
             N = self.num_clients
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)]) * N / K
         elif self.aggregation_option == 'uniform':
             return fmodule._model_average(models)
         elif self.aggregation_option == 'weighted_com':
+            p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients]
             w = fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
             return (1.0-sum(p))*self.model + w
         else:
+            p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients]
             sump = sum(p)
             p = [pk/sump for pk in p]
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
