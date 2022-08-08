@@ -85,17 +85,16 @@ def init_network_mode(server, mode='ideal'):
             c.network_drop_rate = 0
             c.time_response = 0
 
-    elif mode.startswith('MIFA'):
+    elif mode.startswith('MinYFirst'):
         """
         This setting follows the activity mode in 'Fast Federated Learning in the 
         Presence of Arbitrary Device Unavailability' , where each client ci will be ready
         for join in a communcation round with the probability:
-            pi = pmin * min({label kept by ci}) / max({all labels}) + ( 1 - pmin )
+            pi = alpha * min({label kept by ci}) / max({all labels}) + ( 1 - alpha )
         and the participation of client is independent for different rounds. The string mode
         should be like 'MIFA-px' where x should be replaced by a float number.
         """
-        import collections
-        pmin = float(mode[mode.find('p')+1:]) if mode.find('p')!=-1 else 0.1
+        alpha = float(mode[mode.find('-')+1:]) if mode.find('-')!=-1 else 0.1
         def label_counter(dataset):
             return collections.Counter([int(dataset[di][-1]) for di in range(len(dataset))])
         label_num = len(label_counter(server.test_data))
@@ -104,59 +103,118 @@ def init_network_mode(server, mode='ideal'):
             c.time_response = 0
             c_counter = label_counter(c.train_data+c.valid_data)
             c_label = [lb for lb in c_counter.keys()]
-            c.network_active_rate = (pmin * min(c_label) / max(1, label_num-1)) + (1 - pmin)
+            c.network_active_rate = (alpha * min(c_label) / max(1, label_num-1)) + (1 - alpha)
 
-    elif mode=='F3AST-Scarce':
-        """The following four settings are from 'Federated Learning Under Intermittent 
-        Client Availability and Time-Varying Communication Constraints' (http://arxiv.org/abs/2205.06730), 
-        which proposes F3AST algorithm to handle the intermittent client availability. More details about 
-        these availability models can be found  in their paper."""
-        for c in server.clients:
-            c.network_active_rate = 0.8
+    elif mode.startswith('MoreDataFirst'):
+        """
+        Clients with more data will have a larger active rate at each round.
+        e.g. ci=tanh(-|Di| ln(alpha+epsilon)), pi=ci/cmax, alpha ∈ [0,1)
+        """
+        alpha = float(mode[mode.find('-')+1:]) if mode.find('-')!=-1 else 0.00001
+        p = np.array(server.local_data_vols)
+        p = p**alpha
+        maxp = np.max(p)
+        for c, pc in zip(server.clients, p):
+            c.network_active_rate = pc / maxp
             c.network_drop_rate = 0
             c.time_response = 0
 
-    elif mode=='F3AST-Home':
-        Tks = [np.random.lognormal(0,0.5) for _ in server.clients]
+    elif mode.startswith('LessDataFirst'):
+        """
+        Clients with less data will have a larger active rate at each round.
+                ci=(1-alpha)^(-|Di|), pi=ci/cmax, alpha ∈ [0,1)
+        """
+        alpha = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.1
+        prop = np.array(server.local_data_vols)
+        prop = prop ** (-alpha)
+        maxp = np.max(prop)
+        for c, pc in zip(server.clients, prop):
+            c.network_active_rate = pc/maxp
+            c.network_drop_rate = 0
+            c.time_response = 0
+
+    elif mode.startswith('FewerYFirst'):
+        """
+        Clients with fewer kinds of labels will owe a larger active rate.
+            ci = |set(Yi)|/|set(Y)|, pi = alpha*ci + (1-alpha)
+        """
+        alpha = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.1
+        label_num = len(set([int(server.test_data[di][-1]) for di in range(len(server.test_data))]))
+        for c in server.clients:
+            c.network_drop_rate = 0
+            c.time_response = 0
+            train_set = set([int(c.train_data[di][-1]) for di in range(len(c.train_data))])
+            valid_set = set([int(c.valid_data[di][-1]) for di in range(len(c.valid_data))])
+            label_set = train_set.union(valid_set)
+            c.network_active_rate = alpha * len(label_set) / label_num + (1 - alpha)
+
+    elif mode.startswith('Homogeneous'):
+        """
+        All the clients share a homogeneous active rate `1-alpha` where alpha ∈ [0,1)
+        """
+        alpha = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.8
+        for c in server.clients:
+            c.network_active_rate = 1 - alpha
+            c.network_drop_rate = 0
+            c.time_response = 0
+
+    elif mode.startswith('LogNormal'):
+        """The following two settings are from 'Federated Learning Under Intermittent 
+        Client Availability and Time-Varying Communication Constraints' (http://arxiv.org/abs/2205.06730).
+            ci ~ logmal(0, lognormal(0, -ln(1-alpha)), pi=ci/cmax
+        """
+        alpha = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.1
+        epsilon=0.000001
+        Tks = [np.random.lognormal(0,-np.log(1-alpha-epsilon)) for _ in server.clients]
         max_Tk = max(Tks)
         for c,Tk in zip(server.clients, Tks):
             c.network_active_rate = 1.0 * Tk / max_Tk
             c.network_drop_rate = 0
             c.time_response = 0
 
-    elif mode=='F3AST-Smartphones':
-        def f(server, random_module=np.random):
-            times = np.linspace(start=0, stop=2*np.pi, num=24)
-            fts = 0.4 * np.sin(times) + 0.5
-            t = server.current_round % 24
-            for c in server.clients:
-                c.network_active_rate = fts[t] * c.qk
-        update_activity = f
-        Tks = [np.random.lognormal(0,0.25) for _ in server.clients]
+    elif mode.startswith('SinLogNormal'):
+        """This setting shares the same active rate distribution with LogNormal, however, the active rates are 
+        also influenced by the time (i.e. communication round). The active rates obey a sin wave according to the 
+        time with period T.
+            ci ~ logmal(0, lognormal(0, -ln(1-alpha)), pi=ci/cmax, p(i,t)=(0.4sin((1+R%T)/T*2pi)+0.5) * pi
+        """
+        alpha = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.1
+        epsilon=0.000001
+        Tks = [np.random.lognormal(0,-np.log(1-alpha-epsilon)) for _ in server.clients]
         max_Tk = max(Tks)
         for c,Tk in zip(server.clients, Tks):
-            c.qk = 1.0 * Tk / max_Tk
+            c._qk = 1.0 * Tk / max_Tk
             c.network_active_rate = 1
             c.network_drop_rate = 0
             c.time_response = 0
+        def f(server, random_module=np.random):
+            T = 24
+            times = np.linspace(start=0, stop=2*np.pi, num=T)
+            fts = 0.4 * np.sin(times) + 0.5
+            t = server.current_round % T
+            for c in server.clients:
+                c.network_active_rate = fts[t] * c._qk
+        update_activity = f
 
-    elif mode=='F3AST-Uneven':
-        max_data_vol = max(server.local_data_vols)
-        for c, cvol in zip(server.clients, server.local_data_vols):
-            c.network_active_rate = 1.0 * cvol / max_data_vol
+    elif mode.startswith('YCycle'):
+        alpha = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.5
+        max_label = max(set([int(server.test_data[di][-1]) for di in range(len(server.test_data))]))
+        for c in server.clients:
             c.network_drop_rate = 0
             c.time_response = 0
-
-    elif mode.startswith('SmallFirst'):
-        k = float(mode[mode.find('k') + 1:]) if mode.find('k') != -1 else 0
-        prop = server.local_data_vols
-        max_data_vol = max(prop)
-        prop = 1.0*np.array(prop)/max_data_vol
-        prop = np.exp(-k*np.array(prop))
-        for c, pc in zip(server.clients, prop):
-            c.network_active_rate = pc
-            c.network_drop_rate = 0
-            c.time_response = 0
+            train_set = set([int(c.train_data[di][-1]) for di in range(len(c.train_data))])
+            valid_set = set([int(c.valid_data[di][-1]) for di in range(len(c.valid_data))])
+            label_set = train_set.union(valid_set)
+            c._min_label = min(label_set)
+            c._max_label = max(label_set)
+            c.network_active_rate = 1
+        def f(server, random_module=np.random):
+            T = 24
+            r = 1.0*(1+server.current_round%T)/T
+            for c in server.clients:
+                ic = int(r>=(1.0*c._min_label/max_label) and r<=(1.0*c._max_label/max_label))
+                c.network_active_rate = alpha*ic + (1-alpha)
+        update_activity = f
 
     else:
         for c in server.clients:
@@ -288,7 +346,7 @@ def with_incomplete_update(communicate):
         update_local_computing_resource(self, selected_clients, random_module=random_module)
         res = communicate(self, selected_clients)
         for cid,onum_steps in zip(selected_clients, original_local_num_steps):
-            self.clients[cid].computing_resource = 1.0 * self.clients[cid].num_steps / onum_steps
+            self.clients[cid].computing_resource = 1.0 * self.clients[cid].num_steps
             self.clients[cid].num_steps = onum_steps
         return res
     return communicate_with_incomplete_update
