@@ -439,7 +439,7 @@ class BasicClient():
         :param model:
         :return:
         """
-        return self.test(model)[1]['loss']
+        return self.test(model)['loss']
 
     def set_model(self, model):
         """

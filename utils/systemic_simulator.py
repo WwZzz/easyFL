@@ -1,61 +1,18 @@
-"""This module is designed for simulating the network environment of the real world.
-Decorators are written here to decorate the originnal methods owned by the central server.
-Here we implement three different network heterogeneity for a FL system:
-    1. with_accessibility: some clients are not available during the stage of sampling
-    2. with_latency: accumulating latencies of clients and dropout the overdue clients
-"""
 import collections
-
 import numpy as np
 
 class VirtualClock:
     _TIME_UNIT = 1
-    _MAX_TIME_WAIT = 1
-    _TIME_STAMP = []
     def __init__(self):
-        self.active_stamps = []
-        self.client_time_response = []
-        self.client_time_active = []
-        self.cost_per_round = []
+        self.time_cost = []
 
-    def add_active_stamp(self, active_stamp):
-        """
-        Record the round-wise clients active stamps
-        :param active_stamp: a list of lists of active clients at each time unit
-        """
-        self.active_stamps.append(active_stamp)
-        client_time_active = {cid:(t+1)*self._TIME_UNIT for t in range(len(active_stamp)) for cid in active_stamp[t]}
-        self.client_time_active.append(client_time_active)
-
-    def add_response_time(self, client_time_response):
-        """
-        Record the round-wise clients' response intervals
-        :param client_time_response: a dict where (key, value) = (client_id, current_round_response_interval)
-        """
-        self.client_time_response.append(client_time_response)
-
-    def communication_timer(self, due_response):
-        client_reach_time = {cid: self.client_time_active[-1][cid] + self.client_time_response[-1][cid] for cid in self.client_time_response[-1].keys()}
-        # filter clients within the due
-        effective_clients = [cid for cid in client_reach_time.keys() if client_reach_time[cid]<=(len(self.active_stamps[-1])+due_response)]
-        while len(effective_clients)==0:
-            due_response += 1
-            effective_clients = [cid for cid in client_reach_time.keys() if client_reach_time[cid]<=(len(self.active_stamps[-1])+due_response)]
-        if len(effective_clients)==len(client_reach_time):
-            cost = max(max([time_reached for time_reached in client_reach_time.values()]), len(self.active_stamps[-1]))
-        else:
-            cost = len(self.active_stamps[-1]) + due_response
-        self.cost_per_round.append(cost*self._TIME_UNIT)
-        return effective_clients
+    def add_time_cost(self,t=0):
+        self.time_cost.append(t*self._TIME_UNIT)
+        return
 
     @property
-    def latest_active_stamp(self):
-        if len(self.active_stamps)>0: return self.active_stamps[-1]
-        else: return []
-
-    @property
-    def timestamp(self):
-        return np.cumsum(self.cost_per_round).tolist()
+    def time(self):
+        return np.sum(self.time_cost)*self._TIME_UNIT
 
 random_seed_gen = None
 clock = VirtualClock()
@@ -85,14 +42,14 @@ def init_network_mode(server, mode='ideal'):
             c.network_drop_rate = 0
             c.time_response = 0
 
-    elif mode.startswith('MinYFirst'):
+    elif mode.startswith('YMinFirst'):
         """
         This setting follows the activity mode in 'Fast Federated Learning in the 
         Presence of Arbitrary Device Unavailability' , where each client ci will be ready
         for join in a communcation round with the probability:
             pi = alpha * min({label kept by ci}) / max({all labels}) + ( 1 - alpha )
         and the participation of client is independent for different rounds. The string mode
-        should be like 'MIFA-px' where x should be replaced by a float number.
+        should be like 'YMinFirst-x' where x should be replaced by a float number.
         """
         alpha = float(mode[mode.find('-')+1:]) if mode.find('-')!=-1 else 0.1
         def label_counter(dataset):
@@ -287,23 +244,32 @@ def with_inactivity(sample):
     def sample_with_active(self):
         global random_seed_gen
         random_module = np.random.RandomState(next(random_seed_gen))
+        # refresh the client's active rate per round
         update_activity(self, random_module)
         active_clients = []
+        # ensure there are at least one client being available
         while len(active_clients)==0:
             active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active(random_module)]
+        # call the original sampling function
         selected_clients = sample(self)
+        # filter the selected but unavailable clients
         effective_clients = set(selected_clients).intersection(set(active_clients))
-        active_stamp = [list(effective_clients)]
-        # wait until the time expired or all the clients are active
-        t = 1
-        while t<self.due_active and len(effective_clients)<len(set(selected_clients)):
-            active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active(random_module)]
-            client_to_be_active = set(selected_clients).difference(effective_clients)
-            new_active_clients = list(client_to_be_active.intersection(active_clients))
-            effective_clients = effective_clients.union(new_active_clients)
-            active_stamp.append(new_active_clients)
-            t += 1
-        clock.add_active_stamp(active_stamp)
+        time_cost = 1
+        # wait for the activity of those unavailable if the due of waiting for the client activity is larger than 1 time unit (i.e. )
+        if self.due_active>1:
+            active_stamp = [list(effective_clients)]
+            # wait until the time expired or all the clients are active
+            for t in range(1, self.due_active):
+                active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active(random_module)]
+                client_to_be_active = set(selected_clients).difference(effective_clients)
+                if len(client_to_be_active)==0:
+                    break
+                new_effective_clients = list(client_to_be_active.intersection(active_clients))
+                effective_clients = effective_clients.union(new_effective_clients)
+            time_cost = t
+        # add time cost to clock
+        clock.add_time_cost(time_cost)
+        # return the selected and available clients (e.g. sampling with replacement should be considered here)
         selected_clients = [cid for cid in selected_clients if cid in effective_clients]
         return selected_clients
     return sample_with_active
@@ -313,40 +279,48 @@ def with_dropout(communicate):
     def communicate_with_dropout(self, selected_clients):
         global random_seed_gen
         random_module = np.random.RandomState(next(random_seed_gen))
+        # refresh the connectivity of clients
         for c in self.clients: c.dropped = False
         update_dropout(self, selected_clients, random_module)
-        # drop out clients but with at least one client replying
+        # ensure there is at least one client won't dropout
         while True:
-            self.selected_clients = [selected_clients[i] for i in range(len(selected_clients)) if not self.clients[selected_clients[i]].is_drop(random_module)]
-            if len(self.selected_clients)>0: break
-        return communicate(self, self.selected_clients)
+            selected_clients = [selected_clients[i] for i in range(len(selected_clients)) if not self.clients[selected_clients[i]].is_drop(random_module)]
+            if len(selected_clients)>0: break
+        # simulating the client drop out by not communicating with them
+        return communicate(self, selected_clients)
     return communicate_with_dropout
 
 def with_due(communicate):
     def communicate_with_due(self, selected_clients):
         global random_seed_gen
+        # update the response time per round
         random_module = np.random.RandomState(next(random_seed_gen))
         update_response_time(self, selected_clients, random_module)
-        # calculate time response
-        client_time_response = {cid:self.clients[cid].get_time_response() for cid in selected_clients}
-        # the dropped clients' time-response will be inf
-        active_stamp = clock.latest_active_stamp
-        client_dropped = {cid:np.inf for t in range(len(active_stamp)) for cid in active_stamp[t] if cid not in selected_clients}
-        client_time_response.update(client_dropped)
-        clock.add_response_time(client_time_response)
-        self.selected_clients = clock.communication_timer(self.due_response)
+        # calculate the time of response of each selected client (the dropped )
+        client_time_response = [self.clients[cid].get_time_response() for cid in self.selected_clients]
+        # take the maximum time cost of response
+        if np.any([t>self.due_response for t in client_time_response]):
+            time_cost = self.due_response
+        else:
+            time_cost = np.max(client_time_response)
+        # add time cost to virtual clock
+        clock.add_time_cost(time_cost)
+        # filter the clients will be over due or dropped out \ change server.selected_clients to ensure that the received packages can match the selected clients
+        self.selected_clients = [cid for cid,time in zip(self.selected_clients, client_time_response) if time<=self.due_response]
         return communicate(self, self.selected_clients)
     return communicate_with_due
 
 def with_incomplete_update(communicate):
     def communicate_with_incomplete_update(self, selected_clients):
+        # refresh clients' computing resource per round
         global random_seed_gen
         random_module = np.random.RandomState(next(random_seed_gen))
         original_local_num_steps = [self.clients[cid].num_steps for cid in selected_clients]
         update_local_computing_resource(self, selected_clients, random_module=random_module)
         res = communicate(self, selected_clients)
+        # reset clients' computing resource to the initial state
         for cid,onum_steps in zip(selected_clients, original_local_num_steps):
-            self.clients[cid].computing_resource = 1.0 * self.clients[cid].num_steps
+            self.clients[cid]._taken_computing_resource = 1.0 * self.clients[cid].num_steps
             self.clients[cid].num_steps = onum_steps
         return res
     return communicate_with_incomplete_update
