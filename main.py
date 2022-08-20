@@ -14,6 +14,7 @@ def main():
     except:
         # log the exception that happens during training-time
         flw.logger.exception("Exception Logged")
+        raise RuntimeError
 
 if __name__ == '__main__':
     torch.multiprocessing.set_start_method('spawn')
