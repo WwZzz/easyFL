@@ -284,8 +284,10 @@ def with_dropout(communicate):
         update_dropout(self, selected_clients, random_module)
         # ensure there is at least one client won't dropout
         while True:
-            selected_clients = [selected_clients[i] for i in range(len(selected_clients)) if not self.clients[selected_clients[i]].is_drop(random_module)]
-            if len(selected_clients)>0: break
+            tmp = [selected_clients[i] for i in range(len(selected_clients)) if not self.clients[selected_clients[i]].is_drop(random_module)]
+            if len(tmp)>0:
+                selected_clients = tmp
+                break
         # simulating the client drop out by not communicating with them
         return communicate(self, selected_clients)
     return communicate_with_dropout
