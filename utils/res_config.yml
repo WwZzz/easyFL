@@ -40,16 +40,20 @@ ploter:
   plot:
     - x: communication_round
       y: test_loss
+      xlabel: communication round
+      ylabel: test loss
+      title: test loss on MNIST
     - x: communication_round
-      y: valid_loss
-    - x: communication_round
-      y: train_loss
-  group_plot:
-    - x: communication_round
-      y: test_loss
+      y: test_accuracy
+      xlabel: communication round
+      ylabel: test accuracy
+      title: test accuracy on MNIST
+
   bar:
     - x: client_id
       y: valid_loss_dist
+      x_label: client ID
+      title: local validating loss distribution
 info:
   final_value:
     - valid_loss
