@@ -39,29 +39,30 @@ legend_flt: []
 ploter:
   plot:
     - x: communication_round
-      y: test_loss
+      y: valid_loss
       xlabel: communication round
-      ylabel: test loss
-      title: test loss on MNIST
+      ylabel: valid loss
+      title: valid loss on MNIST
     - x: communication_round
-      y: test_accuracy
+      y: valid_accuracy
       xlabel: communication round
-      ylabel: test accuracy
-      title: test accuracy on MNIST
+      ylabel: valid accuracy
+      title: valid accuracy on MNIST
 
   bar:
     - x: client_id
       y: valid_loss_dist
       x_label: client ID
       title: local validating loss distribution
+    - x: client_id
+      y: client_datavol
+      x_label: client ID
+      title: local data size distribution
 info:
   final_value:
     - valid_loss
-    - test_loss
   min_value:
-    - test_loss
-  group_mean_with_std:
-    - test_loss
+    - valid_loss
 
 #=======================================================================================
 # The second part of `config.yml` is to used to decide which figure to plot and what to
