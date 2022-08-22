@@ -42,14 +42,14 @@ def init_network_mode(server, mode='ideal'):
             c.network_drop_rate = 0
             c.time_response = 0
 
-    elif mode.startswith('YMinFirst'):
+    elif mode.startswith('YMaxFirst'):
         """
         This setting follows the activity mode in 'Fast Federated Learning in the 
         Presence of Arbitrary Device Unavailability' , where each client ci will be ready
         for join in a communcation round with the probability:
             pi = alpha * min({label kept by ci}) / max({all labels}) + ( 1 - alpha )
         and the participation of client is independent for different rounds. The string mode
-        should be like 'YMinFirst-x' where x should be replaced by a float number.
+        should be like 'YMaxFirst-x' where x should be replaced by a float number.
         """
         alpha = float(mode[mode.find('-')+1:]) if mode.find('-')!=-1 else 0.1
         def label_counter(dataset):
@@ -257,7 +257,6 @@ def with_inactivity(sample):
         time_cost = 1
         # wait for the activity of those unavailable if the due of waiting for the client activity is larger than 1 time unit (i.e. )
         if self.due_active>1:
-            active_stamp = [list(effective_clients)]
             # wait until the time expired or all the clients are active
             for t in range(1, self.due_active):
                 active_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active(random_module)]
@@ -322,7 +321,7 @@ def with_incomplete_update(communicate):
         res = communicate(self, selected_clients)
         # reset clients' computing resource to the initial state
         for cid,onum_steps in zip(selected_clients, original_local_num_steps):
-            self.clients[cid]._taken_computing_resource = 1.0 * self.clients[cid].num_steps
+            self.clients[cid]._effective_num_steps = self.clients[cid].num_steps
             self.clients[cid].num_steps = onum_steps
         return res
     return communicate_with_incomplete_update

@@ -40,7 +40,8 @@ class Client(BasicClient):
         super(Client, self).__init__(option, name, train_data, valid_data)
 
     def pack(self, model):
+        tau = self._effective_num_steps if hasattr(self, '_effective_num_steps') else self.num_steps
         return {
             "model" : model,
-            "tau": self.num_steps,
+            "tau": tau,
         }
