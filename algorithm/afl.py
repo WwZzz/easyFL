@@ -19,8 +19,6 @@ class Server(BasicServer):
         self.result_model = copy.deepcopy(self.model)
         # algorithm hyper-parameters
         self.algo_para = {'learning_rate_lambda': 0.01}
-        self.init_algo_para(option['algo_para'])
-
 
     def iterate(self, t):
         # full sampling

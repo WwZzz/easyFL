@@ -11,7 +11,6 @@ class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
         self.algo_para = {'beta': 0.01}
-        self.init_algo_para(option['algo_para'])
         self.v = model.zeros_like()
 
     def iterate(self, t):

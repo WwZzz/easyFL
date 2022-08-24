@@ -7,7 +7,6 @@ class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
         self.algo_para = {'c':1.0}
-        self.init_algo_para(option['algo_para'])
         self.update_table = [None for _ in range(self.num_clients)]
         self.initflag = False
         # choose all the clients that are active

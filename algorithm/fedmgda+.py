@@ -10,7 +10,6 @@ class Server(BasicServer):
         super(Server, self).__init__(option, model, clients, test_data)
         # algorithm-dependenet hyper-parameters
         self.algo_para = {'eta':1, 'epsilon':0.1}
-        self.init_algo_para(option['algo_para'])
         self.dynamic_lambdas = np.ones(self.num_clients) * 1.0 / self.num_clients
 
     def iterate(self, t):

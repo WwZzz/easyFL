@@ -11,7 +11,6 @@ class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
         self.algo_para = {'d': self.num_clients}
-        self.init_algo_para(option['algo_para'])
 
     @ss.with_inactivity
     def sample(self):

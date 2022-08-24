@@ -48,6 +48,8 @@ class BasicServer:
         """
         Start the federated learning symtem where the global model is trained iteratively.
         """
+        # initialize the algorithmic hyperparameters
+        self.init_algo_para(self.option['algo_para'])
         flw.logger.time_start('Total Time Cost')
         for round in range(self.num_rounds+1):
             self.current_round = round
