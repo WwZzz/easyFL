@@ -30,9 +30,8 @@ class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
         self.algo_para = {'mu':0.1}
-        self.init_algo_para(option['algo_para'])
 ```
-Initialize the algorithm-dependent hyper-parameters as a dict of Server, and calling self.init_algo_para() with inputted values from `option`, which will set the parameters as attributions of both the server and clients.
+Initialize the algorithm-dependent hyper-parameters as a attribute (e.g. type of dict) of Server, which will set the hyperparameters as attributes of both the server and clients.
 
 **Finally, add the proximal term to the loss.**
 
