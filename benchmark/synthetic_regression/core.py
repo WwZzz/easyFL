@@ -45,6 +45,7 @@ from benchmark.toolkits import ClassificationCalculator as TaskCalculator
 import numpy as np
 import os.path
 import ujson
+import random
 
 class TaskGen(BasicTaskGen):
     def __init__(self, num_classes=10, dimension=60, dist_id = 0, num_clients = 30, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/RAW_DATA/SYNTHETIC', seed=0):
@@ -187,12 +188,26 @@ class TaskGen(BasicTaskGen):
 
 class TaskPipe(XYTaskPipe):
     @classmethod
-    def load_task(cls, task_path):
+    def load_task(cls, task_path, cross_validation=False):
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
         test_data = cls.TaskDataset(feddata['dtest']['x'], feddata['dtest']['y'])
-        train_datas = [cls.TaskDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
-        valid_datas = [cls.TaskDataset(feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']) for name in feddata['client_names']]
+        train_datas = []
+        valid_datas = []
+        for name in feddata['client_names']:
+            train_x, train_y = feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']
+            valid_x, valid_y = feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']
+            if cross_validation:
+                k = len(train_y)
+                train_x.extend(valid_x)
+                train_y.extend(valid_y)
+                all_data = [(xi, yi) for xi, yi in zip(train_x, train_y)]
+                random.shuffle(all_data)
+                x, y = zip(*all_data)
+                train_x, train_y = x[:k], y[:k]
+                valid_x, valid_y = x[k:], y[k:]
+            train_datas.append(cls.TaskDataset(train_x, train_y))
+            valid_datas.append(cls.TaskDataset(valid_x, valid_y))
         for train_data, valid_data, name in zip(train_datas,valid_datas,feddata['client_names']):
             train_data.optimal_model = valid_data.optimal_model = feddata[name]['optimal']
         return train_datas, valid_datas, test_data, feddata['client_names']

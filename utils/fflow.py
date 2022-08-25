@@ -45,6 +45,8 @@ def read_option():
     parser.add_argument('--gpu', nargs='*', help='GPU IDs and empty input is equal to using CPU', type=int)
     parser.add_argument('--server_with_cpu', help='seed for random initialization;', action="store_true", default=False)
     parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
+    parser.add_argument('--cross_validation', help='shuffle each local train_data and valid_data', action="store_true", default=False)
+    parser.add_argument('--train_on_all', help='use both train_data and valid_data to train the model;', action="store_true", default=False)
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
@@ -93,7 +95,7 @@ def initialize(option):
     # read federated task by TaskPipe
     # init partitioned dataset
     TaskPipe = getattr(importlib.import_module(bmk_core_path), 'TaskPipe')
-    train_datas, valid_datas, test_data, client_names = TaskPipe.load_task(os.path.join('fedtask', option['task']))
+    train_datas, valid_datas, test_data, client_names = TaskPipe.load_task(os.path.join('fedtask', option['task']), option['cross_validation'])
     # init model
     try:
         utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')

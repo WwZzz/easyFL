@@ -171,7 +171,7 @@ class TaskPipe(BasicTaskPipe):
             json.dump(feddata, outf)
 
     @classmethod
-    def load_task(cls, task_path):
+    def load_task(cls, task_path, cross_validation=False):
         # read fedtask
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = json.load(inf)
@@ -221,18 +221,32 @@ class TaskPipe(BasicTaskPipe):
         for cid in range(num_clients):
             node_id = train_nodes[cid]
             client_names.append('Client{}'.format(node_id))
+            train_x, train_y, train_xattr, train_yattr = loaded_data['train']['x'][:,:,node_id:node_id+1,:],loaded_data['train']['y'][:, :, node_id:node_id + 1, :],loaded_data['train']['x_attr'][:, :, node_id:node_id + 1, :],loaded_data['train']['y_attr'][:, :, node_id:node_id + 1, :]
+            valid_x, valid_y, valid_xattr, valid_yattr = loaded_data['val']['x'][:,:,node_id:node_id+1,:],loaded_data['val']['y'][:, :, node_id:node_id + 1, :],loaded_data['val']['x_attr'][:, :, node_id:node_id + 1, :],loaded_data['val']['y_attr'][:, :, node_id:node_id + 1, :]
+            train_data = [train_x, train_y, train_xattr, train_yattr]
+            valid_data = [valid_x, valid_y, valid_xattr, valid_yattr]
+            if cross_validation:
+                k = len(train_x)
+                all_data = [np.hstack((traind, vald)) for traind,vald in zip(train_data, valid_data)]
+                randomize = np.arange(len(x))
+                np.random.shuffle(randomize)
+                all_data = [d[randomize] for d in all_data]
+                train_data = [d[:k] for d in all_data]
+                valid_data = [d[k:] for d in all_data]
+                train_x, train_y, train_xattr, train_yattr = train_data
+                valid_x, valid_y, valid_xattr, valid_yattr = valid_data
             train_data = cls.TaskDataset(
-                loaded_data['train']['x'][:,:,node_id:node_id+1,:],
-                loaded_data['train']['y'][:, :, node_id:node_id + 1, :],
-                loaded_data['train']['x_attr'][:, :, node_id:node_id + 1, :],
-                loaded_data['train']['y_attr'][:, :, node_id:node_id + 1, :],
+                train_x,
+                train_y,
+                train_xattr,
+                train_yattr,
                 node_list = [node_id],
             )
             valid_data = cls.TaskDataset(
-                loaded_data['val']['x'][:,:,node_id:node_id+1,:],
-                loaded_data['val']['y'][:, :, node_id:node_id + 1, :],
-                loaded_data['val']['x_attr'][:, :, node_id:node_id + 1, :],
-                loaded_data['val']['y_attr'][:, :, node_id:node_id + 1, :],
+                valid_x,
+                valid_y,
+                valid_xattr,
+                valid_yattr,
                 node_list = [node_id],
             )
             train_datas.append(train_data)

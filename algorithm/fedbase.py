@@ -301,6 +301,8 @@ class BasicClient():
         # create local dataset
         self.train_data = train_data
         self.valid_data = valid_data
+        if option['train_on_all']:
+            self.train_data = self.train_data + self.valid_data
         self.datavol = len(self.train_data)
         self.data_loader = None
         # local calculator
