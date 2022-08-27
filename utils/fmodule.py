@@ -85,6 +85,26 @@ class FModule(nn.Module):
     def get_device(self):
         return next(self.parameters()).device
 
+    def count_parameters(self, output=True):
+        try:
+            import prettytable as pt
+        except:
+            print('Please install prettytable through `pip install prettytable` before calling this func')
+            return
+        table = pt.PrettyTable(["Modules", "Parameters"])
+        total_params = 0
+        for name, parameter in self.named_parameters():
+            if not parameter.requires_grad:
+                table.add_row([name, 0])
+                continue
+            params = parameter.numel()
+            table.add_row([name, params])
+            total_params += params
+        if output:
+            print(table)
+            print(f"TotalTrainableParams: {total_params}")
+        return total_params
+
 def normalize(m):
     return m/(m**2)
 
