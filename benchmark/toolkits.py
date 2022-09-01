@@ -187,7 +187,8 @@ class DefaultTaskGen(BasicTaskGen):
             if self.visualize is not None:
                 self.visualize(self.train_cidxs)
             self.save_task(self)
-        except:
+        except Exception as e:
+            print(e)
             self._remove_task()
             print("Failed to saving splited dataset.")
         print('Done.')
