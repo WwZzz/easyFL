@@ -178,6 +178,7 @@ class Logger(logging.Logger):
         if self._es_best_score is None:
             self._es_best_score = score
             self._es_best_round = self.server.current_round-1
+            self._es_patience = self.meta['early_stop']
         elif score<self._es_best_score:
             self._es_counter += 1
             if self._es_counter >= self._es_patience:
