@@ -10,7 +10,7 @@ from utils import fmodule
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.algo_para = {'eta':1.0}
+        self.init_algo_para({'eta':1.0})
         self.cg = self.model.zeros_like()
 
     def pack(self, client_id):

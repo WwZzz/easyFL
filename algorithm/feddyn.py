@@ -6,7 +6,7 @@ import torch
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.algo_para = {'alpha': 0.1}
+        self.init_algo_para({'alpha': 0.1})
         self.h = self.model.zeros_like()
 
     def aggregate(self, models):

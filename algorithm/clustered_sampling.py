@@ -17,7 +17,7 @@ class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
         # m = self.clients_per_round, M = self.total_data_vol = sum(n_i), n_i = self.local_data_vols[i]
-        self.algo_para = {'alg':1}
+        self.init_algo_para({'alg':1})
         self.W = None
         zero_model = fmodule._model_to_tensor(self.model-self.model).cpu().numpy()
         self.update_history = [copy.deepcopy(zero_model) for _ in range(self.num_clients)]

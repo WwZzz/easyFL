@@ -13,7 +13,7 @@ class Server(BasicServer):
         super(Server, self).__init__(option, model, clients, test_data)
         if not "get_embedding" in dir(model):
             raise NotImplementedError("the model used by Moon should have the method `get_embedding` to obtain the intermediate result of forward")
-        self.algo_para = {'mu': 0.1}
+        self.init_algo_para({'mu': 0.1})
 
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):

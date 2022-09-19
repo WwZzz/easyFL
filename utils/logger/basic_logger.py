@@ -47,7 +47,12 @@ class Logger(logging.Logger):
             self.filehandler.setFormatter(self.formatter)
             self.filehandler.setLevel(self._LEVEL[self.meta['log_level'].upper()])
             self.addHandler(self.filehandler)
-
+        # options of early stopping
+        self._es_key = 'valid_loss'
+        self._es_patience = 20
+        self._es_counter = 0
+        self._es_best_score = None
+        self._es_best_round = 0
 
     def check_if_log(self, round, eval_interval=-1):
         """For evaluating every 'eval_interval' rounds, check whether to log at 'round'."""
@@ -165,6 +170,24 @@ class Logger(logging.Logger):
 
     def get_time_string(self):
         return time.strftime('%Y-%m-%d-%H-%M-%S')
+
+    def early_stop(self):
+        # Early stopping when there is no improvement on the validation loss for more than self.meta['early_stop'] rounds
+        if self.meta['early_stop']<0 or (self._es_key not in self.output): return False
+        score = -self.output[self._es_key][-1]
+        if self._es_best_score is None:
+            self._es_best_score = score
+            self._es_best_round = self.server.current_round-1
+        elif score<self._es_best_score:
+            self._es_counter += 1
+            if self._es_counter >= self._es_patience:
+                self.info('Early stopping after training for {} rounds.'.format(self.server.current_round-1))
+                return True
+        else:
+            self._es_best_score = score
+            self._es_best_round = self.server.current_round-1
+            self._es_counter = 0
+        return False
 
     def initialize(self, *args, **kwargs):
         return

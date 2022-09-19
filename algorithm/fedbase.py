@@ -48,22 +48,27 @@ class BasicServer:
         """
         Start the federated learning symtem where the global model is trained iteratively.
         """
-        # initialize the algorithmic hyperparameters
-        self.init_algo_para(self.option['algo_para'])
         flw.logger.time_start('Total Time Cost')
-        for round in range(self.num_rounds+1):
+        for round in range(1, self.num_rounds+1):
             self.current_round = round
+            # using logger to evaluate the model
             flw.logger.info("--------------Round {}--------------".format(round))
             flw.logger.time_start('Time Cost')
             if flw.logger.check_if_log(round, self.eval_interval):
                 flw.logger.time_start('Eval Time Cost')
                 flw.logger.log_per_round()
                 flw.logger.time_end('Eval Time Cost')
+            # check if early stopping
+            if flw.logger.early_stop(): break
             # federated train
             self.iterate(round)
             # decay learning rate
             self.global_lr_scheduler(round)
             flw.logger.time_end('Time Cost')
+        flw.logger.info("--------------Final Evaluation--------------")
+        flw.logger.time_start('Eval Time Cost')
+        flw.logger.log_per_round()
+        flw.logger.time_end('Eval Time Cost')
         flw.logger.info("=================End==================")
         flw.logger.time_end('Total Time Cost')
         # save results as .json file
@@ -207,7 +212,6 @@ class BasicServer:
             p: a list of weights for aggregating
         :return
             the averaged result
-
         pk = nk/n where n=self.data_vol
         K = |S_t|
         N = |S|
@@ -263,23 +267,26 @@ class BasicServer:
         else:
             return None
 
-    def init_algo_para(self, algo_paras):
+    def init_algo_para(self, algo_para: dict):
         """
-        Init the algorithm-dependent hyper-parameters for the server and clients. The attribution of server.algo_para
-        should be firstly defined as the dict of parameters, where the key is the parameters name and the corresponding
-        value is the default value of this parameter.
+        Initialize the algorithm-dependent hyper-parameters for the server and all the clients.
         :param
-            algo_paras: the list of inputted values of the parameters by argparse.Parser
-        :return:
-        """
-        # before calling this function, self.algo_para should be defined
+            algo_paras: the dict that defines the hyper-parameters (i.e. name, value and type) for the algorithm.
 
-        if len(self.algo_para)==0:
-            return
-        elif algo_paras is not None:
-            assert len(self.algo_para) == len(algo_paras)
-            for para_name, value in zip(self.algo_para.keys(), algo_paras):
+        Example 1:
+            calling `self.init_algo_para({'u':0.1})` will set the attributions `server.u` and `c.u` as 0.1 with type float where `c` is an instance of `CLient`.
+        Note:
+            Once `option['algo_para']` is not `None`, the value of the pre-defined hyperparameters will be replaced by the list of values in `option['algo_para']`,
+            which requires the length of `option['algo_para']` is equal to the length of `algo_paras`
+        """
+        self.algo_para = algo_para
+        if len(self.algo_para)==0: return
+        # initialize algorithm-dependent hyperparameters from the input options
+        if self.option['algo_para'] is not None:
+            assert len(self.algo_para) == len(self.option['algo_para'])
+            for para_name, value in zip(self.algo_para.keys(), self.option['algo_para']):
                 self.algo_para[para_name] = type(self.algo_para[para_name])(value)
+        # register the algorithm-dependent hyperparameters as the attributes of the server and all the clients
         for para_name, value in self.algo_para.items():
             self.__setattr__(para_name, value)
             for c in self.clients:

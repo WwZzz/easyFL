@@ -62,7 +62,7 @@ class AugSTNodeDataset(Dataset):
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.algo_para = {'lr_gcn':0.001, 'server_epoch':1, 'server_batch_size':48}
+        self.init_algo_para({'lr_gcn':0.001, 'server_epoch':1, 'server_batch_size':48})
         self.weight_decay_gcn = option['weight_decay']
         self.client_encodings = [None for _ in self.clients]
         self.model_gru_num_layers = self.model.gru_num_layers

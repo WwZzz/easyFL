@@ -29,9 +29,9 @@ And copy the standard local training function `train()` from `BasicClient` to `f
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.algo_para = {'mu':0.1}
+        self.init_algo_para({'mu':0.1})
 ```
-Initialize the algorithm-dependent hyper-parameters as a attribute (e.g. type of dict) of Server, which will set the hyperparameters as attributes of both the server and clients.
+Initialize the algorithm-dependent hyper-parameters as an attribute (e.g. parameter dict) of Server, which will set the hyperparameters as attributes of both the server and clients.
 
 **Finally, add the proximal term to the loss.**
 
@@ -105,7 +105,7 @@ Scaffold additionally uses clients' control variates `c_i` and the global one `c
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.algo_para = {'eta':1}
+        self.init_algo_para({'eta':1})
         self.init_algo_para(option['algo_para'])
         self.cg = self.model.zeros_like()
         

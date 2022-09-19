@@ -5,7 +5,7 @@ from utils import fmodule
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.algo_para = {'q':0.1}
+        self.init_algo_para({'q':0.1})
 
     def iterate(self, t):
         # sample clients
@@ -30,9 +30,6 @@ class Server(BasicServer):
         return new_model
 
 class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None):
-        super(Client, self).__init__(option, name, train_data, valid_data)
-
     def reply(self, svr_pkg):
         model = self.unpack(svr_pkg)
         train_loss = self.test(model, 'train')['loss']

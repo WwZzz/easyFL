@@ -5,7 +5,7 @@ import numpy as np
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
-        self.algo_para = {'beta': 0.5, 'gamma': 0.9}
+        self.init_algo_para({'beta': 0.5, 'gamma': 0.9})
         self.m = fmodule._modeldict_zeroslike(self.model.state_dict())
         self.alpha = 1.0 - self.beta
         self.eta = option['learning_rate']

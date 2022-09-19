@@ -2,9 +2,6 @@ from .fedbase import BasicServer, BasicClient
 from utils import fmodule
 
 class Server(BasicServer):
-    def __init__(self, option, model, clients, test_data = None):
-        super(Server, self).__init__(option, model, clients, test_data)
-
     def iterate(self, t):
         self.selected_clients = self.sample()
         # training
@@ -36,9 +33,6 @@ class Server(BasicServer):
         return self.model + tau_eff * delta
 
 class Client(BasicClient):
-    def __init__(self, option, name='', train_data=None, valid_data=None):
-        super(Client, self).__init__(option, name, train_data, valid_data)
-
     def pack(self, model):
         tau = self._effective_num_steps if hasattr(self, '_effective_num_steps') else self.num_steps
         return {
