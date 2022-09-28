@@ -237,15 +237,15 @@ class TaskPipe(BasicTaskPipe):
                 valid_x, valid_y, valid_xattr, valid_yattr = valid_data
             train_data = cls.TaskDataset(
                 train_x,
-                train_y,
                 train_xattr,
+                train_y,
                 train_yattr,
                 node_list = [node_id],
             )
             valid_data = cls.TaskDataset(
                 valid_x,
-                valid_y,
                 valid_xattr,
+                valid_y,
                 valid_yattr,
                 node_list = [node_id],
             )
@@ -253,8 +253,8 @@ class TaskPipe(BasicTaskPipe):
             valid_datas.append(valid_data)
         test_data = cls.TaskDataset(
                 loaded_data['test']['x'],
-                loaded_data['test']['y'],
                 loaded_data['test']['x_attr'],
+                loaded_data['test']['y'],
                 loaded_data['test']['y_attr'],
                 node_list = [nid for nid in range(num_nodes)],
             )
