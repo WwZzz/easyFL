@@ -522,12 +522,12 @@ class BasicTaskCalculator:
     def get_optimizer(self, model=None, lr=0.1, weight_decay=0, momentum=0):
         # if self._OPTIM == None:
         #     raise RuntimeError("TaskCalculator._OPTIM Not Initialized.")
+        OPTIM = getattr(importlib.import_module('torch.optim'),  self.optimizer_name)
+        filter_fn = filter(lambda p: p.requires_grad, model.parameters())
         if self.optimizer_name.lower() == 'sgd':
-            return getattr(importlib.import_module('torch.optim'), self.optimizer_name)(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
-            # return utils.fmodule.Optim(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
-        elif self.optimizer_name.lower() == 'adam':
-            return getattr(importlib.import_module('torch.optim'), self.optimizer_name)(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
-            # return utils.fmodule.Optim(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
+            return OPTIM(filter_fn, lr=lr, momentum=momentum, weight_decay=weight_decay)
+        elif self.optimizer_name.lower() in ['adam', 'rmsprop', 'adagrad']:
+            return OPTIM(filter_fn, lr=lr, weight_decay=weight_decay)
         else:
             raise RuntimeError("Invalid Optimizer.")
 

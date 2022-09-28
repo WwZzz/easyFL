@@ -14,7 +14,7 @@ import logging
 
 sample_list=['uniform', 'md', 'full']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
-optimizer_list=['SGD', 'Adam']
+optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad']
 logger = None
 
 def read_option():
