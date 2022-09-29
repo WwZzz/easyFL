@@ -9,7 +9,7 @@ from benchmark.toolkits import BasicTaskCalculator, BasicTaskPipe
 from benchmark.toolkits import DefaultTaskGen
 import numpy as np
 import collections
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, skewness = 0.5, local_hld_rate=0.2, seed=0):
@@ -283,7 +283,7 @@ class TaskPipe(BasicTaskPipe):
                 train_data = all_data[:k]
                 valid_data = all_data[k:]
             if cls._train_on_all:
-                train_data = all_data
+                train_data.extend(valid_data)
             train_datas.append(dataset[train_data])
             valid_datas.append(dataset[valid_data])
         return train_datas, valid_datas, test_data, feddata['client_names']
@@ -323,9 +323,9 @@ class TaskCalculator(BasicTaskCalculator):
             batch_data = self.data_to_device(batch_data)
             outputs = model(batch_data)
             batch_mean_loss = self.criterion(outputs, batch_data.y).item()
-            y_pred = outputs.data.max(1, keepdim=True)[1]
-            correct = y_pred.eq(batch_data.y.data.view_as(y_pred)).view(-1).long().cpu().sum()
-            num_correct += correct.item()
+            y_pred = outputs.argmax(dim=1)
+            correct = int((y_pred == batch_data.y).sum())
+            num_correct += correct
             total_loss += batch_mean_loss * len(batch_data.y)
         return {'accuracy': 1.0 * num_correct / len(dataset), 'loss': total_loss / len(dataset)}
 
@@ -334,5 +334,7 @@ class TaskCalculator(BasicTaskCalculator):
 
     def get_data_loader(self, dataset, batch_size=64, shuffle=True, num_workers=0):
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+
+
 
 
