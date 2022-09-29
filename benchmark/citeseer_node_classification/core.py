@@ -2,7 +2,7 @@ import community.community_louvain
 import torch
 from torch_geometric.data import Data
 from torch_geometric.datasets import CitationFull
-from benchmark.toolkits import BasicTaskGen, BasicTaskCalculator
+from benchmark.toolkits import BasicTaskGen, BasicTaskCalculator, BasicTaskPipe
 import torch_geometric.utils
 import collections
 import numpy as np
@@ -109,7 +109,7 @@ class TaskGen(BasicTaskGen):
         return
 
 
-class TaskPipe:
+class TaskPipe(BasicTaskPipe):
     @classmethod
     def save_task(cls, generator):
         feddata = {
@@ -127,7 +127,7 @@ class TaskPipe:
         return
 
     @classmethod
-    def load_task(cls, task_path, cross_validation=False):
+    def load_task(cls, task_path):
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
             all_data = CitationFull(root='./benchmark/RAW_DATA/CITESEER', name='CiteSeer')
@@ -149,6 +149,7 @@ class TaskPipe:
             local_node_indices = train_datas[cid]+valid_datas[cid]
             cdata = all_data.data.subgraph(torch.tensor(local_node_indices, dtype=torch.long))
             valid_datas[cid] = train_datas[cid] = cdata
+
         test_data = all_data.data.subgraph(torch.tensor(test_data, dtype=torch.long))
         return train_datas, valid_datas, test_data, feddata['client_names']
 

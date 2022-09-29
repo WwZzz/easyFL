@@ -2,7 +2,7 @@ import community.community_louvain
 import torch
 from torch_geometric.data import Data
 from torch_geometric.datasets import Planetoid
-from benchmark.toolkits import BasicTaskGen, BasicTaskCalculator
+from benchmark.toolkits import BasicTaskGen, BasicTaskCalculator, BasicTaskPipe
 import torch_geometric.utils
 import collections
 import numpy as np
@@ -81,6 +81,13 @@ class TaskGen(BasicTaskGen):
             for gi in group_ids:
                 cid = np.argmin([len(li) for li in local_datas])
                 local_datas[cid].extend(groups[gi])
+        elif self.dist_id==1:
+            nodes = list(range(len(self.G.nodes)))
+            marks = self.G.y
+
+
+
+
         return local_datas
 
     def run(self):
@@ -102,7 +109,7 @@ class TaskGen(BasicTaskGen):
         return
 
 
-class TaskPipe:
+class TaskPipe(BasicTaskPipe):
     @classmethod
     def save_task(cls, generator):
         feddata = {
@@ -120,7 +127,7 @@ class TaskPipe:
         return
 
     @classmethod
-    def load_task(cls, task_path, cross_validation=False):
+    def load_task(cls, task_path):
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
         all_data = Planetoid(root='./benchmark/RAW_DATA/CORA', name='Cora')

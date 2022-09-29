@@ -188,7 +188,7 @@ class TaskGen(BasicTaskGen):
 
 class TaskPipe(XYTaskPipe):
     @classmethod
-    def load_task(cls, task_path, cross_validation=False):
+    def load_task(cls, task_path):
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
         test_data = cls.TaskDataset(feddata['dtest']['x'], feddata['dtest']['y'])
@@ -197,7 +197,7 @@ class TaskPipe(XYTaskPipe):
         for name in feddata['client_names']:
             train_x, train_y = feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']
             valid_x, valid_y = feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']
-            if cross_validation:
+            if cls._cross_validation:
                 k = len(train_y)
                 train_x.extend(valid_x)
                 train_y.extend(valid_y)
@@ -206,6 +206,9 @@ class TaskPipe(XYTaskPipe):
                 x, y = zip(*all_data)
                 train_x, train_y = x[:k], y[:k]
                 valid_x, valid_y = x[k:], y[k:]
+            if cls._train_on_all:
+                train_x.extend(valid_x)
+                train_y.extend(valid_y)
             train_datas.append(cls.TaskDataset(train_x, train_y))
             valid_datas.append(cls.TaskDataset(valid_x, valid_y))
         for train_data, valid_data, name in zip(train_datas,valid_datas,feddata['client_names']):

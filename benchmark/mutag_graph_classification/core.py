@@ -13,11 +13,11 @@ from torch_geometric.data import DataLoader
 
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, skewness = 0.5, local_hld_rate=0.2, seed=0):
-        super(TaskGen, self).__init__(benchmark='enzymes_graph_classification',
+        super(TaskGen, self).__init__(benchmark='mutag_graph_classification',
                                       dist_id=dist_id,
                                       num_clients=num_clients,
                                       skewness=skewness,
-                                      rawdata_path='./benchmark/RAW_DATA/ENZYMES',
+                                      rawdata_path='./benchmark/RAW_DATA/MUTAG',
                                       local_hld_rate=local_hld_rate,
                                       seed=seed
                                       )
@@ -25,9 +25,9 @@ class TaskGen(DefaultTaskGen):
         self.save_task = TaskPipe.save_task
 
     def load_data(self):
-        self.all_data, self.perm = TUDataset(root=self.rawdata_path, name='ENZYMES').shuffle(return_perm=True)
+        self.all_data, self.perm = TUDataset(root=self.rawdata_path, name='MUTAG').shuffle(return_perm=True)
         self.num_samples = len(self.all_data)
-        k = int(0.9*self.num_samples)
+        k = 150
         self.train_data = self.all_data[:k]
         self.test_data = list(range(self.num_samples))[k:]
 
@@ -263,11 +263,12 @@ class TaskPipe(BasicTaskPipe):
         with open(os.path.join(generator.taskpath, 'data.json'), 'w') as outf:
             ujson.dump(feddata, outf)
         return
+
     @classmethod
     def load_task(cls, task_path):
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
-        dataset = TUDataset(root='./benchmark/RAW_DATA/ENZYMES', name='ENZYMES')
+        dataset = TUDataset(root='./benchmark/RAW_DATA/MUTAG', name='MUTAG')
         dataset = dataset[feddata['perm']]
         test_data = dataset[feddata['dtest']]
         train_datas = []
@@ -323,9 +324,9 @@ class TaskCalculator(BasicTaskCalculator):
             batch_data = self.data_to_device(batch_data)
             outputs = model(batch_data)
             batch_mean_loss = self.criterion(outputs, batch_data.y).item()
-            y_pred = outputs.data.max(1, keepdim=True)[1]
-            correct = y_pred.eq(batch_data.y.data.view_as(y_pred)).view(-1).long().cpu().sum()
-            num_correct += correct.item()
+            y_pred = outputs.argmax(dim=1)
+            correct = int((y_pred == batch_data.y).sum())
+            num_correct += correct
             total_loss += batch_mean_loss * len(batch_data.y)
         return {'accuracy': 1.0 * num_correct / len(dataset), 'loss': total_loss / len(dataset)}
 

@@ -96,7 +96,8 @@ def initialize(option):
     # read federated task by TaskPipe
     # init partitioned dataset
     TaskPipe = getattr(importlib.import_module(bmk_core_path), 'TaskPipe')
-    train_datas, valid_datas, test_data, client_names = TaskPipe.load_task(os.path.join('fedtask', option['task']), option['cross_validation'])
+    TaskPipe.set_option(option['cross_validation'], option['train_on_all'])
+    train_datas, valid_datas, test_data, client_names = TaskPipe.load_task(os.path.join('fedtask', option['task']))
     # init model
     try:
         utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')

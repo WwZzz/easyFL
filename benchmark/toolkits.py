@@ -610,9 +610,10 @@ class BasicTaskPipe:
                           client.train_data, client.valid_data)
     """
     TaskDataset = None
-
+    _cross_validation = False
+    _train_on_all = False
     @classmethod
-    def load_task(cls, task_path, cross_validation=False, **kwargs):
+    def load_task(cls, task_path):
         """
             Reading the spilted dataset from disk files and loading data into the class 'LocalDataset'.
             This algorithm should read three types of data from the processed task:
@@ -627,6 +628,11 @@ class BasicTaskPipe:
     def save_task(cls, *args, **kwargs):
         """save the federated task as .json file"""
         raise NotImplementedError
+
+    @classmethod
+    def set_option(cls, cross_validation, train_on_all):
+        cls._cross_validation = cross_validation
+        cls._train_on_all = train_on_all
 
 class XYTaskPipe(BasicTaskPipe):
     class XYDataset(Dataset):
@@ -702,7 +708,7 @@ class XYTaskPipe(BasicTaskPipe):
             ujson.dump(feddata, outf)
 
     @classmethod
-    def load_task(cls, task_path, cross_validation=False):
+    def load_task(cls, task_path):
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
         test_data = cls.TaskDataset(feddata['dtest']['x'], feddata['dtest']['y'])
@@ -711,7 +717,7 @@ class XYTaskPipe(BasicTaskPipe):
         for name in feddata['client_names']:
             train_x, train_y = feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']
             valid_x, valid_y = feddata[name]['dvalid']['x'], feddata[name]['dvalid']['y']
-            if cross_validation:
+            if cls._cross_validation:
                 k= len(train_y)
                 train_x.extend(valid_x)
                 train_y.extend(valid_y)
@@ -720,6 +726,9 @@ class XYTaskPipe(BasicTaskPipe):
                 x,y = zip(*all_data)
                 train_x, train_y = x[:k],y[:k]
                 valid_x, valid_y = x[k:],y[k:]
+            if cls._train_on_all:
+                train_x.extend(valid_x)
+                train_y.extend(valid_y)
             train_datas.append(cls.TaskDataset(train_x, train_y))
             valid_datas.append(cls.TaskDataset(valid_x, valid_y))
         # train_datas = [cls.TaskDataset(feddata[name]['dtrain']['x'], feddata[name]['dtrain']['y']) for name in feddata['client_names']]
@@ -764,7 +773,7 @@ class IDXTaskPipe(BasicTaskPipe):
         return
 
     @classmethod
-    def load_task(cls, task_path, cross_validation=False):
+    def load_task(cls, task_path):
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
         class_path = feddata['datasrc']['class_path']
@@ -778,12 +787,15 @@ class IDXTaskPipe(BasicTaskPipe):
         for name in feddata['client_names']:
             train_data = feddata[name]['dtrain']
             valid_data = feddata[name]['dvalid']
-            k = len(train_data)
-            train_data.extend(valid_data)
-            random.shuffle(train_data)
-            all_data = train_data
-            train_data = all_data[:k]
-            valid_data = all_data[k:]
+            if cls._cross_validation:
+                k = len(train_data)
+                train_data.extend(valid_data)
+                random.shuffle(train_data)
+                all_data = train_data
+                train_data = all_data[:k]
+                valid_data = all_data[k:]
+            if cls._train_on_all:
+                train_data.extend(valid_data)
             train_datas.append(cls.TaskDataset(origin_train_data, train_data))
             valid_datas.append(cls.TaskDataset(origin_train_data, valid_data))
         return train_datas, valid_datas, test_data, feddata['client_names']
@@ -845,7 +857,7 @@ class XTaskPipe(BasicTaskPipe):
         return
 
     @classmethod
-    def load_task(cls, task_path, cross_validation=False):
+    def load_task(cls, task_path):
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
         test_data = cls.TaskDataset(feddata['dtest']['x'])
@@ -854,12 +866,15 @@ class XTaskPipe(BasicTaskPipe):
         for name in feddata['client_names']:
             train_data = feddata[name]['dtrain']['x']
             valid_data = feddata[name]['dvalid']['x']
-            k = len(train_data)
-            train_data.extend(valid_data)
-            random.shuffle(train_data)
-            all_data = train_data
-            train_data = all_data[:k]
-            valid_data = all_data[k:]
+            if cls._cross_validation:
+                k = len(train_data)
+                train_data.extend(valid_data)
+                random.shuffle(train_data)
+                all_data = train_data
+                train_data = all_data[:k]
+                valid_data = all_data[k:]
+            if cls._train_on_all:
+                train_data.extend(valid_data)
             train_datas.append(cls.TaskDataset(train_data))
             valid_datas.append(cls.TaskDataset(valid_data))
         return train_datas, valid_datas, test_data, feddata['client_names']
