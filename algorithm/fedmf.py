@@ -1,3 +1,7 @@
+"""
+This is a non-official implementation of the work 'Secure Federated Matrix Factorization' (https://arxiv.org/abs/1906.05108).
+"""
+
 import torch
 from .fedbase import BasicServer
 from .fedbase import BasicClient
