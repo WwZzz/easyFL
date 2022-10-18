@@ -24,9 +24,9 @@ class Server(BasicServer):
         self.num_train_samples = sum([len(c.train_data) for c in self.clients])
         for c in self.clients:c.num_train_samples = self.num_train_samples
         # hyper-parameters
-        self.init_algo_para({'embedding_size': 100, 'lambda':1e-4})
+        self.init_algo_para({'embedding_size': 100, 'lambda':1e-4, 'part':0})
         # initialize item vectors as [0.01 ... 0.01] as the official code did
-        self.item_vectors = ItemVectors(num_items, self.embedding_size)
+        self.item_vectors = ItemVector(num_items, self.embedding_size)
         self.item_vectors.set_embedding(np.zeros([num_items, self.embedding_size]) + 0.01)
         self.decrypted_items  = np.array(self.item_vectors.get_embedding().cpu().detach(), dtype=np.float64)
         # encrypt the item vectors
@@ -42,10 +42,16 @@ class Server(BasicServer):
         }
 
     def aggregate(self, encrypted_grads):
-        for eng in encrypted_grads:
-            for i in range(len(self.encrypted_item_vectors)):
-                for j in range(len(self.encrypted_item_vectors[i])):
-                    self.encrypted_item_vectors[i][j] = self.encrypted_item_vectors[i][j] - eng[i][j]
+        if self.part==0:
+            for eng in encrypted_grads:
+                for i in range(len(self.encrypted_item_vectors)):
+                    for j in range(len(self.encrypted_item_vectors[i])):
+                        self.encrypted_item_vectors[i][j] = self.encrypted_item_vectors[i][j] - eng[i][j]
+        else:
+            for eng in encrypted_grads:
+                for item_id in eng:
+                    for j in range(len(self.encrypted_item_vectors[item_id-1])):
+                        self.encrypted_item_vectors[item_id-1][j] = self.encrypted_item_vectors[item_id-1][j] - eng[item_id][j]
 
     def iterate(self, t):
         self.selected_clients = list(range(self.num_clients))
@@ -78,6 +84,8 @@ class Server(BasicServer):
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
+        self.local_items_train = [int(d[1]) for d in self.train_data]
+        self.local_items_valid = [int(d[1]) for d in self.valid_data]
 
     def reply(self, svr_pkg):
         item_vectors = self.unpack(svr_pkg)
@@ -89,7 +97,7 @@ class Client(BasicClient):
         global num_items
         encrypted_item_vectors = received_pkg['encrypted_item_vectors']
         item_vector_np = np.array([[private_key.decrypt(e) for e in vector] for vector in encrypted_item_vectors], dtype=np.float32)
-        item_vectors = ItemVectors(num_items, self.embedding_size)
+        item_vectors = ItemVector(num_items, self.embedding_size)
         item_vectors.set_embedding(item_vector_np)
         return item_vectors
 
@@ -110,14 +118,17 @@ class Client(BasicClient):
         return gradient
 
     def pack(self, gradient):
-        encrypted_gradient = [[public_key.encrypt(e, precision=1e-5) for e in vector] for vector in gradient]
+        if self.part==0:
+            encrypted_gradient = [[public_key.encrypt(e, precision=1e-5) for e in vector] for vector in gradient]
+        else:
+            encrypted_gradient = {item_id: [public_key.encrypt(e, precision=1e-5) for e in gradient[item_id-1]] for item_id in self.local_items_train}
         return {'encrypted_gradient': encrypted_gradient}
 
     def test(self, model, dataflag='valid'):
         data = self.train_data if dataflag=='train' else self.valid_data
         self.data_loader = iter(self.calculator.get_data_loader(data, batch_size=len(data),num_workers=self.loader_num_workers))
         batch_data = next(self.data_loader)
-        item_vectors = ItemVectors(num_items, self.embedding_size)
+        item_vectors = ItemVector(num_items, self.embedding_size)
         item_vectors.set_embedding(self.server.decrypted_items)
         vec_items = item_vectors.get_embedding(batch_data[1])
         vec_user = self.user_embedding.to(vec_items.device).get_embedding()
@@ -143,7 +154,7 @@ class MyEmbedding(FModule):
             self.embeddings.weight.data = torch.tensor(array, dtype=torch.float32)
 
 # globally shared item vectors
-class ItemVectors(MyEmbedding):
+class ItemVector(MyEmbedding):
     def __init__(self, n_items=1682, embedding_size=100):
         super().__init__(dim=n_items, embedding_size=embedding_size)
 
