@@ -17,20 +17,23 @@ num_items = 0
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
+        # the number of items
         global num_items
         num_items = test_data._NUM_ITEMS
+        # the number of total ratings for training (i.e. M in the equation (2) of the original paper)
         self.num_train_samples = sum([len(c.train_data) for c in self.clients])
         for c in self.clients:c.num_train_samples = self.num_train_samples
+        # hyper-parameters
         self.init_algo_para({'embedding_size': 100, 'lambda':1e-4})
-        # initialize item vectors
+        # initialize item vectors as [0.01 ... 0.01] as the official code did
         self.item_vectors = ItemVectors(num_items, self.embedding_size)
         self.item_vectors.set_embedding(np.zeros([num_items, self.embedding_size]) + 0.01)
         self.decrypted_items  = np.array(self.item_vectors.get_embedding().cpu().detach(), dtype=np.float64)
-
+        # encrypt the item vectors
         flw.logger.time_start('Encrypt Item Vectors')
         self.encrypted_item_vectors = [[public_key.encrypt(e, precision=1e-5) for e in vector] for vector in self.decrypted_items]
         flw.logger.time_end('Encrypt Item Vectors')
-        # initialize user vectors
+        # initialize the user vectors
         for c in self.clients: c.user_embedding = CltModel(self.embedding_size)
 
     def pack(self, client_id):
