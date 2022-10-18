@@ -13,6 +13,8 @@ import ujson
 
 def download_from_url(url= None, filepath = '.'):
     """Download dataset from url to filepath."""
+    if not os.path.exists(os.path.dirname(filepath)):
+        os.makedirs(os.path.dirname(filepath))
     if url: urllib.request.urlretrieve(url, filepath)
     return filepath
 
@@ -34,7 +36,7 @@ class TaskGen(BasicTaskGen):
         'latest-small':{'num_clients':600, 'num_items':9000, 'num_ratings':1e5, 'url': "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"},
         'latest-full': {'num_clients': 280000, 'num_items': 58000, 'num_ratings': 27e6, 'url':"https://files.grouplens.org/datasets/movielens/ml-latest.zip"},
     }
-    def __init__(self, version='10m', dist_id = 0, num_clients = 0, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/RAW_DATA/MOVIELENS/', seed=0):
+    def __init__(self, version='100k', dist_id = 0, num_clients = 0, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/RAW_DATA/MOVIELENS/', seed=0):
         super(TaskGen, self).__init__(benchmark='movielens_recommendation',
                                       dist_id=5,
                                       skewness=1.0,
@@ -147,6 +149,8 @@ class TaskCalculator(BasicTaskCalculator):
 
 class TaskPipe(BasicTaskPipe):
     class TaskDataset(torch.utils.data.Dataset):
+        _NUM_ITEMS = 0
+        _NUM_CLIENTS = 0
         def __init__(self, data):
             self.user_ids = torch.LongTensor([d[0] for d in data])
             self.movie_ids = torch.LongTensor([d[1] for d in data])
@@ -163,6 +167,8 @@ class TaskPipe(BasicTaskPipe):
         with open(os.path.join(task_path, 'data.json'), 'r') as inf:
             feddata = ujson.load(inf)
         cnames = feddata['client_names']
+        cls.TaskDataset._NUM_ITEMS = feddata['num_items']
+        cls.TaskDataset._NUM_CLIENTS = feddata['num_clients']
         test_data = cls.TaskDataset(feddata['dtest'])
         train_datas = [cls.TaskDataset(feddata[cnames[cid]]['dtrain']) for cid in range(len(cnames))]
         valid_datas = [cls.TaskDataset(feddata[cnames[cid]]['dvalid']) for cid in range(len(cnames))]
@@ -173,7 +179,10 @@ class TaskPipe(BasicTaskPipe):
         feddata = {
             'store': 'X',
             'client_names': generator.cnames,
-            'dtest': generator.test_data
+            'dtest': generator.test_data,
+            'num_items': generator.num_items,
+            'num_clients': generator.num_clients,
+            'num_ratings': generator.num_ratings
         }
         for cid in range(len(generator.cnames)):
             feddata[generator.cnames[cid]] = {

@@ -89,7 +89,7 @@ def initialize(option):
     logger = Logger(meta=option, name=log_name, level=option['log_level'])
     logger.info('Using Logger in `{}`'.format(log_path))
     logger.info("Initializing fedtask: {}".format(option['task']))
-    # benchmark
+    # benchmark information
     bmk_name = option['task'][:option['task'].find('cnum')-1]
     bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
     bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
@@ -108,13 +108,15 @@ def initialize(option):
         utils.fmodule.SvrModel = getattr(importlib.import_module(bmk_model_path), 'SvrModel')
         logger.info('The server keeping the `SvrModel` in `{}`'.format(bmk_model_path))
     except:
-        utils.fmodule.SvrModel = utils.fmodule.Model
+        utils.fmodule.SvrModel = getattr(importlib.import_module('.'.join(['algorithm', option['algorithm']])), 'SvrModel')
+        logger.info('The server keeping the `SvrModel` in `{}`'.format('.'.join(['algorithm', option['algorithm']])))
     # init the model that owned by the client (e.g. the personalized model whose type may be different from the global model)
     try:
         utils.fmodule.CltModel = getattr(importlib.import_module(bmk_model_path), 'CltModel')
         logger.info('Clients keeping the `CltModel` in `{}`'.format(bmk_model_path))
     except:
-        utils.fmodule.CltModel = utils.fmodule.Model
+        utils.fmodule.CltModel = getattr(importlib.import_module('.'.join(['algorithm', option['algorithm']])), 'CltModel')
+        logger.info('Clients keeping the `CltModel` in `{}`'.format('.'.join(['algorithm', option['algorithm']])))
     # init devices
     gpus = option['gpu']
     utils.fmodule.dev_list = [torch.device('cpu')] if gpus is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in gpus]
