@@ -10,7 +10,7 @@ from urllib.request import urlopen
 import numpy as np
 import pandas as pd
 import ujson
-
+from random import sample
 def download_from_url(url= None, filepath = '.'):
     """Download dataset from url to filepath."""
     if not os.path.exists(os.path.dirname(filepath)):
@@ -28,7 +28,7 @@ def extract_from_zip(src_path, target_path):
 
 class TaskGen(BasicTaskGen):
     _DATASET_INFO = {
-        '100k':{'num_clients':1000, 'num_items':1700, 'num_ratings':1e5, 'url': "https://files.grouplens.org/datasets/movielens/ml-100k.zip"},
+        '100k':{'num_clients':943, 'num_items':1682, 'num_ratings':1e5, 'url': "https://files.grouplens.org/datasets/movielens/ml-100k.zip"},
         '1m':{'num_clients':6000, 'num_items':4000, 'num_ratings':1e6, 'url': "https://files.grouplens.org/datasets/movielens/ml-1m.zip"},
         '10m': {'num_clients': 72000, 'num_items': 10000, 'num_ratings': 10e6, 'url': "https://files.grouplens.org/datasets/movielens/ml-10m.zip"},
         '20m': {'num_clients': 138000, 'num_items': 27000, 'num_ratings': 20e6, 'url': "https://files.grouplens.org/datasets/movielens/ml-20m.zip"},
@@ -36,7 +36,7 @@ class TaskGen(BasicTaskGen):
         'latest-small':{'num_clients':600, 'num_items':9000, 'num_ratings':1e5, 'url': "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"},
         'latest-full': {'num_clients': 280000, 'num_items': 58000, 'num_ratings': 27e6, 'url':"https://files.grouplens.org/datasets/movielens/ml-latest.zip"},
     }
-    def __init__(self, version='100k', dist_id = 0, num_clients = 0, skewness = 0.5, minvol=50, rawdata_path ='./benchmark/RAW_DATA/MOVIELENS/', seed=0):
+    def __init__(self, version='100k', dist_id = 0, num_clients = 0, skewness = 0.5, minvol=3, rawdata_path ='./benchmark/RAW_DATA/MOVIELENS/', seed=0):
         super(TaskGen, self).__init__(benchmark='movielens_recommendation',
                                       dist_id=5,
                                       skewness=1.0,
@@ -49,13 +49,16 @@ class TaskGen(BasicTaskGen):
         self.zipname = self._DATASET_INFO[version]['url'].split('/')[-1]
         self.unzippath = os.path.join(self.rawdata_path, self.zipname.split('.')[0])
         self.url= self._DATASET_INFO[version]['url']
-        self.num_clients = self._DATASET_INFO[version]['num_clients']
+        self.total_clients = self._DATASET_INFO[version]['num_clients']
+        self.num_clients = self.total_clients if num_clients == 0 else num_clients
+        self.least_num_ratings = minvol
         self.num_items = self._DATASET_INFO[version]['num_items']
         self.num_ratings = self._DATASET_INFO[version]['num_ratings']
         self.cnames = self.get_client_names()
         self.taskname = self.get_taskname()
         self.save_task = TaskPipe.save_task
         self.taskpath = os.path.join(self.task_rootpath, self.taskname)
+        self.skewness = skewness
 
     def run(self):
         if self._check_task_exist():
@@ -98,19 +101,44 @@ class TaskGen(BasicTaskGen):
             self.movies = pd.read_table(os.path.join(self.unzippath, 'movies.dat'), sep='::', header=None, names=mnames, engine='python')
             rnames = ['user_id', 'movie_id', 'rating', 'timestamp']
             self.ratings = pd.read_table(os.path.join(self.unzippath, 'ratings.dat'), sep='::', header=None, names=rnames, engine='python').drop(columns=['timestamp']).astype(int)
-
+        # count frequency for items
+        preserved_items = list(dict(self.ratings['movie_id'].value_counts()).keys())[:int(self.num_items*self.skewness)]
+        ## sample clients if self.num_clients is greater than 0
+        # selected_clients = sample(list(range(self.num_clients)), self.num_clients)
         local_datas = [np.array(self.ratings[self.ratings['user_id']==(uid+1)]).tolist() for uid in range(self.num_clients)]
+        # filter the non-preserved items
+        tmp = [[] for _ in range(self.num_clients)]
+        for uid, local_record in enumerate(local_datas):
+            for rec in local_record:
+                if rec[1] in preserved_items:
+                    tmp[uid].append(rec)
+        local_datas = tmp
+        self.num_ratings = sum([len(local_record) for local_record in local_datas])
+        # user reID and item reID
+        all_items = sorted(set([x[1] for local_record in local_datas for x in local_record]))
+        self.num_items = len(all_items)
+        new_id = [i+1 for i in range(self.num_items)]
+        id_map = {k:v for k,v in zip(all_items, new_id)}
+        for local_record in local_datas:
+            for rec in local_record:
+                rec[1] = id_map[rec[1]]
+        # partition train, validation, testing dataset
         train_datas = []
         valid_datas = []
         test_data = []
         for uid in range(self.num_clients):
             udata = local_datas[uid]
-            np.random.shuffle(udata)
-            k1 = int(len(udata)*0.8)
-            k2 = int(len(udata)*0.9)
-            train_datas.append(udata[:k1])
-            valid_datas.append(udata[k1:k2])
-            test_data.extend(udata[k2:])
+            pdata = udata[-3:]
+            adata = udata[:-3]
+            np.random.shuffle(adata)
+            k1 = int(len(adata)*0.8)
+            k2 = int(len(adata)*0.9)
+            train_datas.append(adata[:k1])
+            valid_datas.append(adata[k1:k2])
+            test_data.extend(adata[k2:])
+            train_datas[-1].append(pdata[0])
+            valid_datas[-1].append(pdata[1])
+            test_data.append(pdata[2])
         return train_datas, valid_datas, test_data
 
 class TaskCalculator(BasicTaskCalculator):
@@ -189,6 +217,6 @@ class TaskPipe(BasicTaskPipe):
                 'dtrain': generator.train_datas[cid],
                 'dvalid': generator.valid_datas[cid]
             }
-        with open(os.path.join(generator.taskpath, 'data.json'), 'w') as outf:
+        with open(os.path.join(generator.task_rootpath, generator.get_taskname(),'data.json'), 'w') as outf:
             ujson.dump(feddata, outf)
         return
