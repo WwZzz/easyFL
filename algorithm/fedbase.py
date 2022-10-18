@@ -284,8 +284,10 @@ class BasicServer:
         # initialize algorithm-dependent hyperparameters from the input options
         if self.option['algo_para'] is not None:
             assert len(self.algo_para) == len(self.option['algo_para'])
-            for para_name, value in zip(self.algo_para.keys(), self.option['algo_para']):
-                self.algo_para[para_name] = type(self.algo_para[para_name])(value)
+            keys = list(self.algo_para.keys())
+            for i,pv in enumerate(self.option['algo_para']):
+                para_name = keys[i]
+                self.algo_para[para_name] = type(self.algo_para[para_name])(pv)
         # register the algorithm-dependent hyperparameters as the attributes of the server and all the clients
         for para_name, value in self.algo_para.items():
             self.__setattr__(para_name, value)
