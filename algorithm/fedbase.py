@@ -90,8 +90,8 @@ class BasicServer:
         self.model = self.aggregate(models)
         return
 
-    @ss.with_dropout
-    @ss.with_due
+    # @ss.with_dropout
+    # @ss.with_due
     @ss.with_incomplete_update
     def communicate(self, selected_clients):
         """
