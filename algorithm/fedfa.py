@@ -10,7 +10,7 @@ class Server(BasicServer):
         self.alpha = 1.0 - self.beta
         self.eta = option['learning_rate']
 
-    def iterate(self, t):
+    def iterate(self):
         # sample clients
         self.selected_clients = self.sample()
         # training

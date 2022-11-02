@@ -20,7 +20,7 @@ class Server(BasicServer):
         # algorithm hyper-parameters
         self.init_algo_para({'learning_rate_lambda': 0.01})
 
-    def iterate(self, t):
+    def iterate(self):
         # full sampling
         # training
         res = self.communicate([cid for cid in range(self.num_clients)])

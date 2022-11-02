@@ -4,7 +4,7 @@ from utils import fmodule
 import copy
 import os
 import utils.fflow as flw
-import utils.systemic_simulator as ss
+import utils.system_simulator as ss
 import math
 import collections
 import torch.multiprocessing as mp
@@ -26,7 +26,9 @@ class BasicServer:
         self.num_clients = len(self.clients)
         self.local_data_vols = [c.datavol for c in self.clients]
         self.total_data_vol = sum(self.local_data_vols)
+        for cid, c in enumerate(self.clients): c.client_id = cid
         self.selected_clients = []
+        self.dropped_clients = []
         for c in self.clients:c.set_server(self)
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
@@ -35,9 +37,8 @@ class BasicServer:
         self.lr_scheduler_type = option['lr_scheduler']
         self.lr = option['learning_rate']
         self.sample_option = option['sample']
-        self.due_active = np.inf if option['due_active']<0 else option['due_active']*ss.VirtualClock._TIME_UNIT
-        self.due_response = 3*ss.VirtualClock._TIME_UNIT if option['due_response']<0 else option['due_response']*ss.VirtualClock._TIME_UNIT
         self.aggregation_option = option['aggregate']
+        self.tolerance_for_latency = np.inf
         # algorithm-dependent parameters
         self.algo_para = {}
         self.current_round = -1
@@ -61,7 +62,7 @@ class BasicServer:
             # check if early stopping
             if flw.logger.early_stop(): break
             # federated train
-            self.iterate(round)
+            self.iterate()
             # decay learning rate
             self.global_lr_scheduler(round)
             flw.logger.time_end('Time Cost')
@@ -75,7 +76,9 @@ class BasicServer:
         flw.logger.save_output_as_json()
         return
 
-    def iterate(self, t):
+    @ss.time_step
+    @ss.update_systemic_state
+    def iterate(self):
         """
         The standard iteration of each federated round that contains three
         necessary procedure in FL: client selection, communication and model aggregation.
@@ -90,9 +93,8 @@ class BasicServer:
         self.model = self.aggregate(models)
         return
 
-    # @ss.with_dropout
-    # @ss.with_due
-    @ss.with_incomplete_update
+    @ss.with_dropout
+    @ss.with_clock
     def communicate(self, selected_clients):
         """
         The whole simulating communication procedure with the selected clients.
@@ -124,6 +126,7 @@ class BasicServer:
         packages_received_from_clients = [client_package_buffer[cid] for cid in selected_clients if client_package_buffer[cid]]
         return self.unpack(packages_received_from_clients)
 
+    @ss.with_latency
     def communicate_with(self, client_id):
         """
         Pack the information that is needed for client_id to improve the global model
@@ -158,7 +161,8 @@ class BasicServer:
         :return:
             res: collections.defaultdict that contains several lists of the clients' reply
         """
-        res = collections.defaultdict(list)
+        if len(packages_received_from_clients)==0: return collections.defaultdict(list)
+        res = {pname:[] for pname in packages_received_from_clients[0]}
         for cpkg in packages_received_from_clients:
             for pname, pval in cpkg.items():
                 res[pname].append(pval)
@@ -183,7 +187,7 @@ class BasicServer:
             for c in self.clients:
                 c.set_learning_rate(self.lr)
 
-    @ss.with_inactivity
+    @ss.with_availability
     def sample(self):
         """Sample the clients.
         :param
@@ -307,6 +311,7 @@ class BasicServer:
 class BasicClient():
     def __init__(self, option, name='', train_data=None, valid_data=None):
         self.name = name
+        self.client_id = None
         # create local dataset
         self.train_data = train_data
         self.valid_data = valid_data
@@ -335,14 +340,20 @@ class BasicClient():
         self.loader_num_workers = option['num_workers']
         self.current_steps = 0
         # system setting
+        # 1) availability
         self.network_active_rate = 1
-        self.network_drop_rate = 0
-        self.time_response = 1
         self.active = True
+        # 2) connectivity
+        self.network_drop_rate = 0
         self.dropped = False
+        # 3) completeness
+        self.effective_num_steps = self.num_steps
+        # 4) timeliness
+        self.response_latency = 0
         # server
         self.server = None
 
+    @ss.with_completeness
     @fmodule.with_multi_gpus
     def train(self, model):
         """

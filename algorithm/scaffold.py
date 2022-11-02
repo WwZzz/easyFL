@@ -19,7 +19,7 @@ class Server(BasicServer):
             "cg": self.cg,
         }
 
-    def iterate(self, t):
+    def iterate(self):
         # sample clients
         self.selected_clients = self.sample()
         # local training

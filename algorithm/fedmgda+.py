@@ -12,7 +12,7 @@ class Server(BasicServer):
         self.init_algo_para({'eta':1, 'epsilon':0.1})
         self.dynamic_lambdas = np.ones(self.num_clients) * 1.0 / self.num_clients
 
-    def iterate(self, t):
+    def iterate(self):
         self.selected_clients = self.sample()
         # training
         models = self.communicate(self.selected_clients)['model']

@@ -53,7 +53,7 @@ class Server(BasicServer):
                     for j in range(len(self.encrypted_item_vectors[item_id-1])):
                         self.encrypted_item_vectors[item_id-1][j] = self.encrypted_item_vectors[item_id-1][j] - eng[item_id][j]
 
-    def iterate(self, t):
+    def iterate(self):
         self.selected_clients = list(range(self.num_clients))
         en_grads = self.communicate(self.selected_clients)['encrypted_gradient']
         self.aggregate(en_grads)

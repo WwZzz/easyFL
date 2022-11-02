@@ -21,7 +21,7 @@ class Server(BasicServer):
         self.initflag = True
         return True
 
-    def iterate(self, t):
+    def iterate(self):
         # sample all the active clients
         self.selected_clients = self.sample()
         # training

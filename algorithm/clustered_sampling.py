@@ -23,7 +23,7 @@ class Server(BasicServer):
         self.update_history = [copy.deepcopy(zero_model) for _ in range(self.num_clients)]
         self.distance_type = 'cos'
 
-    def iterate(self, t):
+    def iterate(self):
         self.selected_clients = self.sample()
         # training
         models = self.communicate(self.selected_clients)['model']

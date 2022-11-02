@@ -108,7 +108,7 @@ class Server(BasicServer):
         updated_graph_encoding = torch.cat(updated_graph_encoding, dim=1)
         data.update_graph_encodings(updated_graph_encoding.permute(1, 0, 2, 3))
 
-    def iterate(self, t):
+    def iterate(self):
         # (1) Federated learning of on-node models.
         self.communicate_stage = 1
         selected_clients = [cid for cid in range(self.num_clients)]

@@ -2,7 +2,7 @@ from .fedbase import BasicServer, BasicClient
 from utils import fmodule
 
 class Server(BasicServer):
-    def iterate(self, t):
+    def iterate(self):
         self.selected_clients = self.sample()
         # training
         res = self.communicate(self.selected_clients)

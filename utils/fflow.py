@@ -9,7 +9,7 @@ import utils.fmodule
 import ujson
 import time
 import collections
-import utils.systemic_simulator as ss
+import utils.system_simulator as ss
 import logging
 
 sample_list=['uniform', 'md', 'full']
@@ -52,10 +52,10 @@ def read_option():
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
     # the simulating systemic configuration of clients and the server that helps constructing the heterogeity in the network condition & computing power
-    parser.add_argument('--network_config', help="configuration of the availability of clients", type=str, default = 'ideal')
-    parser.add_argument('--computing_config', help="configuration of the computing power of clients", type=str, default = 'ideal')
-    parser.add_argument('--due_active', help="the server will wait for inactive clients for no more than this term multiplying the unit time;", type=int, default=0)
-    parser.add_argument('--due_response', help="the server will wait for the responses from the active clients for no more than this term", type=int, default=100)
+    parser.add_argument('--availability', help="client availability mode", type=str, default = 'IDL')
+    parser.add_argument('--connectivity', help="client connectivity mode", type=str, default = 'IDL')
+    parser.add_argument('--completeness', help="client completeness mode", type=str, default = 'IDL')
+    parser.add_argument('--timeliness', help="client response timeliness mode", type=str, default='IDL')
     # algorithm-dependent hyper-parameters
     parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
     # logger setting
@@ -75,6 +75,8 @@ def setup_seed(seed):
     os.environ['PYTHONHASHSEED'] = str(seed)
     torch.manual_seed(12+seed)
     torch.cuda.manual_seed_all(123+seed)
+    torch.backends.cudnn.enabled = False
+    torch.backends.cudnn.deterministic = True
 
 def initialize(option):
     # init logger from 1) Logger in algorithm/fedxxx.py, 2) Logger in utils/logger/logger_name.py 3) Logger in utils/logger/basic_logger.py
@@ -101,16 +103,18 @@ def initialize(option):
     # init model
     try:
         utils.fmodule.Model = getattr(importlib.import_module(bmk_model_path), 'Model')
+        logger.info('Using model `{}` in `{}` as the globally shared model.'.format(option['model'], bmk_model_path))
     except ModuleNotFoundError:
         utils.fmodule.Model = getattr(importlib.import_module('.'.join(['algorithm', option['algorithm']])), option['model'])
+        logger.info('Using model `{}` in `{}` as the globally shared model.'.format(option['model'],'.'.join(['algorithm', option['algorithm']])))
     # init the model that owned by the server (e.g. the model trained in the server-side)
     try:
         utils.fmodule.SvrModel = getattr(importlib.import_module(bmk_model_path), 'SvrModel')
-        logger.info('The server keeping the `SvrModel` in `{}`'.format(bmk_model_path))
+        logger.info('The server keeps the `SvrModel` in `{}`'.format(bmk_model_path))
     except:
         try:
             utils.fmodule.SvrModel = getattr(importlib.import_module('.'.join(['algorithm', option['algorithm']])), 'SvrModel')
-            logger.info('The server keeping the `SvrModel` in `{}`'.format('.'.join(['algorithm', option['algorithm']])))
+            logger.info('The server keeps the `SvrModel` in `{}`'.format('.'.join(['algorithm', option['algorithm']])))
         except:
             utils.fmodule.SvrModel = None
             logger.info('No Server Model Used.')
@@ -118,11 +122,11 @@ def initialize(option):
     # init the model that owned by the client (e.g. the personalized model whose type may be different from the global model)
     try:
         utils.fmodule.CltModel = getattr(importlib.import_module(bmk_model_path), 'CltModel')
-        logger.info('Clients keeping the `CltModel` in `{}`'.format(bmk_model_path))
+        logger.info('Clients keep the `CltModel` in `{}`'.format(bmk_model_path))
     except:
         try:
             utils.fmodule.CltModel = getattr(importlib.import_module('.'.join(['algorithm', option['algorithm']])), 'CltModel')
-            logger.info('Clients keeping the `CltModel` in `{}`'.format('.'.join(['algorithm', option['algorithm']])))
+            logger.info('Clients keep the `CltModel` in `{}`'.format('.'.join(['algorithm', option['algorithm']])))
         except:
             utils.fmodule.CltModel = None
             logger.info('No Client Model Used.')
@@ -161,8 +165,8 @@ def initialize(option):
     server = getattr(server_module, 'Server')(option, model, clients, test_data = test_data)
 
     # init virtual systemic configuration including network state and the distribution of computing power
-    logger.info('Initializing systemic heterogeneity: '+'Network Environment: {} \\ Computing Power Allocation: {}'.format(option['network_config'], option['computing_config']))
-    ss.init_systemic_config(server, option)
+    logger.info('Initializing systemic heterogeneity: '+'Network Environment: {} \\ Computing Power Allocation: {}'.format(option['availability'], option['completeness']))
+    ss.init_system_environment(server, option)
     logger.register_variable(server=server, clients=clients, meta=option)
     logger.initialize()
     logger.info('Ready to start.')

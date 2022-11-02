@@ -13,7 +13,7 @@ class Server(BasicServer):
         self.init_algo_para({'beta': 0.01})
         self.v = model.zeros_like()
 
-    def iterate(self, t):
+    def iterate(self):
         self.selected_clients = self.sample()
         models = self.communicate(self.selected_clients)['model']
         new_model = self.aggregate(models)

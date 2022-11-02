@@ -1,5 +1,6 @@
 import utils.logger.basic_logger as bl
 import numpy as np
+import utils.system_simulator as ss
 
 class Logger(bl.Logger):
     def initialize(self):
@@ -9,6 +10,7 @@ class Logger(bl.Logger):
 
     """This logger only records metrics on validation dataset"""
     def log_per_round(self, *args, **kwargs):
+        self.info('Current_time:{}'.format(ss.clock.current_time))
         valid_metrics = self.server.test_on_clients('valid')
         for met_name, met_val in valid_metrics.items():
             self.output['valid_'+met_name+'_dist'].append(met_val)

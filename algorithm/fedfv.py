@@ -12,7 +12,7 @@ class Server(BasicServer):
         self.client_last_sample_round = [-1 for i in range(self.num_clients)]
         self.client_grads_history = [0 for i in range(self.num_clients)]
 
-    def iterate(self, t):
+    def iterate(self):
         # sampling
         self.selected_clients = self.sample()
         # training locally

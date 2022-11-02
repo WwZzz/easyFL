@@ -5,14 +5,14 @@ Convergence Analysis and Power-of-Choice Selection Strategies' (https://arxiv.or
 import numpy as np
 from .fedavg import Client
 from .fedbase import BasicServer
-import utils.systemic_simulator as ss
+import utils.system_simulator as ss
 
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
         self.init_algo_para({'d': self.num_clients})
 
-    @ss.with_inactivity
+    @ss.with_availability
     def sample(self):
         # create candidate set A
         num_candidate = min(self.d, len(self.active_clients))

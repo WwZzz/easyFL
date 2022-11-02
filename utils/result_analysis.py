@@ -48,6 +48,8 @@ def get_communication_round_from_rec(record):
     for round in range(num_rounds + 1):
         if eval_interval > 0 and (round == 0 or round % eval_interval == 0 or round == num_rounds):
             x.append(round)
+        if record['meta']['early_stop']>0 and len(x) >= len(record['valid_loss']):
+            break
     return x
 
 def draw_curves_from_records(records, curve='train_loss'):

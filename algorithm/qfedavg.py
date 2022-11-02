@@ -7,7 +7,7 @@ class Server(BasicServer):
         super(Server, self).__init__(option, model, clients, test_data)
         self.init_algo_para({'q':0.1})
 
-    def iterate(self, t):
+    def iterate(self):
         # sample clients
         self.selected_clients = self.sample()
         # training
