@@ -399,7 +399,7 @@ Utils is composed of commonly used operations: model-level operation (we convert
 
 #### System Heterogeneity
 ![image](https://github.com/WwZzz/myfigs/blob/master/fig_system_heterogeneity.png)
-We use a virtual clock to simulate the time machine in our system, and the states of clients are changing as the time is passing following the state transfer rules.
+We use a virtual clock to simulate the time machine in our system, and the states of clients are changing following the state transfer rules as the time flows. We use the `decorator` in python to decorates the original method to support for complex systemic heterogeneity simulation without hurting the simplicity and readibility of the code. 
 
 ## Remark
 
