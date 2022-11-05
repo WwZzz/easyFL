@@ -8,6 +8,22 @@ random_seed_gen = None
 random_module = None
 state_updater = None
 
+
+def update_client_availability(state_updater, *args, **kwargs):
+    return
+
+
+def update_client_connectivity(state_updater, *args, **kwargs):
+    return
+
+
+def update_client_completeness(state_updater, *args, **kwargs):
+    return
+
+
+def update_client_timeliness(state_updater, *args, **kwargs):
+    return
+
 def seed_generator(seed=0):
     while True:
         yield seed+1
@@ -171,18 +187,18 @@ class BasicStateUpdater:
     def flush(self):
         # +++++++++++++++++++ availability +++++++++++++++++++++
         # change self.variables[cid]['prob_available'] and self.variables[cid]['prob_unavailable'] for each client `cid`
-        self.update_client_availability(self)
+        update_client_availability(self)
         # +++++++++++++++++++ connectivity +++++++++++++++++++++
         # change self.variables[cid]['prob_drop'] for each client `cid`
-        self.update_client_connectivity(self)
+        update_client_connectivity(self)
         # +++++++++++++++++++ completeness +++++++++++++++++++++
         # change self.variables[cid]['working_amount'] for each client `cid`
-        self.update_client_completeness(self)
+        update_client_completeness(self)
         # +++++++++++++++++++ timeliness +++++++++++++++++++++++
         # change self.variables[cid]['latency'] for each client `cid`
-        self.update_client_timeliness(self)
+        update_client_timeliness(self)
         # update states for offline & idle clients
-        if not self.roundly_fixed_availability or self.server.current_round > self.availability_latest_round:
+        if len(self.idle_clients)==0 or not self.roundly_fixed_availability or self.server.current_round > self.availability_latest_round:
             self.availability_latest_round = self.server.current_round
             for cid in self.offline_clients:
                 self.clients[cid].available = (self.random_module.rand() <= self.variables[cid]['prob_available'])
@@ -202,18 +218,6 @@ class BasicStateUpdater:
             if self.state_counter[cid]['latency_counter'] <=0:
                 self.state_counter[cid]['latency_counter'] = 0
                 self.client_states[cid] = 'idle'
-
-    def update_client_availability(self, *args, **kwargs):
-        return
-
-    def update_client_connectivity(self, *args, **kwargs):
-        return
-
-    def update_client_completeness(self, *args, **kwargs):
-        return
-
-    def update_client_timeliness(self, *args, **kwargs):
-        return
 
 #================================================Decorators==========================================
 # Time Counter for any function which forces the `clock` to
@@ -327,7 +331,7 @@ def with_completeness(train):
         return res
     return train_with_incomplete_update
 
-################################### Availability Mode ##########################################
+################################### Initialize Availability Mode ##########################################
 def ideal_client_availability(server, *args, **kwargs):
     global state_updater
     probs1 = [1. for _ in server.clients]
@@ -443,16 +447,17 @@ def sin_lognormal_client_availability(server, beta=0.1):
     q = np.array(Tks)/max_Tk
     state_updater.set_variable(state_updater.all_clients, 'q', q)
     state_updater.set_variable(state_updater.all_clients, 'prob_available', q)
-    def f(self):
+    def f(state_updater):
         T = 24
         times = np.linspace(start=0, stop=2 * np.pi, num=T)
         fts = 0.4 * np.sin(times) + 0.5
-        t = self.server.current_round % T
-        q = self.get_variable(self.all_clients,'q')
+        t = state_updater.server.current_round % T
+        q = state_updater.get_variable(state_updater.all_clients, 'q')
         probs = [fts[t]*qi for qi in q]
-        self.set_variable(self.all_clients, 'prob_available', probs)
-        self.set_variable(self.all_clients, 'prob_unavailable', [1 - p for p in probs])
-    state_updater.update_client_availability = f
+        state_updater.set_variable(state_updater.all_clients, 'prob_available', probs)
+        state_updater.set_variable(state_updater.all_clients, 'prob_unavailable', [1 - p for p in probs])
+    global update_client_availability
+    update_client_availability = f
     state_updater.roundly_fixed_availability = True
 
 def y_cycle_client_availability(server, beta=0.5):
@@ -465,19 +470,20 @@ def y_cycle_client_availability(server, beta=0.5):
         c._min_label = min(label_set)
         c._max_label = max(label_set)
     global state_updater
-    def f(self):
+    def f(state_updater):
         T = 24
-        r = 1.0 * (1 + self.server.current_round % T) / T
+        r = 1.0 * (1 + state_updater.server.current_round % T) / T
         probs = []
-        for c in self.clients:
+        for c in state_updater.clients:
             ic = int(r >= (1.0 * c._min_label / max_label) and r <= (1.0 * c._max_label / max_label))
             probs.append(beta * ic + (1 - beta))
-        self.set_variable(self.all_clients, 'prob_available', probs)
-        self.set_variable(self.all_clients, 'prob_unavailable', [1 - p for p in probs])
-    state_updater.update_client_availability = f
+        state_updater.set_variable(state_updater.all_clients, 'prob_available', probs)
+        state_updater.set_variable(state_updater.all_clients, 'prob_unavailable', [1 - p for p in probs])
+    global update_client_availability
+    update_client_availability = f
     state_updater.roundly_fixed_availability = True
 
-################################### Connectivity Mode ##########################################
+################################### Initialize Connectivity Mode ##########################################
 def ideal_client_connectivity(server, *args, **kwargs):
     global state_updater
     probs = [0. for _ in server.clients]
@@ -488,7 +494,7 @@ def homogeneous_client_connectivity(server, gamma=0.05):
     probs = [gamma for _ in server.clients]
     state_updater.set_variable(state_updater.all_clients, 'prob_drop', probs)
 
-################################### Completeness Mode ##########################################
+################################### Initialize Completeness Mode ##########################################
 def ideal_client_completeness(server, *args, **kwargs):
     return
 
@@ -498,13 +504,14 @@ def part_dynamic_uniform_client_completeness(server, p=0.5):
     (http://arxiv.org/abs/1812.06127). The `p` specifies the number of selected clients with
     incomplete updates.
     """
-    def f(self):
-        incomplete_clients = self.random_module.choice(self.all_clients, round(len(self.clients) * p), replace=False)
-        working_amounts = [self.random_module.randint(low=1, high=self.clients[cid].num_steps) for cid in incomplete_clients]
-        self.set_variable(incomplete_clients, 'working_amount', working_amounts)
+    def f(state_updater):
+        incomplete_clients = state_updater.random_module.choice(state_updater.all_clients, round(len(state_updater.clients) * p), replace=False)
+        working_amounts = [state_updater.random_module.randint(low=1, high=state_updater.clients[cid].num_steps) for cid in incomplete_clients]
+        state_updater.set_variable(incomplete_clients, 'working_amount', working_amounts)
         return
     global state_updater
-    state_updater.update_client_completeness = f
+    global update_client_completeness
+    update_client_completeness = f
     return
 
 def full_static_unifrom_client_completeness(server):
@@ -522,14 +529,15 @@ def arbitrary_dynamic_unifrom_client_completeness(server, a=1, b=1):
     """
     a = min(a, 1)
     b = max(b, a)
-    def f(self):
-        for cid in self.clients:
-            self.clients[cid].set_local_epochs(self.random_module.randint(low=a, high=b))
-        working_amounts = [self.clients[cid].num_steps for cid in self.all_clients]
-        self.set_variable(self.all_clients, 'working_amount', working_amounts)
+    def f(state_updater):
+        for cid in state_updater.clients:
+            state_updater.clients[cid].set_local_epochs(state_updater.random_module.randint(low=a, high=b))
+        working_amounts = [state_updater.clients[cid].num_steps for cid in state_updater.all_clients]
+        state_updater.set_variable(state_updater.all_clients, 'working_amount', working_amounts)
         return
     global state_updater
-    state_updater.update_client_completeness = f
+    global update_client_completeness
+    update_client_completeness = f
     return
 
 def arbitrary_static_unifrom_client_completeness(server, a=1, b=1):
@@ -548,7 +556,7 @@ def arbitrary_static_unifrom_client_completeness(server, a=1, b=1):
     state_updater.set_variable(state_updater.all_clients, 'working_amount', working_amounts)
     return
 
-################################### Timeliness Mode ############################################
+################################### Initialize Timeliness Mode ############################################
 def ideal_client_timeliness(server, *args, **kwargs):
     global state_updater
     latency = [0 for _ in server.clients]

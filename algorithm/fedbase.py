@@ -304,7 +304,7 @@ class BasicServer:
     def get_tolerance_for_latency(self):
         return self.tolerance_for_latency
 
-    def wait(self, t=1):
+    def wait_time(self, t=1):
         ss.clock.step(t)
         return
 

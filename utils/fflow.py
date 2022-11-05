@@ -171,7 +171,7 @@ def initialize(option):
     logger.info('Initializing Systemic Heterogeneity: '+'Timeliness {}'.format(option['timeliness']))
 
     ss.init_system_environment(server, option)
-    logger.register_variable(server=server, clients=clients, meta=option)
+    logger.register_variable(server=server, clients=clients, meta=option, clock=ss.clock)
     logger.initialize()
     logger.info('Ready to start.')
     return server
