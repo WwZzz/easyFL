@@ -368,14 +368,20 @@ class DefaultTaskGen(BasicTaskGen):
             while np.any(np.isnan(proportions)):
                 proportions = [np.random.dirichlet(alpha * p) for _ in range(self.num_clients)]
             sorted_cid_map = {k:i for k,i in zip(np.argsort(samples_per_client), [_ for _ in range(self.num_clients)])}
+            error_increase_interval = 5000
+            max_error = 1e-2 / self.num_classes
+            loop_count = 0
             crt_id = 0
             while True:
+                if loop_count >= error_increase_interval:
+                    loop_count = 0
+                    max_error = max_error * 10
                 # generate dirichlet distribution till ||E(proportion) - P(D)||<=1e-5*self.num_classes
                 mean_prop = np.sum([pi*di for pi,di in zip(proportions, samples_per_client)], axis=0)
                 mean_prop = mean_prop/mean_prop.sum()
                 error_norm = ((mean_prop - p) ** 2).sum()
                 print("Error: {:.8f}".format(error_norm))
-                if error_norm <= 1e-2 / self.num_classes:
+                if error_norm <= max_error:
                     break
                 excid = sorted_cid_map[crt_id]
                 crt_id = (crt_id+1)%self.num_clients
@@ -393,6 +399,7 @@ class DefaultTaskGen(BasicTaskGen):
                 if len(alter_norms) > 0:
                     alcid = np.argmin(alter_norms)
                     proportions[excid] = sup_prop[alcid]
+                loop_count += 1
             local_datas = [[] for _ in range(self.num_clients)]
             self.dirichlet_dist = []  # for efficiently visualizing
             for lb in lb_counter.keys():
