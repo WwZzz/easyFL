@@ -157,7 +157,7 @@ def initialize(option):
     logger.info('Initializing Clients: '+'{} clients of `{}` being created.'.format(num_clients, client_path+'.Client'))
     Client=getattr(importlib.import_module(client_path), 'Client')
     clients = [Client(option, name=client_names[cid], train_data=train_datas[cid], valid_data=valid_datas[cid]) for cid in range(num_clients)]
-
+    for cid, c in enumerate(clients): c.id = cid
     # init server
     server_path = '%s.%s' % ('algorithm', option['algorithm'])
     logger.info('Initializing Server: '+'1 server of `{}` being created.'.format(server_path + '.Server'))

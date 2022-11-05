@@ -39,7 +39,7 @@ class BasicServer:
         self.sample_option = option['sample']
         self.aggregation_option = option['aggregate']
         # systemic option
-        self.tolerance_for_latency = 600
+        self.tolerance_for_latency = 1000
         self.tolerance_for_availability = 0
         self.asynchronous = False
         # algorithm-dependent parameters
@@ -304,19 +304,23 @@ class BasicServer:
     def get_tolerance_for_latency(self):
         return self.tolerance_for_latency
 
+    def wait(self, t=1):
+        ss.clock.step(t)
+        return
+
     @property
-    def active_clients(self):
+    def available_clients(self):
         """
         Return all the available clients at current round.
         :param
         :return: a list of indices of currently available clients
         """
-        return [cid for cid in range(self.num_clients) if self.clients[cid].active]
+        return [cid for cid in range(self.num_clients) if self.clients[cid].is_available()]
 
 class BasicClient():
     def __init__(self, option, name='', train_data=None, valid_data=None):
         self.name = name
-        self.client_id = None
+        self.id = None
         # create local dataset
         self.train_data = train_data
         self.valid_data = valid_data
@@ -346,17 +350,13 @@ class BasicClient():
         self.current_steps = 0
         # system setting
         # 1) availability
-        self.prob_available = 1
-        self.available_period = 0
-        self.unavailable_period = 0
-        self.active = True
+        self.available = True
         # 2) connectivity
-        self.prob_drop = 0
         self.dropped = False
         # 3) completeness
-        self.effective_num_steps = self.num_steps
+        self._effective_num_steps = self.num_steps
         # 4) timeliness
-        self.response_latency = 0
+        self._latency = 0
         # server
         self.server = None
 
@@ -436,24 +436,22 @@ class BasicClient():
             "model" : model,
         }
 
-    def is_active(self, random_module=np.random):
+    def is_available(self):
         """
         Check if the client is active to participate training.
         :param
         :return
             True if the client is active according to the active_rate else False
         """
-        self.active = (random_module.rand() <= self.prob_available)
-        return self.active
+        return self.available
 
-    def is_drop(self, random_module=np.random):
+    def is_dropped(self):
         """
         Check if the client drops out during communicating.
         :param
         :return
             True if the client drops out according to the drop_rate else False
         """
-        self.dropped = (random_module.rand() < self.prob_drop)
         return self.dropped
 
     def train_loss(self, model):
