@@ -117,7 +117,7 @@ class BasicStateUpdater:
         global clock
         for cid in client_ids:
             self.state_descriptors[cid]['dropped_counter'] = 0
-            self.state_descriptors[cid]['latency_counter'] = clock.current_time + self.state_descriptors[cid]['latency']
+            self.state_descriptors[cid]['latency_counter'] = clock.current_time + self.clients[cid].response_latency
 
     def set_client_dropped_counter(self, client_ids = []):
         if type(client_ids) is not list: client_ids = list(client_ids)
