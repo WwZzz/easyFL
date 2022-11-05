@@ -397,6 +397,10 @@ Further details of this module are described in `algorithm/README.md`.
 ### Utils
 Utils is composed of commonly used operations: model-level operation (we convert model layers and parameters to dictionary type and apply it in the whole FL system), the flow controlling of the framework in and the supporting visualization templates to the result. To visualize the results, please run `./utils/result_analysis.py`. Further details are described in `utils/README.md`.
 
+#### System Heterogeneity
+![image](https://github.com/WwZzz/myfigs/blob/master/fig_system_heterogeneity.png)
+We use a virtual clock to simulate the time machine in our system, and the states of clients are changing as the time is passing following the state transfer rules.
+
 ## Remark
 
 * Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project. 
