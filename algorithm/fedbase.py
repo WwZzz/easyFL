@@ -38,7 +38,10 @@ class BasicServer:
         self.lr = option['learning_rate']
         self.sample_option = option['sample']
         self.aggregation_option = option['aggregate']
-        self.tolerance_for_latency = np.inf
+        # systemic option
+        self.tolerance_for_latency = 600
+        self.tolerance_for_availability = 0
+        self.asynchronous = False
         # algorithm-dependent parameters
         self.algo_para = {}
         self.current_round = -1
@@ -77,7 +80,6 @@ class BasicServer:
         return
 
     @ss.time_step
-    @ss.update_systemic_state
     def iterate(self):
         """
         The standard iteration of each federated round that contains three
@@ -299,6 +301,9 @@ class BasicServer:
                 c.__setattr__(para_name, value)
         return
 
+    def get_tolerance_for_latency(self):
+        return self.tolerance_for_latency
+
     @property
     def active_clients(self):
         """
@@ -341,10 +346,12 @@ class BasicClient():
         self.current_steps = 0
         # system setting
         # 1) availability
-        self.network_active_rate = 1
+        self.prob_available = 1
+        self.available_period = 0
+        self.unavailable_period = 0
         self.active = True
         # 2) connectivity
-        self.network_drop_rate = 0
+        self.prob_drop = 0
         self.dropped = False
         # 3) completeness
         self.effective_num_steps = self.num_steps
@@ -436,7 +443,7 @@ class BasicClient():
         :return
             True if the client is active according to the active_rate else False
         """
-        self.active = (random_module.rand() <= self.network_active_rate)
+        self.active = (random_module.rand() <= self.prob_available)
         return self.active
 
     def is_drop(self, random_module=np.random):
@@ -446,7 +453,7 @@ class BasicClient():
         :return
             True if the client drops out according to the drop_rate else False
         """
-        self.dropped = (random_module.rand() < self.network_drop_rate)
+        self.dropped = (random_module.rand() < self.prob_drop)
         return self.dropped
 
     def train_loss(self, model):

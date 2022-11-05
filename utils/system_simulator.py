@@ -1,6 +1,17 @@
 import collections
 import numpy as np
 import queue
+import math
+
+clock = None
+random_seed_gen = None
+random_module = None
+state_updater = None
+
+def seed_generator(seed=0):
+    while True:
+        yield seed+1
+        seed+=1
 
 class ElemClock:
     class Elem:
@@ -17,13 +28,17 @@ class ElemClock:
     def __init__(self):
         self.q = queue.PriorityQueue()
         self.time = 0
+        self.state_updater = None
 
     def step(self, delta_t=1):
-        if delta_t < 0: raise RuntimeError("Cannot inverse time of systemic_simulator.clock.")
+        if delta_t < 0: raise RuntimeError("Cannot inverse time of system_simulator.clock.")
+        if self.state_updater is not None:
+            for t in range(delta_t):
+                self.state_updater.flush()
         self.time += delta_t
 
     def set_time(self, t):
-        if t < self.time: raise RuntimeError("Cannot inverse time of systemic_simulator.clock.")
+        if t < self.time: raise RuntimeError("Cannot inverse time of system_simulator.clock.")
         self.time = t
 
     def put(self, x, time):
@@ -65,43 +80,101 @@ class ElemClock:
     def current_time(self):
         return self.time
 
-def seed_generator(seed=0):
-    while True:
-        yield seed+1
-        seed+=1
+    def register_state_updater(self, state_updater):
+        self.state_updater = state_updater
 
-clock = None
-random_seed_gen = None
-random_module = None
+class BasicStateUpdater:
 
-def update_systemic_state(iterate):
-    def iterate_with_changable_state(self):
-        global random_module
-        random_module = np.random.RandomState(next(random_seed_gen))
-        # update the generator of clients' availability, connectivity and completeness
+    _STATE = ['offline', 'idle', 'selected', 'working', 'dropped']
+
+    def __init__(self, server, clients):
+        self.server = server
+        self.clients = clients
+        self.random_module = np.random.RandomState(next(random_seed_gen))
+        # client states and the descriptors
+        self.client_states = ['idle' for _ in self.clients]
+        self.state_descriptors = [
+            {'prob_available' : 1.0,
+             'prob_unavailable' : 0.0,
+             'prob_drop' : 0.0,
+             'working_amount': 1,
+             'latency': 0,
+             'dropped_counter': 0,
+             'latency_counter': 0,
+             } for _ in self.clients
+        ]
+
+    def get_client_with_state(self, state='idle'):
+        return [cid for cid, cstate in enumerate(self.client_states) if cstate == state]
+
+    def set_client_state(self,  state, client_ids = []):
+        if state not in self._STATE: raise RuntimeError('{} not in the default state')
+        if type(client_ids) is not list: client_ids = [client_ids]
+        for cid in client_ids: self.client_states[cid] = state
+
+    def set_client_latency_counter(self, client_ids = []):
+        if type(client_ids) is not list: client_ids = list(client_ids)
+        global clock
+        for cid in client_ids: self.state_descriptors[cid]['latency_counter'] = clock.current_time + self.state_descriptors[cid]['latency']
+
+    def set_client_dropped_counter(self, client_ids = []):
+        if type(client_ids) is not list: client_ids = list(client_ids)
+        global clock
+        for cid in client_ids: self.state_descriptors[cid]['dropped_counter'] = clock.current_time + self.server.tolerance_for_latency
+
+    @property
+    def idle_clients(self):
+        return self.get_client_with_state('idle')
+
+    @property
+    def working_clients(self):
+        return self.get_client_with_state('working')
+
+    @property
+    def offline_clients(self):
+        return self.get_client_with_state('offline')
+
+    @property
+    def selected_clients(self):
+        return self.get_client_with_state('selected')
+
+    @property
+    def dropped_clients(self):
+        return self.get_client_with_state('dropped')
+
+    def flush(self):
         # +++++++++++++++++++ availability +++++++++++++++++++++
-        # ensure there is at least one client to be available during sampling phase
-        update_client_availability(self, random_module=random_module)
-        available_clients = []
-        while len(available_clients) == 0:
-            available_clients = [cid for cid in range(self.num_clients) if self.clients[cid].is_active(random_module)]
+        self.update_client_availability()
         # +++++++++++++++++++ connectivity +++++++++++++++++++++
-        # decide whether the clients will drop out once being selected
-        update_client_connectivity(self, random_module=random_module)
+        self.update_client_connectivity()
         # +++++++++++++++++++ completeness +++++++++++++++++++++
-        update_client_completeness(self, random_module=random_module)
-        # iterate
-        return iterate(self)
-    return iterate_with_changable_state
+        self.update_client_completeness()
+        # +++++++++++++++++++ timeliness +++++++++++++++++++++++
+        self.update_client_timeliness()
+        # update dropped clients
+        for cid in self.dropped_clients:
+            self.state_descriptors[cid]['dropped_counter'] -= 1
+            if self.state_descriptors[cid]['dropped_counter'] <= 0:
+                self.state_descriptors[cid]['dropped_counter'] = 0
+                self.client_states[cid] = 'offline'
+        # update working clients
+        for cid in self.working_clients:
+            self.state_descriptors[cid]['latency_counter'] -= 1
+            if self.state_descriptors[cid]['latency_counter'] == -1:
+                self.state_descriptors[cid]['latency_counter'] = 0
+                self.client_states[cid] = 'idle'
 
-def update_client_availability(server, random_module=np.random):
-    return
+    def update_client_availability(self):
+        return
 
-def update_client_connectivity(server, random_module=np.random):
-    return
+    def update_client_connectivity(self):
+        return
 
-def update_client_completeness(server, random_module=np.random):
-    return
+    def update_client_completeness(self):
+        return
+
+    def update_client_timeliness(self):
+        return
 
 #================================================Decorators==========================================
 # Time Counter for any function which forces the `clock` to
@@ -119,54 +192,72 @@ def time_step(f):
 # sampling phase
 def with_availability(sample):
     def sample_with_availability(self):
-        available_clients = [cid for cid in range(self.num_clients) if self.clients[cid].active]
+        global clock
+        global state_updater
+        available_clients = state_updater.idle_clients
+        # ensure that there is at least one client to be available at the current moment
+        while len(available_clients) == 0:
+            clock.step()
+            available_clients = state_updater.idle_clients
         # call the original sampling function
         selected_clients = sample(self)
         # filter the selected but unavailable clients
         effective_clients = set(selected_clients).intersection(set(available_clients))
         # return the selected and available clients (e.g. sampling with replacement should be considered here)
+        self._unavailable_selected_clients = [cid for cid in selected_clients if cid not in effective_clients]
         selected_clients = [cid for cid in selected_clients if cid in effective_clients]
+        state_updater.set_client_state('selected', selected_clients)
         return selected_clients
     return sample_with_availability
 
 # communicating phase: broadcast
 def with_dropout(communicate):
     def communicate_with_dropout(self, selected_clients):
-        if len(selected_clients)==0: return communicate(self, self.selected_clients)
-        # ensure that there is at least one non-dropping client in the selected_clients
-        global random_module
-        random_module = np.random.RandomState(next(random_seed_gen))
-        effective_clients = []
-        while(len(effective_clients)==0):
-            effective_clients = [cid for cid in set(selected_clients) if not self.clients[cid].is_drop(random_module)]
-        # simulating the client drop out by not communicating with them
-        self.selected_clients = [cid for cid in selected_clients if cid in effective_clients]
-        self.dropped_clients = [cid for cid in selected_clients if cid not in effective_clients]
+        if len(selected_clients) > 0:
+            global state_updater
+            clients_will_drop = [cid for cid in selected_clients if self.clients[cid].is_drop()]
+            self.selected_clients = [cid for cid in selected_clients if cid not in clients_will_drop]
+            self._dropped_selected_clients = [cid for cid in selected_clients if cid in clients_will_drop]
+            state_updater.set_client_state('working', self.selected_clients)
+            state_updater.set_client_state('dropped', self._dropped_selected_clients)
+            for cid in self._dropped_selected_clients:
+                state_updater.set_client_dropped_counter(self._dropped_selected_clients)
         return communicate(self, self.selected_clients)
     return communicate_with_dropout
 
 # communicating phase: broadcast
 def with_clock(communicate):
     def communicate_with_clock(self, selected_clients):
-        if len(selected_clients)==0: return communicate(self, selected_clients)
         global clock
         res = communicate(self, selected_clients)
+        if len(selected_clients)==0:
+            if hasattr(self, '_dropped_selected_clients') and len(self._dropped_selected_clients)>0:
+                clock.step(self.get_tolerance_for_latency())
+            return res
+        # Check if the returned package has the attribute `__t` and `__cid`. If not, assign the attributes to the packages.
         if '__t' not in res.keys(): res['__t'] = [self.clients[cid].response_latency for cid in self.selected_clients]
         if '__cid' not in res.keys(): res['__cid'] = self.selected_clients
+        # Convert the unpacked packages to a list of packages of each client.
         pkgs = [{key:vi[id] for key,vi in res.items()} for id in range(len(list(res.values())[0]))]
+        # Put the packages into a queue according to their arrival time `__t`
         for pi in pkgs: clock.put(pi, pi['__t'])
-        eff_pkgs = clock.get_until(clock.current_time + self.tolerance_for_latency)
-        eff_cids = [pkg_i['__cid'] for pkg_i in eff_pkgs]
-        # compute delta of time
-        delta_t = self.tolerance_for_latency if (self.tolerance_for_latency==0 or len(eff_pkgs)<len(pkgs) or len(self.dropped_clients)>0) else (eff_pkgs[-1]['__t']-clock.current_time)
-        clock.step(delta_t)
-        # update selected clients if with synchronized communicating
-        if self.tolerance_for_latency > 0:
+        tolerance_for_latency = self.get_tolerance_for_latency()
+        # Wait for client packages. If communicating in asynchronous way, the waiting time is 0.
+        if self.asynchronous:
+            eff_pkgs = clock.get_until(clock.current_time)
+        else:
+            eff_pkgs = clock.get_until(clock.current_time + tolerance_for_latency)
+            # Compute delta of time for the communication.
+            delta_t = tolerance_for_latency if len(eff_pkgs)<len(pkgs) or len(self._dropped_selected_clients)>0 else (eff_pkgs[-1]['__t']-clock.current_time)
+            clock.step(delta_t)
+            eff_cids = [pkg_i['__cid'] for pkg_i in eff_pkgs]
             clock.clear()
-            overdue_clients = list(set([cid for cid in selected_clients if cid not in eff_cids]))
-            self.dropped_clients.extend(overdue_clients)
+            self._overdue_clients = list(set([cid for cid in selected_clients if cid not in eff_cids]))
+            for cid in self._overdue_clients:
+                state_updater.client_states[cid] = 'idle'
+                state_updater.state_descriptors[cid]['latency_counter'] = 0
             self.selected_clients = [cid for cid in selected_clients if cid in eff_cids]
-            # resort effective packages
+            # Resort effective packages
             pkg_map = {pkg_i['__cid']: pkg_i for pkg_i in eff_pkgs}
             eff_pkgs = [pkg_map[cid] for cid in self.selected_clients]
         return self.unpack(eff_pkgs)
@@ -194,7 +285,7 @@ def with_completeness(train):
 
 ################################### Availability Mode ##########################################
 def ideal_client_availability(server, *args, **kwargs):
-    for c in server.clients: c.network_active_rate = 1
+    for c in server.clients: c.prob_available = 1
 
 def y_max_first_client_availability(server, beta=0.1):
     """
@@ -210,10 +301,9 @@ def y_max_first_client_availability(server, beta=0.1):
         return collections.Counter([int(dataset[di][-1]) for di in range(len(dataset))])
     label_num = len(label_counter(server.test_data))
     for c in server.clients:
-        c.network_drop_rate = 0
         c_counter = label_counter(c.train_data + c.valid_data)
         c_label = [lb for lb in c_counter.keys()]
-        c.network_active_rate = (beta * min(c_label) / max(1, label_num - 1)) + (1 - beta)
+        c.prob_available = (beta * min(c_label) / max(1, label_num - 1)) + (1 - beta)
 
 def more_data_first_client_availability(server, beta=0.0001):
     """
@@ -225,7 +315,7 @@ def more_data_first_client_availability(server, beta=0.0001):
     p = p ** beta
     maxp = np.max(p)
     for c, pc in zip(server.clients, p):
-        c.network_active_rate = pc / maxp
+        c.prob_available = pc / maxp
 
 def less_data_first_client_availability(server, beta=0.5):
     """
@@ -237,7 +327,7 @@ def less_data_first_client_availability(server, beta=0.5):
     prop = prop ** (-beta)
     maxp = np.max(prop)
     for c, pc in zip(server.clients, prop):
-        c.network_active_rate = pc / maxp
+        c.prob_available = pc / maxp
 
 def y_fewer_first_client_availability(server, beta=0.2):
     """
@@ -249,7 +339,7 @@ def y_fewer_first_client_availability(server, beta=0.2):
         train_set = set([int(c.train_data[di][-1]) for di in range(len(c.train_data))])
         valid_set = set([int(c.valid_data[di][-1]) for di in range(len(c.valid_data))])
         label_set = train_set.union(valid_set)
-        c.network_active_rate = beta * len(label_set) / label_num + (1 - beta)
+        c.prob_available = beta * len(label_set) / label_num + (1 - beta)
 
 def homogeneous_client_availability(server, beta=0.2):
     """
@@ -257,7 +347,7 @@ def homogeneous_client_availability(server, beta=0.2):
     """
     # alpha = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.8
     for c in server.clients:
-        c.network_active_rate = 1 - beta
+        c.prob_available = 1 - beta
 
 def lognormal_client_availability(server, beta=0.1):
     """The following two settings are from 'Federated Learning Under Intermittent
@@ -268,7 +358,7 @@ def lognormal_client_availability(server, beta=0.1):
     Tks = [np.random.lognormal(0, -np.log(1 - beta - epsilon)) for _ in server.clients]
     max_Tk = max(Tks)
     for c, Tk in zip(server.clients, Tks):
-        c.network_active_rate = 1.0 * Tk / max_Tk
+        c.prob_available = 1.0 * Tk / max_Tk
 
 def sin_lognormal_client_availability(server, beta=0.1):
     """This setting shares the same active rate distribution with LogNormal, however, the active rates are
@@ -282,43 +372,46 @@ def sin_lognormal_client_availability(server, beta=0.1):
     max_Tk = max(Tks)
     for c, Tk in zip(server.clients, Tks):
         c._qk = 1.0 * Tk / max_Tk
-        c.network_active_rate = 1
-        c.network_drop_rate = 0
+        c.prob_available = 1
+        c.prob_drop = 0
         c.time_response = 0
-    global update_client_availability
-    def f(server, random_module=np.random):
+    global state_updater
+    def f(self):
         T = 24
         times = np.linspace(start=0, stop=2 * np.pi, num=T)
         fts = 0.4 * np.sin(times) + 0.5
-        t = server.current_round % T
-        for c in server.clients:
-            c.network_active_rate = fts[t] * c._qk
-    update_client_availability = f
+        t = self.server.current_round % T
+        for c in self.clients:
+            c.prob_available = fts[t] * c._qk
+    state_updater.update_client_availability = f
 
 def y_cycle_client_availability(server, beta=0.5):
     # beta = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.5
     max_label = max(set([int(server.test_data[di][-1]) for di in range(len(server.test_data))]))
     for c in server.clients:
-        c.network_drop_rate = 0
+        c.prob_drop = 0
         c.time_response = 0
         train_set = set([int(c.train_data[di][-1]) for di in range(len(c.train_data))])
         valid_set = set([int(c.valid_data[di][-1]) for di in range(len(c.valid_data))])
         label_set = train_set.union(valid_set)
         c._min_label = min(label_set)
         c._max_label = max(label_set)
-        c.network_active_rate = 1
-    global update_client_availability
-    def f(server, random_module=np.random):
+        c.prob_available = 1
+    global state_updater
+    def f(self):
         T = 24
-        r = 1.0 * (1 + server.current_round % T) / T
-        for c in server.clients:
+        r = 1.0 * (1 + self.server.current_round % T) / T
+        for c in self.clients:
             ic = int(r >= (1.0 * c._min_label / max_label) and r <= (1.0 * c._max_label / max_label))
-            c.network_active_rate = beta * ic + (1 - beta)
-    update_client_availability = f
+            c.prob_available = beta * ic + (1 - beta)
+    state_updater.update_client_availability = f
 
 ################################### Connectivity Mode ##########################################
 def ideal_client_connectivity(server, *args, **kwargs):
-    for c in server.clients: c.network_drop_rate = 0
+    for c in server.clients: c.prob_drop = 0
+
+def homogeneous_client_connectivity(server, gamma=0.05):
+    for c in server.clients: c.prob_drop = gamma
 
 ################################### Completeness Mode ##########################################
 def ideal_client_completeness(server, *args, **kwargs):
@@ -330,13 +423,13 @@ def part_dynamic_uniform_client_completeness(server, p=0.5):
     (http://arxiv.org/abs/1812.06127). The `p` specifies the number of selected clients with
     incomplete updates.
     """
-    def f(server, random_module=np.random):
-        incomplete_clients = random_module.choice(server.clients, round(len(server.clients) * p), replace=False)
+    def f(self):
+        incomplete_clients = self.random_module.choice(self.clients, round(len(self.clients) * p), replace=False)
         for cid in incomplete_clients:
-            server.clients[cid].effective_num_steps = random_module.randint(low=1, high=server.clients[cid].num_steps)
+            self.clients[cid].effective_num_steps = random_module.randint(low=1, high=self.clients[cid].num_steps)
         return
-    global update_client_completeness
-    update_client_completeness = f
+    global state_updater
+    state_updater.update_client_completeness = f
     return
 
 def full_static_unifrom_client_completeness(server):
@@ -353,13 +446,13 @@ def arbitrary_dynamic_unifrom_client_completeness(server, a=1, b=1):
     """
     a = min(a, 1)
     b = max(b, a)
-    def f(server, random_module=np.random):
-        for cid in server.clients:
-            server.clients[cid].set_local_epochs(random_module.randint(low=a, high=b))
-            server.clients[cid].effective_num_steps = server.clients[cid].num_steps
+    def f(self):
+        for cid in self.clients:
+            self.clients[cid].set_local_epochs(self.random_module.randint(low=a, high=b))
+            self.clients[cid].effective_num_steps = self.clients[cid].num_steps
         return
-    global update_client_completeness
-    update_client_completeness = f
+    global state_updater
+    state_updater.update_client_completeness = f
     return
 
 def arbitrary_static_unifrom_client_completeness(server, a=1, b=1):
@@ -376,27 +469,27 @@ def arbitrary_static_unifrom_client_completeness(server, a=1, b=1):
     return
 
 ################################### Timeliness Mode ############################################
-def ideal_client_timeliness(server, *args, **kwargs):
-    for c in server.clients:
+def ideal_client_timeliness(updater, *args, **kwargs):
+    for c in updater.clients:
         c.response_latency = 0
-    if server.tolerance_for_latency != 0:
-        server.tolerance_for_latency = max([c.response_latency for c in server.clients])
+    if not updater.server.asynchronous:
+        updater.tolerance_for_latency = max([c.response_latency for c in updater.clients])
 
-def lognormal_client_timeliness(server, mean_latency=100, var_latency=10):
+def lognormal_client_timeliness(updater, mean_latency=100, var_latency=10):
     mu = np.log(mean_latency) - 0.5 * np.log(1 + var_latency / mean_latency / mean_latency)
     sigma = np.sqrt(np.log(1 + var_latency / mean_latency / mean_latency))
-    client_latency = np.random.lognormal(mu, sigma, len(server.clients))
+    client_latency = np.random.lognormal(mu, sigma, len(updater.clients))
     client_latency = [int(ct) for ct in client_latency]
-    for c, ltc in zip(server.clients, client_latency):
+    for c, ltc in zip(updater.clients, client_latency):
         c.response_latency = ltc
-    if server.tolerance_for_latency != 0:
-        server.tolerance_for_latency = max([c.response_latency for c in server.clients])
+    if not updater.server.asynchronous:
+        updater.tolerance_for_latency = max([c.response_latency for c in updater.clients])
 
-def uniform_client_timeliness(server, min_latency=0, max_latency=1):
-    for c in server.clients:
+def uniform_client_timeliness(updater, min_latency=0, max_latency=1):
+    for c in updater.clients:
         c.response_latency = np.random.randint(low=min_latency, high=max_latency)
-    if server.tolerance_for_latency != 0:
-        server.tolerance_for_latency = max([c.response_latency for c in server.clients])
+    if not updater.server.asynchronous:
+        updater.tolerance_for_latency = max([c.response_latency for c in updater.clients])
 
 #************************************************************************************************
 availability_modes = {
@@ -413,6 +506,7 @@ availability_modes = {
 
 connectivity_modes = {
     'IDL': ideal_client_connectivity,
+    'HOMO': homogeneous_client_connectivity,
 }
 
 completeness_modes = {
@@ -440,27 +534,29 @@ def init_system_environment(server, option):
     global random_seed_gen
     global random_module
     global clock
+    global state_updater
     random_seed_gen = seed_generator(option['seed'])
     random_module = np.random.RandomState(next(random_seed_gen))
     clock = ElemClock()
+    state_updater = BasicStateUpdater(server, server.clients)
 
     # +++++++++++++++++++++ availability +++++++++++++++++++++
     avl_mode, avl_para  = get_mode(option['availability'])
     if avl_mode not in availability_modes: avl_mode, avl_para = 'IDL', ()
-    availability_modes[avl_mode.upper()](server, *avl_para)
+    availability_modes[avl_mode](server, *avl_para)
 
     # +++++++++++++++++++++ connectivity +++++++++++++++++++++
     con_mode, con_para = get_mode(option['connectivity'])
     if con_mode not in connectivity_modes: con_mode, con_para = 'IDL', ()
-    connectivity_modes[con_mode.upper()](server, *con_para)
+    connectivity_modes[con_mode](server, *con_para)
 
     # +++++++++++++++++++++ completeness +++++++++++++++++++++
     cmp_mode, cmp_para = get_mode(option['completeness'])
     if cmp_mode not in completeness_modes: cmp_mode, cmp_para = 'IDL', ()
-    completeness_modes[cmp_mode.upper()](server, *cmp_para)
+    completeness_modes[cmp_mode](server, *cmp_para)
 
     # +++++++++++++++++++++ timeliness ++++++++++++++++++++++++
     ltc_mode, ltc_para = get_mode(option['timeliness'])
     if ltc_mode not in timeliness_modes: ltc_mode, ltc_para = 'IDL', ()
-    timeliness_modes[ltc_mode.upper()](server, *ltc_para)
+    timeliness_modes[ltc_mode](state_updater, *ltc_para)
     return

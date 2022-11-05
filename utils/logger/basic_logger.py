@@ -149,15 +149,17 @@ class Logger(logging.Logger):
         else:
             output_name = output_name + ("K{}_".format(self.meta['num_steps']))
 
-        output_name = output_name + "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_NET{}_CMP{}".format(
+        output_name = output_name + "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_AVL{}_CN{}_CP{}_T{}".format(
                           self.meta['learning_rate'],
                           self.meta['proportion'],
                           self.meta['seed'],
                           self.meta['lr_scheduler'] + self.meta['learning_rate_decay'],
                           self.meta['weight_decay'],
-                          self.meta['network_config'],
-                          self.meta['computing_config']
-                      ) + suffix
+                          self.meta['availability'],
+                          self.meta['connectivity'],
+                          self.meta['completeness'],
+                          self.meta['timeliness'],
+        ) + suffix
         return output_name
 
     def get_output_path(self):

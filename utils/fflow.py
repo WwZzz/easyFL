@@ -117,7 +117,7 @@ def initialize(option):
             logger.info('The server keeps the `SvrModel` in `{}`'.format('.'.join(['algorithm', option['algorithm']])))
         except:
             utils.fmodule.SvrModel = None
-            logger.info('No Server Model Used.')
+            logger.info('No server-specific model is used.')
 
     # init the model that owned by the client (e.g. the personalized model whose type may be different from the global model)
     try:
@@ -129,7 +129,7 @@ def initialize(option):
             logger.info('Clients keep the `CltModel` in `{}`'.format('.'.join(['algorithm', option['algorithm']])))
         except:
             utils.fmodule.CltModel = None
-            logger.info('No Client Model Used.')
+            logger.info('No client-specific model is used.')
     # init devices
     gpus = option['gpu']
     utils.fmodule.dev_list = [torch.device('cpu')] if gpus is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in gpus]
@@ -154,18 +154,22 @@ def initialize(option):
     # init client
     num_clients = len(client_names)
     client_path = '%s.%s' % ('algorithm', option['algorithm'])
-    logger.info('Initializing clients: '+'{} clients of `{}` being created.'.format(num_clients, client_path+'.Client'))
+    logger.info('Initializing Clients: '+'{} clients of `{}` being created.'.format(num_clients, client_path+'.Client'))
     Client=getattr(importlib.import_module(client_path), 'Client')
     clients = [Client(option, name=client_names[cid], train_data=train_datas[cid], valid_data=valid_datas[cid]) for cid in range(num_clients)]
 
     # init server
     server_path = '%s.%s' % ('algorithm', option['algorithm'])
-    logger.info('Initializing server: '+'1 server of `{}` being created.'.format(server_path + '.Server'))
+    logger.info('Initializing Server: '+'1 server of `{}` being created.'.format(server_path + '.Server'))
     server_module = importlib.import_module(server_path)
     server = getattr(server_module, 'Server')(option, model, clients, test_data = test_data)
 
     # init virtual systemic configuration including network state and the distribution of computing power
-    logger.info('Initializing systemic heterogeneity: '+'Network Environment: {} \\ Computing Power Allocation: {}'.format(option['availability'], option['completeness']))
+    logger.info('Initializing Systemic Heterogeneity: '+'Availability {}'.format(option['availability']))
+    logger.info('Initializing Systemic Heterogeneity: '+'Connectivity {}'.format(option['connectivity']))
+    logger.info('Initializing Systemic Heterogeneity: '+'Completeness {}'.format(option['completeness']))
+    logger.info('Initializing Systemic Heterogeneity: '+'Timeliness {}'.format(option['timeliness']))
+
     ss.init_system_environment(server, option)
     logger.register_variable(server=server, clients=clients, meta=option)
     logger.initialize()
