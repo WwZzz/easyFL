@@ -115,12 +115,16 @@ class BasicStateUpdater:
     def set_client_latency_counter(self, client_ids = []):
         if type(client_ids) is not list: client_ids = list(client_ids)
         global clock
-        for cid in client_ids: self.state_descriptors[cid]['latency_counter'] = clock.current_time + self.state_descriptors[cid]['latency']
+        for cid in client_ids:
+            self.state_descriptors[cid]['dropped_counter'] = 0
+            self.state_descriptors[cid]['latency_counter'] = clock.current_time + self.state_descriptors[cid]['latency']
 
     def set_client_dropped_counter(self, client_ids = []):
         if type(client_ids) is not list: client_ids = list(client_ids)
         global clock
-        for cid in client_ids: self.state_descriptors[cid]['dropped_counter'] = clock.current_time + self.server.tolerance_for_latency
+        for cid in client_ids:
+            self.state_descriptors[cid]['latency_counter'] = 0
+            self.state_descriptors[cid]['dropped_counter'] = clock.current_time + self.server.tolerance_for_latency
 
     @property
     def idle_clients(self):
@@ -218,10 +222,8 @@ def with_dropout(communicate):
             clients_will_drop = [cid for cid in selected_clients if self.clients[cid].is_drop()]
             self.selected_clients = [cid for cid in selected_clients if cid not in clients_will_drop]
             self._dropped_selected_clients = [cid for cid in selected_clients if cid in clients_will_drop]
-            state_updater.set_client_state('working', self.selected_clients)
             state_updater.set_client_state('dropped', self._dropped_selected_clients)
-            for cid in self._dropped_selected_clients:
-                state_updater.set_client_dropped_counter(self._dropped_selected_clients)
+            state_updater.set_client_dropped_counter(self._dropped_selected_clients)
         return communicate(self, self.selected_clients)
     return communicate_with_dropout
 
@@ -229,6 +231,8 @@ def with_dropout(communicate):
 def with_clock(communicate):
     def communicate_with_clock(self, selected_clients):
         global clock
+        state_updater.set_client_state('working', selected_clients)
+        state_updater.set_client_latency_counter(selected_clients)
         res = communicate(self, selected_clients)
         if len(selected_clients)==0:
             if hasattr(self, '_dropped_selected_clients') and len(self._dropped_selected_clients)>0:
