@@ -117,14 +117,14 @@ class BasicStateUpdater:
         global clock
         for cid in client_ids:
             self.state_descriptors[cid]['dropped_counter'] = 0
-            self.state_descriptors[cid]['latency_counter'] = clock.current_time + self.clients[cid].response_latency
+            self.state_descriptors[cid]['latency_counter'] = self.clients[cid].response_latency
 
     def set_client_dropped_counter(self, client_ids = []):
         if type(client_ids) is not list: client_ids = list(client_ids)
         global clock
         for cid in client_ids:
             self.state_descriptors[cid]['latency_counter'] = 0
-            self.state_descriptors[cid]['dropped_counter'] = clock.current_time + self.server.tolerance_for_latency
+            self.state_descriptors[cid]['dropped_counter'] = self.server.get_tolerance_for_latency()
 
     @property
     def idle_clients(self):
@@ -155,6 +155,13 @@ class BasicStateUpdater:
         self.update_client_completeness()
         # +++++++++++++++++++ timeliness +++++++++++++++++++++++
         self.update_client_timeliness()
+        # update offline & idle clients
+        for cid in self.offline_clients:
+            flag = self.clients[cid].is_active(self.random_module)
+            if flag: self.client_states[cid] = 'idle'
+        for cid in self.idle_clients:
+            flag = self.clients[cid].is_active(self.random_module)
+            if not flag: self.client_states[cid] = 'offline'
         # update dropped clients
         for cid in self.dropped_clients:
             self.state_descriptors[cid]['dropped_counter'] -= 1
@@ -164,7 +171,7 @@ class BasicStateUpdater:
         # update working clients
         for cid in self.working_clients:
             self.state_descriptors[cid]['latency_counter'] -= 1
-            if self.state_descriptors[cid]['latency_counter'] == -1:
+            if self.state_descriptors[cid]['latency_counter'] <=0:
                 self.state_descriptors[cid]['latency_counter'] = 0
                 self.client_states[cid] = 'idle'
 
@@ -239,7 +246,7 @@ def with_clock(communicate):
                 clock.step(self.get_tolerance_for_latency())
             return res
         # Check if the returned package has the attribute `__t` and `__cid`. If not, assign the attributes to the packages.
-        if '__t' not in res.keys(): res['__t'] = [self.clients[cid].response_latency for cid in self.selected_clients]
+        if '__t' not in res.keys(): res['__t'] = [clock.current_time + self.clients[cid].response_latency for cid in self.selected_clients]
         if '__cid' not in res.keys(): res['__cid'] = self.selected_clients
         # Convert the unpacked packages to a list of packages of each client.
         pkgs = [{key:vi[id] for key,vi in res.items()} for id in range(len(list(res.values())[0]))]
@@ -543,7 +550,7 @@ def init_system_environment(server, option):
     random_module = np.random.RandomState(next(random_seed_gen))
     clock = ElemClock()
     state_updater = BasicStateUpdater(server, server.clients)
-
+    clock.register_state_updater(state_updater)
     # +++++++++++++++++++++ availability +++++++++++++++++++++
     avl_mode, avl_para  = get_mode(option['availability'])
     if avl_mode not in availability_modes: avl_mode, avl_para = 'IDL', ()
