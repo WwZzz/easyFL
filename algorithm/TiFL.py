@@ -1,6 +1,6 @@
 """
 This is a non-official implementation of the work 'TiFL: A Tier-based Federated Learning System'
-(http://arxiv.org/abs/2001.09249). This implementation is referred to the github repository https://github.com/bacox/fltk.
+(http://arxiv.org/abs/2001.09249). This implementation refers to the github repository https://github.com/bacox/fltk.
 Thanks for their great work.
 
 T: the number of tiers
