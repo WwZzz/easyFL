@@ -260,7 +260,7 @@ def with_clock(communicate):
         global clock
         global state_updater
         res = communicate(self, selected_clients)
-        if len(selected_clients)==0:
+        if not self.asynchronous and len(selected_clients)==0:
             if hasattr(self, '_dropped_selected_clients') and len(self._dropped_selected_clients)>0:
                 clock.step(self.get_tolerance_for_latency())
             return res
