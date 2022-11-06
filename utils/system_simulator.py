@@ -331,7 +331,7 @@ def with_completeness(train):
         return res
     return train_with_incomplete_update
 
-################################### Initialize Availability Mode ##########################################
+################################### Initial Availability Mode ##########################################
 def ideal_client_availability(server, *args, **kwargs):
     global state_updater
     probs1 = [1. for _ in server.clients]
@@ -483,7 +483,7 @@ def y_cycle_client_availability(server, beta=0.5):
     update_client_availability = f
     state_updater.roundly_fixed_availability = True
 
-################################### Initialize Connectivity Mode ##########################################
+################################### Initial Connectivity Mode ##########################################
 def ideal_client_connectivity(server, *args, **kwargs):
     global state_updater
     probs = [0. for _ in server.clients]
@@ -494,7 +494,7 @@ def homogeneous_client_connectivity(server, gamma=0.05):
     probs = [gamma for _ in server.clients]
     state_updater.set_variable(state_updater.all_clients, 'prob_drop', probs)
 
-################################### Initialize Completeness Mode ##########################################
+################################### Initial Completeness Mode ##########################################
 def ideal_client_completeness(server, *args, **kwargs):
     return
 
@@ -556,7 +556,7 @@ def arbitrary_static_unifrom_client_completeness(server, a=1, b=1):
     state_updater.set_variable(state_updater.all_clients, 'working_amount', working_amounts)
     return
 
-################################### Initialize Timeliness Mode ############################################
+################################### Initial Timeliness Mode ############################################
 def ideal_client_timeliness(server, *args, **kwargs):
     global state_updater
     latency = [0 for _ in server.clients]
@@ -626,7 +626,6 @@ def init_system_environment(server, option):
     random_module = np.random.RandomState(next(random_seed_gen))
     clock = ElemClock()
     state_updater = BasicStateUpdater(server, server.clients)
-    clock.register_state_updater(state_updater)
     # +++++++++++++++++++++ availability +++++++++++++++++++++
     avl_mode, avl_para  = get_mode(option['availability'])
     if avl_mode not in availability_modes: avl_mode, avl_para = 'IDL', ()
@@ -646,4 +645,6 @@ def init_system_environment(server, option):
     ltc_mode, ltc_para = get_mode(option['timeliness'])
     if ltc_mode not in timeliness_modes: ltc_mode, ltc_para = 'IDL', ()
     timeliness_modes[ltc_mode](server, *ltc_para)
+
+    clock.register_state_updater(state_updater)
     return
