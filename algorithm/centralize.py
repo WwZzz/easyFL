@@ -80,5 +80,5 @@ class Logger(bl.Logger):
         model_name = self.meta['model']+'_iter'+str(self.server.epochs)+'_'+self.meta['algorithm']+'_'+time.strftime("%Y-%m-%d-%H-%M-%S",time.localtime())+'.pth'
         model_path = os.path.join('fedtask', self.meta['task'], 'record', model_name)
         with open(filepath, 'w') as outf:
-            ujson.dump(dict(self.output), outfs
+            ujson.dump(dict(self.output), outf)
         torch.save({'model':self.server.model.state_dict()}, model_path)
