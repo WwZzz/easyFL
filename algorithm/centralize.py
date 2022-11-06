@@ -37,7 +37,7 @@ class Server(BasicServer):
             if flw.logger.check_if_log(epoch, self.eval_interval):
                 flw.logger.info('Evaluate model of epoch {}'.format(epoch))
                 flw.logger.time_start('Eval Time Cost')
-                flw.logger.log_per_round(current_iter=epoch)
+                flw.logger.log_once(current_iter=epoch)
                 flw.logger.time_end('Eval Time Cost')
             flw.logger.info('Starting to train model at epoch {}'.format(epoch))
             for iter in tqdm(range(self.num_iters_per_epoch)):
@@ -62,7 +62,7 @@ class Server(BasicServer):
         return batch_data
 
 class Logger(bl.Logger):
-    def log_per_round(self,current_iter):
+    def log_once(self, current_iter):
         test_metrics = self.server.calculator.test(self.server.model, self.server.test_data, self.server.batch_size)
         train_metrics = self.server.calculator.test(self.server.model, self.server.train_data, self.server.batch_size)
         valid_metrics = self.server.calculator.test(self.server.model, self.server.valid_data, self.server.batch_size)

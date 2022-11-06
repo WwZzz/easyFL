@@ -14,12 +14,12 @@ class Server(BasicServer):
         self.selected_clients = self.sample()
         models = self.communicate(self.selected_clients)['model']
         flw.logger.time_end('Total Time Cost')
-        flw.logger.log_per_round(models)
+        flw.logger.log_once(models)
         flw.logger.save_output_as_json()
         return
 
 class Logger(bl.Logger):
-    def log_per_round(self, models=[]):
+    def log_once(self, models=[]):
         if models == []: return
         for id, cid in enumerate(self.server.selected_clients):
             test_metric = self.server.test(models[id])

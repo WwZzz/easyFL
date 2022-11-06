@@ -9,7 +9,7 @@ class Logger(bl.Logger):
             self.output['client_datavol'].append(len(c.train_data))
 
     """This logger only records metrics on validation dataset"""
-    def log_per_round(self, *args, **kwargs):
+    def log_once(self, *args, **kwargs):
         self.info('Current_time:{}'.format(ss.clock.current_time))
         valid_metrics = self.server.test_on_clients('valid')
         for met_name, met_val in valid_metrics.items():

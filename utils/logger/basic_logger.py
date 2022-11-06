@@ -195,7 +195,7 @@ class Logger(logging.Logger):
     def initialize(self, *args, **kwargs):
         return
 
-    def log_per_round(self, *args, **kwargs):
+    def log_once(self, *args, **kwargs):
         """This method is called at the beginning of each communication round of Server.
         The round-wise operations of recording should be complemented here."""
         # calculate the testing metrics on testing dataset owned by server

@@ -157,7 +157,7 @@ class Server(BasicServer):
             client.valid_data.update_graph_encodings(valid_encodings[:, cid:cid+1, :, :])
 
 class Logger(bl.Logger):
-    def log_per_round(self, *args, **kwargs):
+    def log_once(self, *args, **kwargs):
         if len(self.output) == 0:
             self.output['meta'] = self.server.option
         test_metric = self.server.test()
