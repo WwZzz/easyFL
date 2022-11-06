@@ -54,10 +54,6 @@ ploter:
       y: valid_loss_dist
       x_label: client ID
       title: local validating loss distribution
-    - x: client_id
-      y: client_datavol
-      x_label: client ID
-      title: local data size distribution
 info:
   final_value:
     - valid_loss
