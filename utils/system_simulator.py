@@ -636,4 +636,6 @@ def init_system_environment(server, option):
     timeliness_modes[ltc_mode](server, *ltc_para)
 
     clock.register_state_updater(state_updater)
+    if server.tolerance_for_latency==0:
+        server.tolerance_for_latency = max([c._latency for c in server.clients])
     return
