@@ -15,7 +15,7 @@ class Server(BasicServer):
         models = self.communicate(self.selected_clients)['model']
         flw.logger.time_end('Total Time Cost')
         flw.logger.log_per_round(models)
-        flw.logger.save_output_as_json(os.path.join('fedtask', self.option['task'], 'record', flw.output_filename(self.option, self)))
+        flw.logger.save_output_as_json()
         return
 
 class Logger(bl.Logger):

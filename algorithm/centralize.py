@@ -8,6 +8,7 @@ import ujson
 import os
 import math
 from tqdm import tqdm
+
 class Server(BasicServer):
     def __init__(self, option, model, clients, test_data=None):
         super(Server, self).__init__(option, model, clients, test_data)
@@ -73,11 +74,11 @@ class Logger(bl.Logger):
             self.write_var_into_output('valid_'+met_name, met_value)
         self.show_current_output()
 
-    def save_output_as_json(self, filepath):
+    def save_output_as_json(self, filepath=None):
         """Save the self.output as .json file"""
-        rec_path = os.path.join('fedtask', self.meta['task'], 'record', flw.output_filename(self.meta, self.server))
+        filepath = os.path.join(self.get_output_path(), self.get_output_name())
         model_name = self.meta['model']+'_iter'+str(self.server.epochs)+'_'+self.meta['algorithm']+'_'+time.strftime("%Y-%m-%d-%H-%M-%S",time.localtime())+'.pth'
         model_path = os.path.join('fedtask', self.meta['task'], 'record', model_name)
-        with open(rec_path, 'w') as outf:
-            ujson.dump(dict(self.output), outf)
+        with open(filepath, 'w') as outf:
+            ujson.dump(dict(self.output), outfs
         torch.save({'model':self.server.model.state_dict()}, model_path)
