@@ -8,18 +8,14 @@ random_seed_gen = None
 random_module = None
 state_updater = None
 
-
 def update_client_availability(state_updater, *args, **kwargs):
     return
-
 
 def update_client_connectivity(state_updater, *args, **kwargs):
     return
 
-
 def update_client_completeness(state_updater, *args, **kwargs):
     return
-
 
 def update_client_timeliness(state_updater, *args, **kwargs):
     return
@@ -119,13 +115,6 @@ class BasicStateUpdater:
             'latency': 0,
         } for c in self.clients]
         self.state_counter = [{'dropped_counter': 0, 'latency_counter': 0, } for _ in self.clients]
-        self.behavior_history = {
-            'selected_clients': {},
-            'unavailable_clients':{},
-            'dropped_clients': {},
-            'overdue_clients': {},
-            'roundwise_availability': collections.defaultdict(None)
-        }
 
     def get_client_with_state(self, state='idle'):
         return [cid for cid, cstate in enumerate(self.client_states) if cstate == state]
