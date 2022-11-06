@@ -44,7 +44,7 @@ class BasicServer:
         self.asynchronous = False
         # algorithm-dependent parameters
         self.algo_para = {}
-        self.current_round = -1
+        self.current_round = 0
         # all options
         self.option = option
 
@@ -289,9 +289,10 @@ class BasicServer:
         if len(self.algo_para)==0: return
         # initialize algorithm-dependent hyperparameters from the input options
         if self.option['algo_para'] is not None:
-            assert len(self.algo_para) == len(self.option['algo_para'])
+            # assert len(self.algo_para) == len(self.option['algo_para'])
             keys = list(self.algo_para.keys())
             for i,pv in enumerate(self.option['algo_para']):
+                if i==len(self.option['algo_para']): break
                 para_name = keys[i]
                 self.algo_para[para_name] = type(self.algo_para[para_name])(pv)
         # register the algorithm-dependent hyperparameters as the attributes of the server and all the clients
