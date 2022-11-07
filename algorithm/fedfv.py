@@ -22,7 +22,7 @@ class Server(BasicServer):
         # update GH
         for cid, gi in zip(self.selected_clients, grads):
             self.client_grads_history[cid] = gi
-            self.client_last_sample_round[cid] = t
+            self.client_last_sample_round[cid] = self.current_round
 
         # project grads
         order_grads = copy.deepcopy(grads)
@@ -52,10 +52,10 @@ class Server(BasicServer):
         # aggregate projected grads
         gt = fmodule._model_average(order_grads)
         # mitigate external conflicts
-        if t >= self.tau:
+        if self.current_round >= self.tau:
             for k in range(self.tau-1, -1, -1):
                 # calculate outside conflicts
-                gcs = [self.client_grads_history[cid] for cid in range(self.num_clients) if self.client_last_sample_round[cid] == t - k and gt.dot(self.client_grads_history[cid]) < 0]
+                gcs = [self.client_grads_history[cid] for cid in range(self.num_clients) if self.client_last_sample_round[cid] == self.current_round - k and gt.dot(self.client_grads_history[cid]) < 0]
                 if gcs:
                     g_con = fmodule._model_sum(gcs)
                     dot = gt.dot(g_con)
