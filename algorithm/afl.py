@@ -34,7 +34,7 @@ class Server(BasicServer):
                                 zip(self.dynamic_lambdas, train_losses)]
         self.dynamic_lambdas = self.project(self.dynamic_lambdas)
         # record resulting model
-        self.result_model = (t * self.result_model + self.model) / (t + 1)
+        self.result_model = (self.current_round * self.result_model + self.model) / (self.current_round + 1)
         return
 
     def project(self, p):
