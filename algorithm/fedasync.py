@@ -10,7 +10,6 @@ class Server(BasicServer):
         self.init_algo_para({'period':1, 'alpha': 0.6, 'mu':0.005, 'flag':'constant', 'hinge_a':10, 'hinge_b':6, 'poly_a':0.5})
         self.asynchronous = True
         self.tolerance_for_latency = 1000
-        self.current_round = 1
         self.client_taus = [0 for _ in self.clients]
         self.updated = True
 
