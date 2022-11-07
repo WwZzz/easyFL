@@ -12,7 +12,7 @@ class Server(BasicServer):
         self.tolerance_for_latency = 1000
         self.current_round = 1
         self.client_taus = [0 for _ in self.clients]
-        self.updated = False
+        self.updated = True
 
     def run(self):
         flw.logger.time_start('Total Time Cost')
