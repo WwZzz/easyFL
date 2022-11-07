@@ -12,13 +12,14 @@ class Server(BasicServer):
         self.tolerance_for_latency = 1000
         self.current_round = 1
         self.client_taus = [0 for _ in self.clients]
+        self.updated = False
 
     def run(self):
-        old_round = self.current_round - 1
         flw.logger.time_start('Total Time Cost')
-        while True:
+        while self.current_round <= self.num_rounds:
             # using logger to evaluate the model
-            if self.current_round > old_round:
+            if self.updated:
+                self.updated = False
                 flw.logger.info("--------------Round {}--------------".format(self.current_round))
                 # check log interval
                 if flw.logger.check_if_log(self.current_round, self.eval_interval):
@@ -27,12 +28,9 @@ class Server(BasicServer):
                     flw.logger.time_end('Eval Time Cost')
                 # check if early stopping
                 if flw.logger.early_stop(): break
-            old_round = self.current_round
             self.iterate()
             # decay learning rate
             self.global_lr_scheduler(self.current_round)
-            if self.current_round > self.num_rounds:
-                break
         flw.logger.info("--------------Final Evaluation--------------")
         flw.logger.time_start('Eval Time Cost')
         flw.logger.log_once()
@@ -62,7 +60,9 @@ class Server(BasicServer):
             alpha_ts = [self.alpha * self.s(self.current_round - tau) for tau in taus]
             currently_updated_models = [(1-alpha_t)*self.model+alpha_t*model_k for alpha_t, model_k in zip(alpha_ts, received_models) ]
             self.model = self.aggregate(currently_updated_models)
+            # update aggregation round and the flag `updated`
             self.current_round += 1
+            self.updated = True
         return
 
     def s(self, tau):

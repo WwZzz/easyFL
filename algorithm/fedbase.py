@@ -44,7 +44,7 @@ class BasicServer:
         self.asynchronous = False
         # algorithm-dependent parameters
         self.algo_para = {}
-        self.current_round = 0
+        self.current_round = 1
         # all options
         self.option = option
 
