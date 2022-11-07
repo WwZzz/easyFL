@@ -1,3 +1,6 @@
+"""
+This is the official implementation of 'Federated Learning with Fair Averaging' (http://arxiv.org/abs/2104.14937)
+"""
 from utils import fmodule
 from .fedbase import BasicServer, BasicClient
 import copy

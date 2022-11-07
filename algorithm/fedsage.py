@@ -1,3 +1,7 @@
+"""
+This is a non-official implementation of 'Subgraph Federated Learning with
+Missing Neighbor Generation' (http://arxiv.org/abs/2106.13430). The FedSAGE+ will be added soon.
+"""
 from .fedbase import BasicClient,BasicServer
 import torch
 from utils import fmodule

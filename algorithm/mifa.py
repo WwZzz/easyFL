@@ -1,3 +1,7 @@
+"""
+This is a non-official implementation of 'Fast Federated Learning in the
+Presence of Arbitrary Device Unavailability' (http://arxiv.org/abs/2106.04159)
+"""
 from .fedbase import BasicServer, BasicClient
 from .fedavg import Client
 from utils import fmodule

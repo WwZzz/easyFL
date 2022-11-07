@@ -1,3 +1,7 @@
+"""
+This is a non-official implementation of 'Federated Learning Based on Dynamic Regularization'
+(http://arxiv.org/abs/2111.04263). The official implementation is at 'https://github.com/alpemreacar/FedDyn'
+"""
 from .fedbase import BasicServer, BasicClient
 import copy
 from utils import fmodule

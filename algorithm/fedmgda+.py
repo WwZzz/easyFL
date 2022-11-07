@@ -1,3 +1,6 @@
+"""
+This is a non-official implementation of 'FedMGDA+: Federated Learning meets Multi-objective Optimization' (http://arxiv.org/abs/2006.11489)
+"""
 from utils import fmodule
 from .fedbase import BasicServer
 from .fedavg import Client
