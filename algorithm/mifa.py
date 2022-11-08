@@ -31,8 +31,8 @@ class Server(BasicServer):
         # training
         models = self.communicate(self.selected_clients)['model']
         # update G
-        for k in range(len(self.selected_clients)):
-            self.update_table[self.selected_clients[k]] = 1.0 / self.lr * (self.model - models[k])
+        for k in range(len(self.received_clients)):
+            self.update_table[self.received_clients[k]] = 1.0 / self.lr * (self.model - models[k])
         # check if the update_table being initialized
         if not self.initflag:
             if not self.check_if_init():

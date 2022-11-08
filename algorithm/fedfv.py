@@ -23,7 +23,7 @@ class Server(BasicServer):
         ws, losses = res['model'], res['loss']
         grads = [self.model - w for w in ws]
         # update GH
-        for cid, gi in zip(self.selected_clients, grads):
+        for cid, gi in zip(self.received_clients, grads):
             self.client_grads_history[cid] = gi
             self.client_last_sample_round[cid] = self.current_round
 

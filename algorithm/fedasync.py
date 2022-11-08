@@ -8,7 +8,6 @@ class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
         self.init_algo_para({'period':1, 'alpha': 0.6, 'mu':0.005, 'flag':'constant', 'hinge_a':10, 'hinge_b':6, 'poly_a':0.5})
-        self.asynchronous = True
         self.tolerance_for_latency = 1000
         self.client_taus = [0 for _ in self.clients]
         self.updated = True
@@ -16,7 +15,7 @@ class Server(BasicServer):
     def run(self):
         flw.logger.time_start('Total Time Cost')
         while self.current_round <= self.num_rounds:
-            # using logger to evaluate the model
+            # using logger to evaluate the model if the model is updated
             if self.updated:
                 self.updated = False
                 flw.logger.info("--------------Round {}--------------".format(self.current_round))
@@ -27,9 +26,11 @@ class Server(BasicServer):
                     flw.logger.time_end('Eval Time Cost')
                 # check if early stopping
                 if flw.logger.early_stop(): break
+            # iterate
             self.iterate()
             # decay learning rate
             self.global_lr_scheduler(self.current_round)
+        # final evaluation
         flw.logger.info("--------------Final Evaluation--------------")
         flw.logger.time_start('Eval Time Cost')
         flw.logger.log_once()
@@ -43,13 +44,13 @@ class Server(BasicServer):
     @ss.time_step
     def iterate(self):
         # Scheduler periodically triggers the idle clients to locally train the model
-        self.selected_clients = self.sample() if (ss.clock.current_time%self.period)==0 else []
+        self.selected_clients = self.sample() if (ss.clock.current_time%self.period)==0 or ss.clock.current_time==1 else []
         if len(self.selected_clients)>0:
             flw.logger.info('Select clients {} at time {}'.format(self.selected_clients, ss.clock.current_time))
         # Record the timestamp of the selected clients
         for cid in self.selected_clients: self.client_taus[cid] = self.current_round
         # Check the currently received models
-        res = self.communicate(self.selected_clients)
+        res = self.communicate(self.selected_clients, asynchronous=True)
         received_models = res['model']
         received_client_ids = res['__cid']
         if len(received_models) > 0:

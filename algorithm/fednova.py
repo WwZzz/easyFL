@@ -12,7 +12,7 @@ class Server(BasicServer):
         res = self.communicate(self.selected_clients)
         models, taus = res['model'], res['tau']
         ds = [(model-self.model)/tauk for model, tauk in zip(models, taus)]
-        self.model = self.aggregate(ds, taus, p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients])
+        self.model = self.aggregate(ds, taus, p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.received_clients])
         return
 
     def aggregate(self, ds, taus, p=[]):
@@ -38,7 +38,7 @@ class Server(BasicServer):
 
 class Client(BasicClient):
     def pack(self, model):
-        tau = self._effective_num_steps if hasattr(self, '_effective_num_steps') else self.num_steps
+        tau = self._working_amount if hasattr(self, '_working_amount') else self.num_steps
         return {
             "model" : model,
             "tau": tau,

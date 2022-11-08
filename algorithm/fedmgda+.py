@@ -23,7 +23,7 @@ class Server(BasicServer):
         # clip grads
         for gi in grads: gi.normalize()
         # calculate λ0
-        nks = [self.local_data_vols[cid] for cid in self.selected_clients]
+        nks = [self.local_data_vols[cid] for cid in self.received_clients]
         nt = sum(nks)
         lambda0 = [1.0*nk/nt for nk in nks]
         # optimize lambdas to minimize ||λ'g||² s.t. λ∈Δ, ||λ - λ0||∞ <= ε

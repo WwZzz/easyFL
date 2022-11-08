@@ -97,7 +97,7 @@ class BasicServer:
 
     @ss.with_dropout
     @ss.with_clock
-    def communicate(self, selected_clients):
+    def communicate(self, selected_clients, asynchronous=False):
         """
         The whole simulating communication procedure with the selected clients.
         This part supports for simulating the client dropping out.
@@ -126,6 +126,7 @@ class BasicServer:
             packages_received_from_clients = list(map(lambda x: x.get(), packages_received_from_clients))
         for i,cid in enumerate(communicate_clients): client_package_buffer[cid] = packages_received_from_clients[i]
         packages_received_from_clients = [client_package_buffer[cid] for cid in selected_clients if client_package_buffer[cid]]
+        self.received_clients = selected_clients
         return self.unpack(packages_received_from_clients)
 
     @ss.with_latency
@@ -210,12 +211,11 @@ class BasicServer:
             selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=p))
         return selected_clients
 
-    def aggregate(self, models: list):
+    def aggregate(self, models: list, *args, **kwargs):
         """
         Aggregate the locally improved models.
         :param
             models: a list of local models
-            p: a list of weights for aggregating
         :return
             the averaged result
         pk = nk/n where n=self.data_vol
@@ -228,18 +228,18 @@ class BasicServer:
         """
         if len(models) == 0: return self.model
         if self.aggregation_option == 'weighted_scale':
-            p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients]
+            p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.received_clients]
             K = len(models)
             N = self.num_clients
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)]) * N / K
         elif self.aggregation_option == 'uniform':
             return fmodule._model_average(models)
         elif self.aggregation_option == 'weighted_com':
-            p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients]
+            p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.received_clients]
             w = fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
             return (1.0-sum(p))*self.model + w
         else:
-            p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.selected_clients]
+            p = [1.0 * self.local_data_vols[cid] / self.total_data_vol for cid in self.received_clients]
             sump = sum(p)
             p = [pk/sump for pk in p]
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
