@@ -198,7 +198,7 @@ class BasicStateUpdater:
             for cid in offline_clients:
                 if (self.random_module.rand() <= self.variables[cid]['prob_available']): offline_clients[cid] = 'idle'
             for cid in self.idle_clients:
-                if  (self.random_module.rand() > self.variables[cid]['prob_unavailable']): idle_clients[cid] = 'offline'
+                if  (self.random_module.rand() <= self.variables[cid]['prob_unavailable']): idle_clients[cid] = 'offline'
             new_idle_clients = [cid for cid in offline_clients if offline_clients[cid] == 'idle']
             new_offline_clients = [cid for cid in idle_clients if idle_clients[cid] == 'offline']
             self.set_client_state(new_idle_clients, 'idle')
