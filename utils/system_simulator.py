@@ -193,24 +193,42 @@ class BasicStateUpdater:
         # update states for offline & idle clients
         if len(self.idle_clients)==0 or not self.roundwise_fixed_availability or self.server.current_round > self.availability_latest_round:
             self.availability_latest_round = self.server.current_round
-            for cid in self.offline_clients:
-                self.clients[cid].available = (self.random_module.rand() <= self.variables[cid]['prob_available'])
-                if self.clients[cid].is_available(): self.client_states[cid] = 'idle'
+            offline_clients = {cid: 'offline' for cid in self.offline_clients}
+            idle_clients = {cid:'idle' for cid in self.idle_clients}
+            for cid in offline_clients:
+                if (self.random_module.rand() <= self.variables[cid]['prob_available']): offline_clients[cid] = 'idle'
             for cid in self.idle_clients:
-                self.clients[cid].available = (self.random_module.rand() > self.variables[cid]['prob_unavailable'])
-                if not self.clients[cid].is_available(): self.client_states[cid] = 'offline'
+                if  (self.random_module.rand() > self.variables[cid]['prob_unavailable']): idle_clients[cid] = 'offline'
+            new_idle_clients = [cid for cid in offline_clients if offline_clients[cid] == 'idle']
+            new_offline_clients = [cid for cid in idle_clients if idle_clients[cid] == 'offline']
+            self.set_client_state(new_idle_clients, 'idle')
+            self.set_client_state(new_offline_clients, 'offline')
+            for cid in new_idle_clients: self.clients[cid].available = True
+            for cid in new_offline_clients: self.clients[cid].available = False
         # update states for dropped clients
         for cid in self.dropped_clients:
             self.state_counter[cid]['dropped_counter'] -= 1
-            if self.state_counter[cid]['dropped_counter'] <= 0:
+            if self.state_counter[cid]['dropped_counter'] < 0:
                 self.state_counter[cid]['dropped_counter'] = 0
                 self.client_states[cid] = 'offline'
+                if (self.random_module.rand() < self.variables[cid]['prob_unavailable']):
+                    self.set_client_state([cid], 'offline')
+                    self.clients[cid].available = False
+                else:
+                    self.set_client_state([cid], 'idle')
+                    self.clients[cid].available = True
+
         # update states for working clients
         for cid in self.working_clients:
             self.state_counter[cid]['latency_counter'] -= 1
-            if self.state_counter[cid]['latency_counter'] <=0:
+            if self.state_counter[cid]['latency_counter'] < 0:
                 self.state_counter[cid]['latency_counter'] = 0
-                self.client_states[cid] = 'idle'
+                if (self.random_module.rand() < self.variables[cid]['prob_available']):
+                    self.set_client_state([cid], 'idle')
+                    self.clients[cid].available = True
+                else:
+                    self.set_client_state([cid], 'offline')
+                    self.clients[cid].available = False
 
 #================================================Decorators==========================================
 # Time Counter for any function which forces the `clock` to
