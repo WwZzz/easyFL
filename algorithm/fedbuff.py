@@ -13,6 +13,7 @@ class Server(AsyncServer):
         self.updated = True
         self.accumulate_delta = None
 
+
     @ss.time_step
     def iterate(self):
         # Scheduler periodically triggers the idle clients to locally train the model
@@ -47,6 +48,8 @@ class Server(AsyncServer):
             self.current_round += 1
             self.updated = True
         return
+
+
 
 class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
