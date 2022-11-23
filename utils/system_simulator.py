@@ -273,9 +273,11 @@ def with_dropout(communicate):
             probs_drop = state_updater.get_variable(selected_clients, 'prob_drop')
             self._dropped_selected_clients = [cid for cid,prob in zip(selected_clients, probs_drop) if state_updater.random_module.rand() <= prob]
             state_updater.set_client_state(self._dropped_selected_clients, 'dropped')
-            self.received_clients = [cid for cid in selected_clients if cid not in self._dropped_selected_clients]
+            self.not_drop_clients = [cid for cid in selected_clients if cid not in self._dropped_selected_clients]
             # self.selected_clients = [cid for cid in selected_clients if cid not in self._dropped_selected_clients]
-        return communicate(self, self.received_clients, asynchronous)
+            return communicate(self, self.not_drop_clients, asynchronous)
+        else:
+            return communicate(self, selected_clients, asynchronous)
     return communicate_with_dropout
 
 # communicating phase: broadcast
