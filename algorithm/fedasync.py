@@ -64,12 +64,11 @@ class Server(BasicServer):
             self.current_round += 1
             self.updated = True
         return
-
-    def s(self, tau):
-        t = ss.clock.current_time
+    
+    def s(self, delta_tau):
         if self.flag == 'constant':
             return 1
         elif self.flag == 'hinge':
-            return 1 if t-tau <= self.b else 1.0/(self.a * (t-tau-self.b))
+            return 1 if delta_tau <= self.b else 1.0 / (self.a * (delta_tau - self.b))
         elif self.flag == 'poly':
-            return (t-tau+1)**(-self.a)
+            return (delta_tau + 1) ** (-self.a)
