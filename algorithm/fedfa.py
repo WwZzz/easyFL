@@ -9,9 +9,10 @@ class Server(BasicServer):
     def __init__(self, option, model, clients, test_data = None):
         super(Server, self).__init__(option, model, clients, test_data)
         self.init_algo_para({'beta': 0.5, 'gamma': 0.9})
-        self.m = fmodule._modeldict_zeroslike(self.model.state_dict())
+        self.m = self.model.zeros_like()
         self.alpha = 1.0 - self.beta
         self.eta = option['learning_rate']
+        for c in self.clients: c.momentum = self.gamma
 
     def iterate(self):
         # sample clients
@@ -34,7 +35,7 @@ class Server(BasicServer):
         wnew = self.aggregate(models, p)
         dw = wnew -self.model
         # calculate m = γm+(1-γ)dw
-        self.m = self.gamma*self.m, self.gamma + (1 - self.gamma)*dw
+        self.m = self.gamma*self.m + (1 - self.gamma)*dw
         self.model = wnew - self.m * self.eta
         return
 
@@ -46,7 +47,6 @@ class Client(BasicClient):
     def __init__(self, option, name='', train_data=None, valid_data=None):
         super(Client, self).__init__(option, name, train_data, valid_data)
         self.frequency = 0
-        self.momentum = option['gamma']
 
     def reply(self, svr_pkg):
         model = self.unpack(svr_pkg)
