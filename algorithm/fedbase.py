@@ -55,6 +55,7 @@ class BasicServer:
         flw.logger.time_start('Total Time Cost')
         for round in range(1, self.num_rounds+1):
             self.current_round = round
+            ss.clock.step()
             # using logger to evaluate the model
             flw.logger.info("--------------Round {}--------------".format(round))
             flw.logger.time_start('Time Cost')
@@ -79,7 +80,6 @@ class BasicServer:
         flw.logger.save_output_as_json()
         return
 
-    @ss.time_step
     def iterate(self):
         """
         The standard iteration of each federated round that contains three

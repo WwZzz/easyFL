@@ -26,6 +26,7 @@ class Server(BasicServer):
                     flw.logger.time_end('Eval Time Cost')
                 # check if early stopping
                 if flw.logger.early_stop(): break
+            ss.clock.step()
             # iterate
             self.iterate()
             # decay learning rate
@@ -41,7 +42,6 @@ class Server(BasicServer):
         flw.logger.save_output_as_json()
         return
 
-    @ss.time_step
     def iterate(self):
         # Scheduler periodically triggers the idle clients to locally train the model
         self.selected_clients = self.sample() if (ss.clock.current_time%self.period)==0 or ss.clock.current_time==1 else []

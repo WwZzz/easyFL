@@ -19,7 +19,6 @@ class Server(AsyncServer):
         self.agg_cids = []
         self.model_history = {}
 
-    @ss.time_step
     def iterate(self):
         if self.current_round not in self.model_history.keys():
             device = torch.device('cpu')
