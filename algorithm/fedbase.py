@@ -197,17 +197,19 @@ class BasicServer:
         :return
             a list of the ids of the selected clients
         """
-        all_clients = [cid for cid in range(self.num_clients)]
+        all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in range(self.num_clients)]
         # full sampling with unlimited communication resources of the server
-        if self.sample_option == 'full':
+        if 'full' in self.sample_option:
             return all_clients
         # sample clients
-        elif self.sample_option == 'uniform':
+        elif 'uniform' in self.sample_option:
             # original sample proposed by fedavg
-            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=False))
-        elif self.sample_option =='md':
+            selected_clients = list(np.random.choice(all_clients, min(self.clients_per_round, len(all_clients)), replace=False))
+        elif 'md' in self.sample_option:
             # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local data sizes
-            p = np.array(self.local_data_vols)/self.total_data_vol
+            local_data_vols = [(self.clients[cid].train_data) for cid in all_clients]
+            total_data_vol = sum(local_data_vols)
+            p = np.array(local_data_vols) / total_data_vol
             selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=p))
         return selected_clients
 

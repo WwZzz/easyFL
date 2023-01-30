@@ -12,7 +12,7 @@ import collections
 import utils.system_simulator as ss
 import logging
 
-sample_list=['uniform', 'md', 'full']
+sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad']
 logger = None
