@@ -92,7 +92,7 @@ class DirichletPartitioner(BasicPartitioner):
         return name
 
     def __call__(self, data):
-        attrs = [d[self.flag_index] for d in data]
+        attrs = [d[self.flag_index][0] for d in data]
         num_attrs = len(set(attrs))
         samples_per_client = self.data_imbalance_generator(self.num_clients, len(data), self.imbalance)
         # count the label distribution

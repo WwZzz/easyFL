@@ -1,8 +1,8 @@
-import torchvision
+import paddle.vision as pv
 from benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 
-builtin_class = torchvision.datasets.FashionMNIST
-transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0.1307,), (0.3081,))])
+builtin_class = pv.datasets.FashionMNIST
+transforms = pv.transforms.Compose([pv.transforms.ToTensor(), pv.transforms.Normalize((0.1307,), (0.3081,))])
 TaskCalculator = GeneralCalculator
 
 class TaskGenerator(BuiltinClassGenerator):

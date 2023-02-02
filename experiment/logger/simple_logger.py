@@ -11,7 +11,6 @@ class Logger(bl.Logger):
     """This logger only records metrics on validation dataset"""
     def log_once(self, *args, **kwargs):
         self.info('Current_time:{}'.format(self.clock.current_time))
-        self.output['time'].append(self.clock.current_time)
         valid_metrics = self.coordinator.global_test('valid')
         local_data_vols = [c.datavol for c in self.participants]
         total_data_vol = sum(local_data_vols)

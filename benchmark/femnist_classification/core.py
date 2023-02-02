@@ -1,18 +1,14 @@
-import math
 import shutil
 import urllib.request
-import random
 import zipfile
 
 import ujson
 import numpy as np
-from sklearn.model_selection import train_test_split
-from torchvision.datasets import MNIST, utils
+import paddle
+from paddle.io import Dataset
 from PIL import Image
 import os.path
-import torch
-import torchvision
-from tqdm import tqdm
+import paddle.vision as pv
 
 from benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 
@@ -29,7 +25,7 @@ def extract_from_zip(src_path, target_path):
     f.close()
     return [os.path.join(target_path, tar) for tar in targets]
 
-class FEMNIST(MNIST):
+class FEMNIST(Dataset):
     """
     This dataset is derived from the Leaf repository
     (https://github.com/TalwalkarLab/leaf) pre-processing of the Extended MNIST
@@ -37,31 +33,39 @@ class FEMNIST(MNIST):
     "LEAF: A Benchmark for Federated Settings" https://arxiv.org/abs/1812.01097.
     """
 
-    def __init__(self, root, train=True, transform=None, target_transform=None,
-                 download=False):
-        super(MNIST, self).__init__(root, transform=transform,
-                                    target_transform=target_transform)
-        self.train = train
-        if self.train:
-            data_file = self.training_file
-        else:
-            data_file = self.test_file
-        if not os.path.exists(os.path.join(self.processed_folder, data_file)):
+    def __init__(self, image_path, label_path, download=False, mode='train', transform=None):
+        super(FEMNIST, self).__init__()
+        self.image_path = image_path
+        self.label_path = label_path
+        self.download = download
+        self.transform = transform
+        assert mode.lower() in ['train', 'test'], "mode should be 'train' or 'test', but got {}".format(mode)
+        self.mode = mode.lower()
+        if not os.path.exists(os.path.join(self.processed_folder, '{}.pt'.format(self.mode))):
             self.download_and_process()
-        self.data, self.targets, self.user_index = torch.load(os.path.join(self.processed_folder, data_file))
+        self.data, self.targets, self.user_index = paddle.load(os.path.join(self.processed_folder, '{}.pt'.format(self.mode)))
 
     def __getitem__(self, index):
-        img, target = self.data[index], int(self.targets[index])
+        img, target = self.data[index], self.targets[index]
         img = Image.fromarray(img.numpy(), mode='F')
         if self.transform is not None:
             img = self.transform(img)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-        return img, target
+        return img, target.astype('int64')
+
+    def __len__(self):
+        return len(self.data)
+
+    @property
+    def raw_folder(self) -> str:
+        return os.path.join(self.image_path, self.__class__.__name__, "raw")
+
+    @property
+    def processed_folder(self) -> str:
+        return os.path.join(self.image_path, self.__class__.__name__, "processed")
 
     def download_and_process(self):
         """
-        Download the raw data and process it and save it in Torch format
+        Download the raw data and process it and save it in paddle format
         Modified from https://github.com/alibaba/FederatedScope/blob/master/federatedscope/cv/dataset/leaf_cv.py
         """
         if not os.path.exists(os.path.join(self.raw_folder, 'all_data.json')):
@@ -104,26 +108,26 @@ class FEMNIST(MNIST):
             Ys.extend(targets)
             sample_ids.extend([idx] * len(data))
             idx += 1
-        Xs = torch.tensor(np.stack(Xs))
-        Ys = torch.LongTensor(np.stack(Ys))
-        sample_ids = torch.tensor(np.stack(sample_ids))
+        Xs = paddle.to_tensor(np.stack(Xs))
+        Ys = paddle.to_tensor(np.stack(Ys), dtype='int64')
+        sample_ids = paddle.to_tensor(np.stack(sample_ids))
         num_samples = sample_ids.shape[0]
         s1 = int(num_samples * 0.9)
         s2 = num_samples - s1
-        train_ids, test_ids = torch.utils.data.random_split(sample_ids, [s1, s2])
+        train_ids, test_ids = paddle.io.random_split(sample_ids, [s1, s2])
         train_indices = train_ids.indices
         test_indices = test_ids.indices
         train_data, train_targets, train_sample_id = Xs[train_indices], Ys[train_indices], sample_ids[train_indices]
         test_data, test_targets, test_sample_id = Xs[test_indices], Ys[test_indices], sample_ids[test_indices]
-        torch.save((train_data, train_targets, train_sample_id), os.path.join(self.processed_folder, "training.pt"))
-        torch.save((test_data, test_targets, test_sample_id), os.path.join(self.processed_folder, "test.pt"))
+        paddle.save((train_data, train_targets, train_sample_id), os.path.join(self.processed_folder, "train.pt"))
+        paddle.save((test_data, test_targets, test_sample_id), os.path.join(self.processed_folder, "test.pt"))
 
 TaskCalculator = GeneralCalculator
 
 class TaskGenerator(BuiltinClassGenerator):
     def __init__(self):
-        super(TaskGenerator, self).__init__('femnist_classification', './benchmark/RAW_DATA/MNIST', FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
+        super(TaskGenerator, self).__init__('femnist_classification', './benchmark/RAW_DATA/MNIST', FEMNIST, pv.transforms.Compose([pv.transforms.ToTensor(),]), is_built=False)
 
 class TaskPipe(BuiltinClassPipe):
     def __init__(self, task_name):
-        super(TaskPipe, self).__init__(task_name, FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
+        super(TaskPipe, self).__init__(task_name, FEMNIST, pv.transforms.Compose([pv.transforms.ToTensor(),]), is_built=False)

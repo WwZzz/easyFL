@@ -1,12 +1,12 @@
-from torch import nn
-import torch.nn.functional as F
+from paddle import nn
+import paddle.nn.functional as F
 from utils.fmodule import FModule
 
 class Model(FModule):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, padding=2)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5, padding=2)
+        self.conv1 = nn.Conv2D(in_channels=1, out_channels=32, kernel_size=5, padding=2)
+        self.conv2 = nn.Conv2D(in_channels=32, out_channels=64, kernel_size=5, padding=2)
         self.fc1 = nn.Linear(3136, 512)
         self.fc2 = nn.Linear(512, 62)
 

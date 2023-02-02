@@ -16,6 +16,8 @@ class Model(FModule):
         return x
 
     def get_embedding(self, x):
+        x = x.reshape((x.shape[0], 28, 28))
+        x = x.unsqueeze(1)
         x = F.max_pool2d(F.relu(self.conv1(x)), 2)
         x = F.max_pool2d(F.relu(self.conv2(x)), 2)
         x = x.flatten(1, 3)

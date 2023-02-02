@@ -1,7 +1,7 @@
 import numpy as np
 import argparse
 import random
-import torch
+import paddle
 import os.path
 import importlib
 import os
@@ -19,10 +19,10 @@ def setup_seed(seed):
     random.seed(1+seed)
     np.random.seed(21+seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
-    torch.manual_seed(12+seed)
-    torch.cuda.manual_seed_all(123+seed)
-    torch.backends.cudnn.enabled = False
-    torch.backends.cudnn.deterministic = True
+    paddle.seed(12+seed)
+    # torch.cuda.manual_seed_all(123+seed)
+    # torch.backends.cudnn.enabled = False
+    # torch.backends.cudnn.deterministic = True
 
 def read_option():
     parser = argparse.ArgumentParser()
@@ -104,7 +104,7 @@ def init_taskcore(option):
     return pipe, class_calculator
 
 def init_device(option):
-    dev_list = [torch.device('cpu')] if option['gpu'] is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
+    dev_list = [paddle.device.set_device('cpu')] if option['gpu'] is None else [paddle.device.set_device('gpu:{}'.format(gpu_id)) for gpu_id in option['gpu']]
     dev_manager = utils.fmodule.get_device()
     cfg.logger.info('Initializing devices: '+','.join([str(dev) for dev in dev_list])+' will be used for this running.')
     return dev_list, dev_manager

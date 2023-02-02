@@ -139,7 +139,7 @@ class StateUpdater(BasicStateUpdater):
             flag = self.option['responsiveness'].find('LCLN-')
             tmp  = self.option['responsiveness']
             if not tmp.endswith('_'): tmp = tmp + '_'
-            std = float(tmp[flag+5: tmp.find('_', flag)])
+            std = tmp[flag+5, tmp.find('_', flag)]
             u_mean = us.mean()
             mu = np.log(u_mean) - std**2/2.0
             self.client_us = np.random.lognormal(mu, std, self.num_clients).tolist()
@@ -242,10 +242,7 @@ class StateUpdater(BasicStateUpdater):
         t = cfg.clock.current_time
         t = t%self.availability_table.index[-1]
         aid = t-t%15
-        try:
-            available_customers = self.availability_table[aid]
-        except:
-            available_customers = []
+        available_customers = self.availability_table[aid]
         pa, pua = [], []
         for cid in self.all_clients:
             pai = 1.0 if self.customer_map[cid] in available_customers else 0.0

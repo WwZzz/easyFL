@@ -5,8 +5,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import torch
-from torch.utils.data import Dataset
+import paddle
 import ujson
 
 TASKROOT_PATH = './fedtask'
@@ -156,7 +155,7 @@ class BasicTaskPipe(AbstractTaskPipe):
         if p == 0: return dataset, None
         s1 = int(len(dataset) * p)
         s2 = len(dataset) - s1
-        return torch.utils.data.random_split(dataset, [s2, s1])
+        return paddle.io.random_split(dataset, [s2, s1])
 
     def task_exists(self):
         """Check whether the task already exists."""
@@ -184,7 +183,7 @@ class BasicTaskPipe(AbstractTaskPipe):
 
 
 class BasicTaskCalculator(AbstractTaskCalculator):
-    def __init__(self, device, optimizer_name='sgd'):
+    def __init__(self, device, optimizer_name='SGD'):
         self.device = device
         self.optimizer_name = optimizer_name
         self.criterion = None
@@ -203,12 +202,10 @@ class BasicTaskCalculator(AbstractTaskCalculator):
         return NotImplementedError
 
     def get_optimizer(self, model=None, lr=0.1, weight_decay=0, momentum=0):
-        OPTIM = getattr(importlib.import_module('torch.optim'), self.optimizer_name)
-        filter_fn = filter(lambda p: p.requires_grad, model.parameters())
-        if self.optimizer_name.lower() == 'sgd':
-            return OPTIM(filter_fn, lr=lr, momentum=momentum, weight_decay=weight_decay)
-        elif self.optimizer_name.lower() in ['adam', 'rmsprop', 'adagrad']:
-            return OPTIM(filter_fn, lr=lr, weight_decay=weight_decay)
+        OPTIM = getattr(importlib.import_module('paddle.optimizer'), self.optimizer_name)
+        filter_fn = filter(lambda p: p.trainable, model.parameters())
+        if self.optimizer_name.lower() in ['sgd', 'adam', 'rmsprop', 'adagrad']:
+            return OPTIM(parameters=filter_fn, learning_rate=lr, weight_decay=float(weight_decay))
         else:
             raise RuntimeError("Invalid Optimizer.")
 
@@ -243,7 +240,7 @@ class XYHorizontalTaskPipe(HorizontalTaskPipe):
     and the attribute `local_datas` to be a list of the above dict that means the local data owned by clients:
         [{'x':[...], 'y':[...]}, ..., ]
     """
-    TaskDataset = torch.utils.data.TensorDataset
+    TaskDataset = paddle.io.TensorDataset
 
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
@@ -254,9 +251,9 @@ class XYHorizontalTaskPipe(HorizontalTaskPipe):
 
     def load_data(self, running_time_option) -> dict:
         test_data = self.feddata['server']['data']
-        test_data = self.TaskDataset(torch.tensor(test_data['x']), torch.tensor(test_data['y']))
-        local_datas = [self.TaskDataset(torch.tensor(self.feddata[cname]['data']['x']),
-                                        torch.tensor(self.feddata[cname]['data']['y'])) for cname in
+        test_data = self.TaskDataset([paddle.to_tensor(test_data['x']), paddle.to_tensor(test_data['y'])])
+        local_datas = [self.TaskDataset([paddle.to_tensor(self.feddata[cname]['data']['x']),
+                                        paddle.to_tensor(self.feddata[cname]['data']['y'])]) for cname in
                        self.feddata['client_names']]
         server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
         task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}

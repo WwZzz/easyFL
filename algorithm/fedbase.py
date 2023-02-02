@@ -6,9 +6,9 @@ import os
 import system_simulator.base as ss
 import math
 import collections
-import torch.multiprocessing as mp
+import paddle
+import multiprocessing as mp
 import config as cfg
-import torch
 
 class BasicServer:
     def __init__(self, option={}):
@@ -16,9 +16,9 @@ class BasicServer:
         self.model = cfg.Model()
         if not option['server_with_cpu']:
             self.model = self.model.to(cfg.dev_list[0])
-        self.device = self.model.get_device()
+        self.device = paddle.device.get_device()
         if option['pretrain'] != '':
-            self.model.load_state_dict(torch.load(option['pretrain'])['model'])
+            self.model.load_state_dict(paddle.load(option['pretrain'])['model'])
             cfg.logger.info('The pretrained model parameters in {} will be loaded'.format(option['pretrain']))
         # basic configuration
         self.task = option['task']
@@ -121,7 +121,7 @@ class BasicServer:
                 self.sending_package_buffer[cid] = self.pack(cid)
         except Exception as e:
             if str(self.device) != 'cpu':
-                self.model.to(torch.device('cpu'))
+                self.model.to(paddle.set_device('cpu'))
                 for cid in communicate_clients:
                     self.sending_package_buffer[cid] = self.pack(cid)
                 self.model.to(self.device)
@@ -133,7 +133,7 @@ class BasicServer:
                 response_from_client_id = self.communicate_with(client_id)
                 packages_received_from_clients.append(response_from_client_id)
         else:
-            # computing in parallel with torch.multiprocessing
+            # computing in parallel with multiprocessing
             pool = mp.Pool(self.num_threads)
             for client_id in communicate_clients:
                 self.clients[client_id].update_device(next(cfg.dev_manager))
@@ -395,11 +395,11 @@ class BasicClient:
         for iter in range(self.num_steps):
             # get a batch of data
             batch_data = self.get_batch_data()
-            model.zero_grad()
             # calculate the loss of the model on batched dataset through task-specified calculator
             loss = self.calculator.compute_loss(model, batch_data)['loss']
             loss.backward()
             optimizer.step()
+            optimizer.clear_grad()
         return
 
     @ fmodule.with_multi_gpus

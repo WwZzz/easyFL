@@ -1,4 +1,4 @@
-from torch import nn
+from paddle import nn
 from utils.fmodule import FModule
 
 class Model(FModule):
@@ -15,7 +15,7 @@ class Model(FModule):
         return x
 
     def get_embedding(self, x):
-        x = x.view(-1, x.shape[1] * x.shape[-2] * x.shape[-1])
+        x = x.flatten(1, 3)
         x = self.layer_input(x)
         x = self.relu(x)
         x = self.fc1(x)

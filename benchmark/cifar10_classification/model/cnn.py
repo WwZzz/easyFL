@@ -1,16 +1,16 @@
-from torch import nn
+from paddle import nn
 from utils.fmodule import FModule
 
 class Model(FModule):
     def __init__(self):
         super(Model, self).__init__()
         self.embedder = nn.Sequential(
-            nn.Conv2d(3, 64, 5),
+            nn.Conv2D(3, 64, 5),
             nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(64, 64, 5),
+            nn.MaxPool2D(2),
+            nn.Conv2D(64, 64, 5),
             nn.ReLU(),
-            nn.MaxPool2d(2),
+            nn.MaxPool2D(2),
             nn.Flatten(1),
             nn.Linear(1600, 384),
             nn.ReLU(),

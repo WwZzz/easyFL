@@ -1,8 +1,8 @@
-import torchvision
+import paddle.vision as pv
 from benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 
-builtin_class = torchvision.datasets.CIFAR100
-transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
+builtin_class = pv.datasets.Cifar100
+transforms = pv.transforms.Compose([pv.transforms.ToTensor(), pv.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 TaskCalculator = GeneralCalculator
 
 class TaskGenerator(BuiltinClassGenerator):

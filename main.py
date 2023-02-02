@@ -1,6 +1,6 @@
 import utils.fflow as flw
-import torch
 import config as cfg
+import multiprocessing as mp
 
 def main():
     # read options
@@ -18,6 +18,6 @@ def main():
         raise RuntimeError
 
 if __name__ == '__main__':
-    torch.multiprocessing.set_start_method('spawn')
-    torch.multiprocessing.set_sharing_strategy('file_system')
+    mp.set_start_method('spawn')
+    # mp.set_sharing_strategy('file_system')
     main()

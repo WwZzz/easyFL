@@ -1,5 +1,5 @@
-from torch import nn
-import torch.nn.functional as F
+from paddle import nn
+import paddle.nn.functional as F
 from utils.fmodule import FModule
 
 class Model(FModule):
