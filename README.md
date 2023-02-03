@@ -1,6 +1,6 @@
 # FLGo: A Lightning Framework for Federated Learning
 
-This repository is PyTorch implementation for the IJCAI-21 paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/).
+This repository is Paddle implementation for FLGo.
 
 Our FLGo is a strong and reusable experimental platform for research on federated learning (FL) algorithm, which has provided a few easy-to-use modules to hold out for those who want to do various federated learning experiments. 
 
