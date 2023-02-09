@@ -12,7 +12,6 @@ class Server(AsyncServer):
         self.updated = True
         self.accumulate_delta = None
 
-    @ss.time_step
     def iterate(self):
         # Scheduler periodically triggers the idle clients to locally train the model
         self.selected_clients = self.sample() if (cfg.clock.current_time % self.period) == 0 or cfg.clock.current_time == 1 else []

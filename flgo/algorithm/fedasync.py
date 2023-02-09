@@ -11,7 +11,6 @@ class Server(BasicServer):
         self.tolerance_for_latency = 1000
         self.client_taus = [0 for _ in self.clients]
 
-    @ss.time_step
     def iterate(self):
         # Scheduler periodically triggers the idle clients to locally train the model
         self.selected_clients = self.sample() if (cfg.clock.current_time%self.period)==0 or cfg.clock.current_time==1 else []

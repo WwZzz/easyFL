@@ -56,6 +56,7 @@ class BasicServer:
         cfg.logger.log_once()
         cfg.logger.time_end('Eval Time Cost')
         while self.current_round <= self.num_rounds:
+            ss.clock.step()
             # iterate
             updated = self.iterate()
             # using logger to evaluate the model if the model is updated
@@ -83,7 +84,6 @@ class BasicServer:
         cfg.logger.save_output_as_json()
         return
 
-    @ss.time_step
     def iterate(self):
         """
         The standard iteration of each federated round that contains three

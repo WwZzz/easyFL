@@ -46,7 +46,6 @@ class Server(BasicServer):
         for tid, c in zip(tids, credits): tiers[tid]['credit'] = int(c)
         return tiers
 
-    @ss.time_step
     def iterate(self):
         if self.tiers is None: self.tiers =  self.profiling_and_tiering()
         if (self.current_round-1)%self.I==0 and self.current_round-1>=self.I:
