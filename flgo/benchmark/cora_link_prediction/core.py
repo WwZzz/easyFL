@@ -1,11 +1,11 @@
 from torch_geometric.datasets import Planetoid
 
-from benchmark.toolkits.graph.horizontal.link_prediction import *
+from flgo.benchmark.toolkits.graph.horizontal.link_prediction import *
 
 TaskCalculator = LinkPredicitonTaskCalculator
 class TaskGenerator(LinkPredicitonTaskGenenerator):
-    def __init__(self, *args, **kwargs):
-        super(TaskGenerator, self).__init__(benchmark='cora_link_prediction',rawdata_path='./benchmark/RAW_DATA/CORA',
+    def __init__(self, rawdata_path='./RAW_DATA/CORA',*args, **kwargs):
+        super(TaskGenerator, self).__init__(benchmark='cora_link_prediction',rawdata_path=rawdata_path,
                                             builtin_class=Planetoid, dataset_name='Cora', num_clients=10)
 
 class TaskPipe(LinkPredicitonTaskPipe):

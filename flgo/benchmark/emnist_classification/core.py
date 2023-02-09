@@ -1,10 +1,10 @@
 import torchvision
-from benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
+from flgo.benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 TaskCalculator = GeneralCalculator
 
 class TaskGenerator(BuiltinClassGenerator):
-    def __init__(self, split='byclass'):
-        super(TaskGenerator, self).__init__('emnist_classification', './benchmark/RAW_DATA/EMNIST', torchvision.datasets.EMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
+    def __init__(self, rawdata_path='./RAW_DATA/EMNIST', split='byclass'):
+        super(TaskGenerator, self).__init__('emnist_classification', rawdata_path, torchvision.datasets.EMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
         self.split = split
 
     def load_data(self):

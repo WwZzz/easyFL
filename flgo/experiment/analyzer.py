@@ -30,7 +30,7 @@ class Record:
         num_rounds = self.data['option']['num_rounds']
         eval_interval = self.data['option']['eval_interval']
         x = [0]
-        for round in range(1, num_rounds + 2):
+        for round in range(1, num_rounds + 1):
             if eval_interval > 0 and (round == 0 or round % eval_interval == 0):
                 x.append(round)
             if self.data['option']['early_stop'] > 0 and 'valid_loss' in self.data.keys() and len(x) >= len(self.data['valid_loss']):

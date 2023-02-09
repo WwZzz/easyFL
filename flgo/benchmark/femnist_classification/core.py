@@ -14,7 +14,7 @@ import torch
 import torchvision
 from tqdm import tqdm
 
-from benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
+from flgo.benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 
 def download_from_url(url= None, filepath = '.'):
     """Download dataset from url to filepath."""
@@ -121,8 +121,8 @@ class FEMNIST(MNIST):
 TaskCalculator = GeneralCalculator
 
 class TaskGenerator(BuiltinClassGenerator):
-    def __init__(self):
-        super(TaskGenerator, self).__init__('femnist_classification', './benchmark/RAW_DATA/MNIST', FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
+    def __init__(self, rawdata_path='./RAW_DATA/MNIST'):
+        super(TaskGenerator, self).__init__('femnist_classification', rawdata_path, FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
 
 class TaskPipe(BuiltinClassPipe):
     def __init__(self, task_name):

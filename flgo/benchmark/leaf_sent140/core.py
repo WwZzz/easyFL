@@ -4,8 +4,8 @@ import zipfile
 import torch
 from torch.utils.data import Dataset
 
-from benchmark.toolkits import BasicTaskGenerator, BasicTaskCalculator
-from benchmark.toolkits.base import XYHorizontalTaskPipe as TaskPipe, HorizontalTaskPipe
+from flgo.benchmark.toolkits import BasicTaskGenerator, BasicTaskCalculator
+from flgo.benchmark.toolkits.base import XYHorizontalTaskPipe as TaskPipe, BasicTaskPipe
 import collections
 import re
 import os
@@ -171,9 +171,9 @@ class SENTIMENT140(Dataset):
         return re.findall(r"[\w']+|[.,!?;]", line)
 
 class TaskGenerator(BasicTaskGenerator):
-    def __init__(self):
+    def __init__(self,rawdata_path='./RAW_DATA/SENTIMENT140'):
         super(TaskGenerator, self).__init__(benchmark='leaf_sent140',
-                                            rawdata_path='./benchmark/RAW_DATA/SENTIMENT140')
+                                            rawdata_path=rawdata_path)
 
     def load_data(self):
         self.train_data = SENTIMENT140(self.rawdata_path, train=True)
@@ -182,8 +182,9 @@ class TaskGenerator(BasicTaskGenerator):
 
     def partition(self):
         self.local_datas = self.partitioner(self.train_data)
+        self.num_clients = len(self.local_datas)
 
-class TaskPipe(HorizontalTaskPipe):
+class TaskPipe(BasicTaskPipe):
     class TaskDataset(torch.utils.data.Subset):
         def __init__(self, dataset, indices):
             super().__init__(dataset, indices)

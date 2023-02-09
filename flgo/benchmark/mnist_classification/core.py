@@ -6,8 +6,8 @@ transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), 
 TaskCalculator = GeneralCalculator
 
 class TaskGenerator(BuiltinClassGenerator):
-    def __init__(self):
-        super(TaskGenerator, self).__init__('mnist_classification', './benchmark/RAW_DATA/MNIST', builtin_class, transforms)
+    def __init__(self, rawdata_path='./RAW_DATA/MNIST'):
+        super(TaskGenerator, self).__init__('mnist_classification', rawdata_path, builtin_class, transforms)
 
 class TaskPipe(BuiltinClassPipe):
     def __init__(self, task_name):

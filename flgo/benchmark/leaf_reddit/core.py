@@ -11,8 +11,8 @@ from torchvision.datasets import utils
 import ujson
 from torch.utils.data import Dataset
 
-from benchmark.toolkits import BasicTaskGenerator
-from benchmark.toolkits.base import HorizontalTaskPipe, BasicTaskCalculator
+from flgo.benchmark.toolkits import BasicTaskGenerator
+from flgo.benchmark.toolkits.base import BasicTaskPipe, BasicTaskCalculator
 
 
 def download_from_url(url= None, filepath = '.'):
@@ -145,9 +145,9 @@ class REDDIT(Dataset):
         return [self.vocab[word] if word in self.vocab else self.vocab['<UNK>'] for word in token[0]]
 
 class TaskGenerator(BasicTaskGenerator):
-    def __init__(self):
+    def __init__(self,  rawdata_path='./RAW_DATA/REDDIT'):
         super(TaskGenerator, self).__init__(benchmark='leaf_reddit',
-                                            rawdata_path='./benchmark/RAW_DATA/REDDIT')
+                                            rawdata_path=rawdata_path)
     def load_data(self):
         self.train_data = REDDIT(self.rawdata_path, train=True)
         self.test_data = REDDIT(self.rawdata_path, train=False)
@@ -155,8 +155,9 @@ class TaskGenerator(BasicTaskGenerator):
 
     def partition(self):
         self.local_datas = self.partitioner(self.train_data)
+        self.num_clients = len(self.local_datas)
 
-class TaskPipe(HorizontalTaskPipe):
+class TaskPipe(BasicTaskPipe):
     class TaskDataset(torch.utils.data.Subset):
         def __init__(self, dataset, indices):
             super().__init__(dataset, indices)

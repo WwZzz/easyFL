@@ -2,8 +2,8 @@ import urllib
 import zipfile
 import torch
 from torch.utils.data import TensorDataset, Dataset
-from benchmark.toolkits import BasicTaskGenerator, BasicTaskCalculator
-from benchmark.toolkits.base import HorizontalTaskPipe
+from flgo.benchmark.toolkits import BasicTaskGenerator, BasicTaskCalculator
+from flgo.benchmark.toolkits.base import BasicTaskPipe
 import collections
 import re
 import os
@@ -251,8 +251,8 @@ class SHAKESPEARE(Dataset):
 
 
 class TaskGenerator(BasicTaskGenerator):
-    def __init__(self):
-        super(TaskGenerator, self).__init__(benchmark='shakespeare_classification', rawdata_path='./benchmark/RAW_DATA/SHAKESPEARE')
+    def __init__(self, rawdata_path='./RAW_DATA/SHAKESPEARE'):
+        super(TaskGenerator, self).__init__(benchmark='shakespeare_classification', rawdata_path=rawdata_path)
         # Regular expression to capture an actors name, and line continuation
 
     def load_data(self):
@@ -263,7 +263,7 @@ class TaskGenerator(BasicTaskGenerator):
     def partition(self):
         self.local_datas = self.partitioner(self.train_data)
 
-class TaskPipe(HorizontalTaskPipe):
+class TaskPipe(BasicTaskPipe):
     class TaskDataset(torch.utils.data.Subset):
         def __init__(self, dataset, indices):
             super().__init__(dataset, indices)

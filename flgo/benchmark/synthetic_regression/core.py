@@ -1,12 +1,12 @@
 import numpy as np
-from benchmark.toolkits.base import *
-from benchmark.toolkits.cv.horizontal.image_classification import GeneralCalculator
-from benchmark.toolkits.partition import BasicPartitioner
+from flgo.benchmark.toolkits.base import *
+from flgo.benchmark.toolkits.cv.horizontal.image_classification import GeneralCalculator
+from flgo.benchmark.toolkits.partition import BasicPartitioner
 TaskPipe = XYHorizontalTaskPipe
 TaskCalculator = GeneralCalculator
 
 class TaskGenerator(BasicTaskGenerator):
-    def __init__(self, alpha=0.0, beta=0.0, num_clients=30, imbalance=0.0, mean_datavol=400, dimension=60, num_classes=10):
+    def __init__(self, alpha=0.0, beta=0.0, num_clients=30, imbalance=0.0, mean_datavol=400, dimension=60, num_classes=10, *args, **kwargs):
         super().__init__('synthetic_regression', '')
         self.num_clients = num_clients
         self.alpha = alpha

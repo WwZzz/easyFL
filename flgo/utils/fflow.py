@@ -166,7 +166,7 @@ def initialize(option):
     cfg.logger.info('Ready to start.')
     return objects[0]
 
-def gen_task(config, task_path='', seed=0):
+def gen_task(config, task_path='', rawdata_path='', seed=0):
     random.seed(3 + seed)
     np.random.seed(97 + seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -178,6 +178,7 @@ def gen_task(config, task_path='', seed=0):
     if 'partitioner' in gen_option.keys() and 'name' not in gen_option['partitioner'].keys() and 'para' in gen_option['partitioner'].keys():
         gen_option['benchmark']['para'].update(gen_option['partitioner']['para'])
     # init generator
+    if rawdata_path!='': gen_option['benchmark']['para']['rawdata_path']=rawdata_path
     task_generator = getattr(importlib.import_module('.'.join(['flgo','benchmark', gen_option['benchmark']['name'], 'core'])), 'TaskGenerator')(**gen_option['benchmark']['para'])
     # create partitioner for generator if specified
     if 'partitioner' in gen_option.keys():
