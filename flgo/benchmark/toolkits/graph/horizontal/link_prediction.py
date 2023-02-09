@@ -8,7 +8,7 @@ from torch_geometric.utils import negative_sampling, from_networkx
 import torch_geometric.utils
 import collections
 
-from benchmark.toolkits.base import *
+from flgo.benchmark.toolkits.base import *
 
 
 class LinkPredicitonTaskGenenerator(BasicTaskGenerator):
@@ -62,7 +62,7 @@ class LinkPredicitonTaskGenenerator(BasicTaskGenerator):
         return '_'.join(['B-' + self.benchmark, 'P-None', 'N-' + str(self.num_clients)])
 
 
-class LinkPredicitonTaskPipe(HorizontalTaskPipe):
+class LinkPredicitonTaskPipe(BasicTaskPipe):
     def __init__(self, task_name, buildin_class, transform=None):
         super(LinkPredicitonTaskPipe, self).__init__(task_name)
         self.builtin_class = buildin_class

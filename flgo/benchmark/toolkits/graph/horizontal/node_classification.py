@@ -3,7 +3,7 @@ import torch_geometric.transforms as T
 from torch_geometric.utils import mask_to_index, index_to_mask, from_networkx
 import torch_geometric.utils
 import collections
-from benchmark.toolkits.base import *
+from flgo.benchmark.toolkits.base import *
 import networkx as nx
 
 
@@ -58,7 +58,7 @@ class NodeClassificationTaskGen(BasicTaskGenerator):
         return '_'.join(['B-'+self.benchmark,  'P-None', 'N-'+str(self.num_clients)])
 
 
-class NodeClassificationTaskPipe(HorizontalTaskPipe):
+class NodeClassificationTaskPipe(BasicTaskPipe):
     def __init__(self, task_name, buildin_class, transform=None):
         super(NodeClassificationTaskPipe, self).__init__(task_name)
         self.builtin_class = buildin_class

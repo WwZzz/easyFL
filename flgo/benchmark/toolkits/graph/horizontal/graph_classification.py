@@ -13,8 +13,10 @@ import numpy as np
 import os
 import ujson
 
-from benchmark.toolkits.base import *
+from flgo.benchmark.toolkits.base import *
 import networkx as nx
+
+from flgo.benchmark.toolkits import BasicTaskPipe, BasicTaskCalculator
 
 
 class GraphClassificationTaskGen(BasicTaskGenerator):
@@ -34,9 +36,10 @@ class GraphClassificationTaskGen(BasicTaskGenerator):
 
     def partition(self):
         self.local_datas = self.partitioner(self.train_data)
+        self.num_clients = len(self.local_datas)
 
 
-class GraphClassificationTaskPipe(HorizontalTaskPipe):
+class GraphClassificationTaskPipe(BasicTaskPipe):
     def __init__(self, task_name, buildin_class, transform=None):
         super(GraphClassificationTaskPipe, self).__init__(task_name)
         self.builtin_class = buildin_class

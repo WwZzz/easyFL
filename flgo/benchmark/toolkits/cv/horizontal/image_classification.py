@@ -16,6 +16,7 @@ class BuiltinClassGenerator(BasicTaskGenerator):
 
     def partition(self):
         self.local_datas = self.partitioner(self.train_data)
+        self.num_clients = len(self.local_datas)
 
 class BuiltinClassPipe(BasicTaskPipe):
     class TaskDataset(torch.utils.data.Subset):

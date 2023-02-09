@@ -12,8 +12,6 @@ try:
 except:
     import json
 
-TASKROOT_PATH = './fedtask'
-
 class AbstractTaskGenerator(metaclass=ABCMeta):
     @abstractmethod
     def load_data(self, *args, **kwarg):

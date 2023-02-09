@@ -56,7 +56,7 @@ class BasicServer:
         cfg.logger.log_once()
         cfg.logger.time_end('Eval Time Cost')
         while self.current_round <= self.num_rounds:
-            ss.clock.step()
+            cfg.clock.step()
             # iterate
             updated = self.iterate()
             # using logger to evaluate the model if the model is updated
@@ -74,10 +74,6 @@ class BasicServer:
             self.global_lr_scheduler(self.current_round)
             # clear package buffer
             self.sending_package_buffer = [None for _ in self.clients]
-        cfg.logger.info("--------------Final Evaluation--------------")
-        cfg.logger.time_start('Eval Time Cost')
-        cfg.logger.log_once()
-        cfg.logger.time_end('Eval Time Cost')
         cfg.logger.info("=================End==================")
         cfg.logger.time_end('Total Time Cost')
         # save results as .json file

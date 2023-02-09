@@ -15,10 +15,10 @@ except:
     import json
 
 class Record:
-    def __init__(self, task, name, root='../fedtask'):
+    def __init__(self, task, name):
         self.task = task
         self.name = name
-        self.rec_path = os.path.join(root, task, 'record', name)
+        self.rec_path = os.path.join(task, 'record', name)
         with open(self.rec_path, 'r') as inf:
             s_inf = inf.read()
             rec = json.loads(s_inf)
@@ -38,8 +38,9 @@ class Record:
         self.data['communication_round'] = x
 
     def set_client_id(self):
-        s = self.task.find('_N-')
-        self.data['client_id'] = [cid for cid in range(int(self.task[s + 3: self.task.find('_S-')]))]
+        with open(os.path.join(self.task, 'info')) as inf:
+            num_clients = json.load(inf)['num_clients']
+        self.data['client_id'] = [cid for cid in range(int(num_clients))]
 
     def set_legend(self, legend_with = []):
         if len(legend_with)==0: self.data['label'] = []
@@ -81,10 +82,10 @@ class Selector:
         except Exception() as e:
             print(e)
 
-    def scan(self, root = '../fedtask'):
+    def scan(self):
         res = {}
         for task in self.tasks:
-            path = os.path.join(root, task, 'record')
+            path = os.path.join(task, 'record')
             all_records = os.listdir(path)
             tmp = []
             # check headers
@@ -118,10 +119,10 @@ class Selector:
         value_end = filename.find('_', value_start)
         return filename[value_start:value_end]
 
-    def read_records(self, rec_names, root='../fedtask'):
+    def read_records(self, rec_names):
         res = {task: [] for task in rec_names}
         for task in rec_names:
-            path = os.path.join(root, task, 'record')
+            path = os.path.join(task, 'record')
             files = os.listdir(path)
             for record_name in rec_names[task]:
                 if record_name in files:
@@ -356,6 +357,27 @@ def read_option():
     random.seed(option['seed'])
     np.random.seed(option['seed'])
     return option
+
+def show(config, save_figure=False, save_text=False, seed=0):
+    with open(config) as f:
+        option = yaml.load(f, Loader=yaml.FullLoader)
+    record_selector = Selector(option['Selector'])
+    if 'Painter' in option.keys():
+        for task in record_selector.records:
+            p = Painter(option['Painter'], record_selector.records[task])
+            p.run()
+        for task in record_selector.grouped_records:
+            p = Painter(option['Painter'], record_selector.grouped_records[task])
+            p.run(group=True)
+    if 'Table' in option.keys():
+        for task in record_selector.records:
+            tb = Table(option['Table'], record_selector.records[task])
+            tb.set_title(task)
+            tb.run()
+        for task in record_selector.grouped_records:
+            tb = Table(option['Table'], record_selector.grouped_records[task])
+            tb.set_title(task)
+            tb.run(group=True)
 
 if __name__ == '__main__':
     option = read_option()
