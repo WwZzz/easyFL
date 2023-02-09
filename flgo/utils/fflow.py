@@ -84,6 +84,9 @@ def read_option():
 
     try: option = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
+    for key in option.keys():
+        if option[key] is None:
+            option[key]=[]
     return option
 
 def init_logger(option):
@@ -222,7 +225,16 @@ def init(task, option, algorithm, model_name='', Logger=flgo.experiment.logger.s
     default_option = read_option()
     for op_key in option:
         if op_key in default_option.keys():
-            default_option[op_key] = option[op_key]
+            op_type = type(default_option[op_key])
+            if op_type == type(option[op_key]):
+                default_option[op_key] = option[op_key]
+            else:
+                if op_type is list:
+                    default_option[op_key]=list(option[op_key]) if hasattr(option[op_key], '__iter__') else [option[op_key]]
+                elif op_type is tuple:
+                    default_option[op_key] = tuple(option[op_key]) if hasattr(option[op_key], '__iter__') else (option[op_key])
+                else:
+                    default_option[op_key] = op_type(option[op_key])
     option = default_option
 
     # init logger
