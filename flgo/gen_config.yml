@@ -1,8 +1,0 @@
-benchmark:
-  name: mnist_classification
-partitioner:
-  name: DirichletPartitioner
-  para:
-    num_clients: 100
-    alpha: 0.1
-

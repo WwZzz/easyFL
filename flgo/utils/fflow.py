@@ -35,10 +35,8 @@ def setup_seed(seed):
 
 def read_option():
     parser = argparse.ArgumentParser()
+    """Training Options"""
     # basic settings
-    parser.add_argument('--task', help='name of fedtask;', type=str, default='B-mnist_classification_P-IID_N-100_S-0')
-    parser.add_argument('--algorithm', help='name of algorithm;', type=str, default='fedavg')
-    parser.add_argument('--model', help='name of model;', type=str, default='cnn')
     parser.add_argument('--pretrain', help='the path of the pretrained model parameter created by torch.save;', type=str, default='')
     # methods of server side for sampling and aggregating
     parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='md')
@@ -57,30 +55,37 @@ def read_option():
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
     parser.add_argument('--momentum', help='momentum of local update', type=float, default=0)
     parser.add_argument('--weight_decay', help='weight decay for the training process', type=float, default=0)
+    # algorithm-dependent hyper-parameters
+    parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
+
+    """Environment Options"""
+    # the ratio of the amount of the data used to train
+    parser.add_argument('--train_holdout', help='the rate of holding out the validation dataset from all the local training datasets', type=float, default=0.1)
+    parser.add_argument('--test_holdout', help='the rate of holding out the validation dataset from the training datasets', type=float, default=0.0)
     # realistic machine config
     parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
     parser.add_argument('--gpu', nargs='*', help='GPU IDs and empty input is equal to using CPU', type=int)
     parser.add_argument('--server_with_cpu', help='seed for random initialization;', action="store_true", default=False)
-    parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
-    parser.add_argument('--train_holdout', help='the rate of holding out the validation dataset from all the local training datasets', type=float, default=0.1)
-    parser.add_argument('--test_holdout', help='the rate of holding out the validation dataset from the training datasets', type=float, default=0.0)
     parser.add_argument('--num_threads', help="the number of threads in the clients computing session", type=int, default=1)
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
+
+    """Simulator Options"""
     # the simulating systemic configuration of clients and the server that helps constructing the heterogeity in the network condition & computing power
     parser.add_argument('--simulator', help='name of system simulator', type=str, default='default_simulator')
     parser.add_argument('--availability', help="client availability mode", type=str, default = 'IDL')
     parser.add_argument('--connectivity', help="client connectivity mode", type=str, default = 'IDL')
     parser.add_argument('--completeness', help="client completeness mode", type=str, default = 'IDL')
     parser.add_argument('--responsiveness', help="client responsiveness mode", type=str, default='IDL')
-    # algorithm-dependent hyper-parameters
-    parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
+
+    """Logger Options"""
     # logger setting
     parser.add_argument('--logger', help='the Logger in utils.logger.logger_name will be loaded', type=str, default='basic_logger')
     parser.add_argument('--log_level', help='the level of logger', type=str, default='INFO')
     parser.add_argument('--log_file', help='bool controls whether log to file and default value is False', action="store_true", default=False)
     parser.add_argument('--no_log_console', help='bool controls whether log to screen and default value is True', action="store_true", default=False)
     parser.add_argument('--no_overwrite', help='bool controls whether to overwrite the old result', action="store_true", default=False)
+    parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
 
     try: option = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
@@ -149,26 +154,6 @@ def init_system_environment(objects, option):
     cfg.state_updater = simulator
     cfg.clock.register_state_updater(simulator)
 
-def initialize(option):
-    # init logger
-    cfg.logger = init_logger(option)
-    # init task pipe and task
-    task_pipe, cfg.TaskCalculator = init_taskcore(option)
-    # init devices
-    cfg.dev_list, cfg.dev_manager = init_device(option)
-    # init model
-    cfg.Model, cfg.SvrModel, cfg.CltModel = init_model(option)
-    # load federated task through pipe and init objects (i.e. server and clients)
-    objects = task_pipe.load_task(option)
-    for ob in objects: ob.initialize()
-    # init virtual system environment
-    init_system_environment(objects, option)
-    # finally prepare for logger
-    cfg.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=cfg.clock)
-    cfg.logger.initialize()
-    cfg.logger.info('Ready to start.')
-    return objects[0]
-
 def gen_task(config, task_path='', rawdata_path='', seed=0):
     random.seed(3 + seed)
     np.random.seed(97 + seed)
@@ -219,8 +204,7 @@ def gen_task(config, task_path='', rawdata_path='', seed=0):
     except:
         pass
 
-
-def init(task, option, algorithm, model_name='', Logger=flgo.experiment.logger.simple_logger.Logger, simulator=flgo.system_simulator.default_simulator, scene='horizontal'):
+def init(task, algorithm, option, model_name='', Logger=flgo.experiment.logger.simple_logger.Logger, simulator=flgo.system_simulator.default_simulator, scene='horizontal'):
     # init option
     default_option = read_option()
     for op_key in option:
@@ -236,6 +220,25 @@ def init(task, option, algorithm, model_name='', Logger=flgo.experiment.logger.s
                 else:
                     default_option[op_key] = op_type(option[op_key])
     option = default_option
+    setup_seed(seed=option['seed'])
+    option['task'] = task
+    option['algorithm'] = (algorithm.__name__).split('.')[-1]
+
+    # init task info
+    if not os.path.exists(task):
+        raise FileExistsError("Fedtask '{}' doesn't exist. Please generate the specified task by flgo.create_task().")
+    with open(os.path.join(task, 'info'), 'r') as inf:
+        task_info = json.load(inf)
+    benchmark = task_info['benchmark']
+    if model_name=='': model_name = getattr(importlib.import_module('.'.join(['flgo','benchmark',benchmark])), 'default_model')
+    option['model'] = model_name
+
+    try:
+        # init multiprocess
+        torch.multiprocessing.set_start_method('spawn')
+        torch.multiprocessing.set_sharing_strategy('file_system')
+    except:
+        pass
 
     # init logger
     cfg.logger = Logger(task=task, option=option, name=str(Logger), level=option['log_level'])
@@ -244,11 +247,6 @@ def init(task, option, algorithm, model_name='', Logger=flgo.experiment.logger.s
     cfg.dev_list, cfg.dev_manager = init_device(option)
 
     # init task
-    if not os.path.exists(task):
-        raise FileExistsError("Fedtask '{}' doesn't exist. Please generate the specified task by flgo.create_task().")
-    with open(os.path.join(task, 'info'), 'r') as inf:
-        task_info = json.load(inf)
-    benchmark = task_info['benchmark']
     core_module = '.'.join(['flgo','benchmark',benchmark, 'core'])
     task_pipe = getattr(importlib.import_module(core_module), 'TaskPipe')(task)
     cfg.TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
