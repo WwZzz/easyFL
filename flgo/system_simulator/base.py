@@ -2,7 +2,6 @@ import sys
 
 import numpy as np
 import queue
-import config as cfg
 from abc import ABCMeta, abstractmethod
 import functools
 
@@ -50,14 +49,14 @@ class ElemClock:
         self.state_updater = None
 
     def step(self, delta_t=1):
-        if delta_t < 0: raise RuntimeError("Cannot inverse time of system_simulator.cfg.clock.")
+        if delta_t < 0: raise RuntimeError("Cannot inverse time of system_simulator.base.clock.")
         if self.state_updater is not None:
             for t in range(delta_t):
                 self.state_updater.flush()
         self.time += delta_t
 
     def set_time(self, t):
-        if t < self.time: raise RuntimeError("Cannot inverse time of system_simulator.cfg.clock.")
+        if t < self.time: raise RuntimeError("Cannot inverse time of system_simulator.base.clock.")
         self.time = t
 
     def put(self, x, time):
@@ -236,10 +235,8 @@ class BasicStateUpdater(AbstractStateUpdater):
                 self.state_counter[cid]['dropped_counter'] = 0
                 self.client_states[cid] = 'offline'
                 if (self.random_module.rand() < self.variables[cid]['prob_unavailable']):
-                    cfg.logger.info('Client {} had just dropped out and is currently offline.'.format(cid))
                     self.set_client_state([cid], 'offline')
                 else:
-                    cfg.logger.info('Client {} had just dropped out and is currently available.'.format(cid))
                     self.set_client_state([cid], 'idle')
         # Remark: the state transfer fo working clients is instead made once the server received from clients
         # # update states for working clients
@@ -252,21 +249,21 @@ class BasicStateUpdater(AbstractStateUpdater):
 #================================================Decorators==========================================
 # Time Counter for any function which forces the `cfg.clock` to
 # step one unit of time once the decorated function is called
-def time_step(f):
-    def f_timestep(*args, **kwargs):
-        cfg.clock.step()
-        return f(*args, **kwargs)
-    return f_timestep
+# def time_step(f):
+#     def f_timestep(*args, **kwargs):
+#         cfg.clock.step()
+#         return f(*args, **kwargs)
+#     return f_timestep
 
 # sampling phase
 def with_availability(sample):
     @functools.wraps(sample)
     def sample_with_availability(self):
-        available_clients = cfg.state_updater.idle_clients
+        available_clients = self.gv.state_updater.idle_clients
         # ensure that there is at least one client to be available at the current moment
         # while len(available_clients) == 0:
-        #     cfg.clock.step()
-        #     available_clients = cfg.state_updater.idle_clients
+        #     self.gv.clock.step()
+        #     available_clients = self.gv.state_updater.idle_clients
         # call the original sampling function
         selected_clients = sample(self)
         # filter the selected but unavailable clients
@@ -274,9 +271,9 @@ def with_availability(sample):
         # return the selected and available clients (e.g. sampling with replacement should be considered here)
         self._unavailable_selected_clients = [cid for cid in selected_clients if cid not in effective_clients]
         if len(self._unavailable_selected_clients)>0:
-            cfg.logger.info('The selected clients {} are not currently available.'.format(self._unavailable_selected_clients))
+            self.gv.logger.info('The selected clients {} are not currently available.'.format(self._unavailable_selected_clients))
         selected_clients = [cid for cid in selected_clients if cid in effective_clients]
-        cfg.state_updater.set_client_state(selected_clients, 'selected')
+        self.gv.state_updater.set_client_state(selected_clients, 'selected')
         return selected_clients
     return sample_with_availability
 
@@ -285,10 +282,10 @@ def with_dropout(communicate):
     @functools.wraps(communicate)
     def communicate_with_dropout(self, selected_clients, asynchronous=False):
         if len(selected_clients) > 0:
-            cfg.state_updater.update_client_connectivity(selected_clients)
-            probs_drop = cfg.state_updater.get_variable(selected_clients, 'prob_drop')
-            self._dropped_selected_clients = [cid for cid,prob in zip(selected_clients, probs_drop) if cfg.state_updater.random_module.rand() <= prob]
-            cfg.state_updater.set_client_state(self._dropped_selected_clients, 'dropped')
+            self.gv.state_updater.update_client_connectivity(selected_clients)
+            probs_drop = self.gv.state_updater.get_variable(selected_clients, 'prob_drop')
+            self._dropped_selected_clients = [cid for cid,prob in zip(selected_clients, probs_drop) if self.gv.state_updater.random_module.rand() <= prob]
+            self.gv.state_updater.set_client_state(self._dropped_selected_clients, 'dropped')
             return communicate(self, [cid for cid in selected_clients if cid not in self._dropped_selected_clients], asynchronous)
         else:
             return communicate(self, selected_clients, asynchronous)
@@ -300,15 +297,15 @@ def with_dropout(communicate):
 #     def delayed_communicate_with(self, client_id):
 #         res = communicate_with(self, client_id)
 #         # Record the size of the package that may influence the value of the latency
-#         cfg.state_updater.set_variable([client_id], '__package_size', [res.__sizeof__()])
+#         self.gv.state_updater.set_variable([client_id], '__package_size', [res.__sizeof__()])
 #         # Update the real-time latency of the client response
-#         cfg.state_updater.update_client_responsiveness([client_id])
+#         self.gv.state_updater.update_client_responsiveness([client_id])
 #         # Get the updated latency
-#         latency = cfg.state_updater.get_variable(client_id, 'latency')[0]
+#         latency = self.gv.state_updater.get_variable(client_id, 'latency')[0]
 #         self.clients[client_id]._latency = latency
 #         res['__cid'] = client_id
 #         # Compute the arrival time
-#         res['__t'] = cfg.clock.current_time + latency
+#         res['__t'] = self.gv.clock.current_time + latency
 #         return res
 #     return delayed_communicate_with
 
@@ -325,14 +322,14 @@ def with_completeness(train):
 
 def with_clock(communicate):
     def communicate_with_clock(self, selected_clients, asynchronous=False):
-        cfg.state_updater.update_client_completeness(selected_clients)
+        self.gv.state_updater.update_client_completeness(selected_clients)
         res = communicate(self, selected_clients, asynchronous)
         # If all the selected clients are unavailable, directly return the result without waiting.
         # Else if all the available clients have dropped out and not using asynchronous communication,  waiting for `tolerance_for_latency` time units.
         tolerance_for_latency = self.get_tolerance_for_latency()
         if not asynchronous and len(selected_clients)==0:
             if hasattr(self, '_dropped_selected_clients') and len(self._dropped_selected_clients)>0:
-                cfg.clock.step(tolerance_for_latency)
+                self.gv.clock.step(tolerance_for_latency)
             return res
         # Convert the unpacked packages to a list of packages of each client.
         pkgs = [{key: vi[id] for key, vi in res.items()} for id in range(len(list(res.values())[0]))] if len(selected_clients)>0 else []
@@ -344,49 +341,49 @@ def with_clock(communicate):
                 model_sizes = [pkg['model'].count_parameters(output=False) for pkg in pkgs]
             else:
                 model_sizes = [0 for _ in pkgs]
-            cfg.state_updater.set_variable(selected_clients, '__model_size', model_sizes)
+            self.gv.state_updater.set_variable(selected_clients, '__model_size', model_sizes)
             # Set uploading package sizes for clients
-            cfg.state_updater.set_variable(selected_clients, '__upload_package_size', [size_of_package(pkg) for pkg in pkgs])
+            self.gv.state_updater.set_variable(selected_clients, '__upload_package_size', [size_of_package(pkg) for pkg in pkgs])
             # Set downloading package sizes for clients
-            cfg.state_updater.set_variable(selected_clients, '__download_package_size', [size_of_package(self.sending_package_buffer[cid]) for cid in selected_clients])
-            cfg.state_updater.update_client_responsiveness(selected_clients)
+            self.gv.state_updater.set_variable(selected_clients, '__download_package_size', [size_of_package(self.sending_package_buffer[cid]) for cid in selected_clients])
+            self.gv.state_updater.update_client_responsiveness(selected_clients)
             # Update latency for clients
-            latency = cfg.state_updater.get_variable(selected_clients, 'latency')
+            latency = self.gv.state_updater.get_variable(selected_clients, 'latency')
             # Set selected clients' states as `working`
-            cfg.state_updater.set_client_state(selected_clients, 'working')
+            self.gv.state_updater.set_client_state(selected_clients, 'working')
 
         # Compute the arrival time and put the packages into a queue according to their arrival time `__t`
             for pkg, cid, lt in zip(pkgs, selected_clients, latency):
                 pkg['__cid'] = cid
-                pkg['__t'] = cfg.clock.current_time + lt
-            for pi in pkgs: cfg.clock.put(pi, pi['__t'])
+                pkg['__t'] = self.gv.clock.current_time + lt
+            for pi in pkgs: self.gv.clock.put(pi, pi['__t'])
         # Receiving packages in asynchronous\synchronous way
         # Wait for client packages. If communicating in asynchronous way, the waiting time is 0.
         if asynchronous:
             # Return the currently received packages to the server
-            eff_pkgs = cfg.clock.get_until(cfg.clock.current_time)
+            eff_pkgs = self.gv.clock.get_until(self.gv.clock.current_time)
             eff_cids = [pkg_i['__cid'] for pkg_i in eff_pkgs]
         else:
             # Wait all the selected clients for no more than `tolerance_for_latency` time units.
             # Check if anyone had dropped out or will be overdue
-            max_latency = max(cfg.state_updater.get_variable(selected_clients, 'latency'))
+            max_latency = max(self.gv.state_updater.get_variable(selected_clients, 'latency'))
             any_drop, any_overdue = (len(self._dropped_selected_clients) > 0), (max_latency >  tolerance_for_latency)
             # Compute delta of time for the communication.
             delta_t = tolerance_for_latency if any_drop or any_overdue else max_latency
             # Receive packages within due
-            eff_pkgs = cfg.clock.get_until(cfg.clock.current_time + delta_t)
-            cfg.clock.step(delta_t)
+            eff_pkgs = self.gv.clock.get_until(self.gv.clock.current_time + delta_t)
+            self.gv.clock.step(delta_t)
             # Drop the packages of overdue clients and reset their states to `idle`
             eff_cids = [pkg_i['__cid'] for pkg_i in eff_pkgs]
             self._overdue_clients = list(set([cid for cid in selected_clients if cid not in eff_cids]))
             # no additional wait for the synchronous selected clients and preserve the later packages from asynchronous clients
             if len(self._overdue_clients) > 0:
-                cfg.clock.conditionally_clear(lambda x: x['__cid'] in self._overdue_clients)
-                cfg.state_updater.set_client_state(self._overdue_clients, 'idle')
+                self.gv.clock.conditionally_clear(lambda x: x['__cid'] in self._overdue_clients)
+                self.gv.state_updater.set_client_state(self._overdue_clients, 'idle')
             # Resort effective packages
             pkg_map = {pkg_i['__cid']: pkg_i for pkg_i in eff_pkgs}
             eff_pkgs = [pkg_map[cid] for cid in selected_clients if cid in eff_cids]
-        cfg.state_updater.set_client_state(eff_cids, 'offline')
+        self.gv.state_updater.set_client_state(eff_cids, 'offline')
         self.received_clients = [pkg_i['__cid'] for pkg_i in eff_pkgs]
         return self.unpack(eff_pkgs)
     return communicate_with_clock

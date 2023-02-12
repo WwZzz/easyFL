@@ -1,5 +1,4 @@
 from flgo.system_simulator.base import BasicStateUpdater
-import config as cfg
 import random
 import numpy as np
 import collections
@@ -272,25 +271,21 @@ class StateUpdater(BasicStateUpdater):
         super().__init__(objects)
         self.option = option
         # +++++++++++++++++++++ availability +++++++++++++++++++++
-        cfg.logger.info('Initializing Systemic Heterogeneity: ' + 'Availability {}'.format(option['availability']))
         avl_mode, avl_para = self.get_mode(option['availability'])
         if avl_mode not in availability_modes: avl_mode, avl_para = 'IDL', ()
         f_avl = availability_modes[avl_mode](self, *avl_para)
         if f_avl is not None: self.__class__.update_client_availability = f_avl
         # +++++++++++++++++++++ connectivity +++++++++++++++++++++
-        cfg.logger.info('Initializing Systemic Heterogeneity: ' + 'Connectivity {}'.format(option['connectivity']))
         con_mode, con_para = self.get_mode(option['connectivity'])
         if con_mode not in connectivity_modes: con_mode, con_para = 'IDL', ()
         f_con = connectivity_modes[con_mode](self, *con_para)
         if f_con is not None: self.__class__.update_client_connectivity = f_con
         # +++++++++++++++++++++ completeness +++++++++++++++++++++
-        cfg.logger.info('Initializing Systemic Heterogeneity: ' + 'Completeness {}'.format(option['completeness']))
         cmp_mode, cmp_para = self.get_mode(option['completeness'])
         if cmp_mode not in completeness_modes: cmp_mode, cmp_para = 'IDL', ()
         f_cmp = completeness_modes[cmp_mode](self, *cmp_para)
         if f_cmp is not None: self.__class__.update_client_completeness = f_cmp
         # +++++++++++++++++++++ responsiveness ++++++++++++++++++++++++
-        cfg.logger.info('Initializing Systemic Heterogeneity: ' + 'Responsiveness {}'.format(option['responsiveness']))
         rsp_mode, rsp_para = self.get_mode(option['responsiveness'])
         if rsp_mode not in responsiveness_modes: rsp_mode, rsp_para = 'IDL', ()
         f_rsp = responsiveness_modes[rsp_mode](self, *rsp_para)

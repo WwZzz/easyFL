@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-import config as cfg
 
 class FModule(nn.Module):
     def __init__(self):
@@ -147,8 +146,7 @@ def element_wise_func(m, func):
 def _model_to_tensor(m):
     return torch.cat([mi.data.view(-1) for mi in m.parameters()])
 
-def _model_from_tensor(mt, model_class=None):
-    if model_class is None: model_class = cfg.Model
+def _model_from_tensor(mt, model_class):
     res = model_class().to(mt.device)
     cnt = 0
     end = 0
@@ -483,10 +481,10 @@ def with_multi_gpus(func):
                 res = res.to(origin_device) if hasattr(res, 'get_device') or hasattr(res, 'device') else res
         return res
     return cal_on_personal_gpu
-
-def get_device():
-    if len(cfg.dev_list)==0: return torch.device('cpu')
-    crt_dev = 0
-    while True:
-        yield cfg.dev_list[crt_dev]
-        crt_dev = (crt_dev+1)%len(cfg.dev_list)
+#
+# def get_device():
+#     if len(cfg.dev_list)==0: return torch.device('cpu')
+#     crt_dev = 0
+#     while True:
+#         yield cfg.dev_list[crt_dev]
+#         crt_dev = (crt_dev+1)%len(cfg.dev_list)

@@ -1,8 +1,6 @@
 """This is a non-official implementation of 'Federated Learning with Buffered Asynchronous Aggregation' (http://arxiv.org/abs/2106.06639). """
 from .fedasync import Server as AsyncServer
 from .fedbase import BasicClient
-import system_simulator.base as ss
-import config as cfg
 import copy
 
 class Server(AsyncServer):
@@ -14,9 +12,9 @@ class Server(AsyncServer):
 
     def iterate(self):
         # Scheduler periodically triggers the idle clients to locally train the model
-        self.selected_clients = self.sample() if (cfg.clock.current_time % self.period) == 0 or cfg.clock.current_time == 1 else []
+        self.selected_clients = self.sample() if (self.gv.clock.current_time % self.period) == 0 or self.gv.clock.current_time == 1 else []
         if len(self.selected_clients) > 0:
-            cfg.logger.info('Select clients {} at time {}'.format(self.selected_clients, cfg.clock.current_time))
+            self.gv.logger.info('Select clients {} at time {}'.format(self.selected_clients, self.gv.clock.current_time))
         # Record the timestamp of the selected clients
         #  for cid in self.selected_clients: self.client_taus[cid] = self.current_round
         # Check the currently received models
@@ -25,7 +23,7 @@ class Server(AsyncServer):
         received_client_ids = res['__cid']
         # if reveive client update
         if len(received_models) > 0:
-            cfg.logger.info('Receive new models from clients {} at time {}'.format(received_client_ids, cfg.clock.current_time))
+            self.gv.logger.info('Receive new models from clients {} at time {}'.format(received_client_ids, self.gv.clock.current_time))
             flag = False
             if self.accumulate_delta == None: flag = True
             for id, model_k in enumerate(received_models):

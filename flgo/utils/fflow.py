@@ -11,18 +11,38 @@ import flgo.system_simulator.base
 import flgo.utils.fmodule
 import flgo.experiment.logger.simple_logger
 import flgo.algorithm
-import config as cfg
+import flgo.tmp
 import argparse
 import importlib
 import random
 import os
 import yaml
-
+import tempfile
 
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad']
 logger = None
+
+class GlobalVariable:
+    def __init__(self):
+        self.logger = None
+        self.simulator = None
+        self.clock = None
+        self.Model = None
+        self.SvrModel = None
+        self.CltModel = None
+        self.dev_list = None
+        self.dev_manager = None
+        self.TaskCalculator = None
+        self.TaskPipe = None
+
+    def create_devmanager(self):
+        if self.dev_list is None: return None
+        crt_dev = 0
+        while True:
+            yield self.dev_list[crt_dev]
+            crt_dev = (crt_dev + 1) % len(self.dev_list)
 
 def setup_seed(seed):
     random.seed(1+seed)
@@ -94,65 +114,11 @@ def read_option():
             option[key]=[]
     return option
 
-def init_logger(option):
-    # init logger from 1) Logger in algorithm/fedxxx.py, 2) Logger in utils/logger/logger_name.py 3) Logger in utils/logger/basic_logger.py
-    loading_priority = {
-        '{}Logger'.format(option['algorithm']): '%s.%s' % ('algorithm', option['algorithm']),
-        option['logger']: '.'.join(['experiment', 'logger', option['logger']]),
-        'BasicLogger': '.'.join(['experiment', 'logger', 'basic_logger'])
-    }
-    Logger = None
-    for log_name, log_path in loading_priority.items():
-        try:
-            Logger = getattr(importlib.import_module(log_path), 'Logger')
-            break
-        except:
-            continue
-    logger = Logger(option=option, name=log_name, level =option['log_level'])
-    logger.info('Using {} in `{}`'.format(log_name, log_path))
-    return logger
-
-def init_taskcore(option):
-    cfg.logger.info("Initializing task core of  {}".format(option['task']))
-    bmk_name = option['task'][2:option['task'].find('_P-')]
-    bmk_core_path = '.'.join(['benchmark', bmk_name, 'core'])
-    pipe = getattr(importlib.import_module(bmk_core_path), 'TaskPipe')(option['task'])
-    class_calculator = getattr(importlib.import_module(bmk_core_path), 'TaskCalculator')
-    return pipe, class_calculator
-
-def init_device(option):
-    dev_list = [torch.device('cpu')] if option['gpu'] is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
-    dev_manager = flgo.utils.fmodule.get_device()
-    cfg.logger.info('Initializing devices: '+','.join([str(dev) for dev in dev_list])+' will be used for this running.')
-    return dev_list, dev_manager
-
-def init_model(option):
-    bmk_name = option['task'][2:option['task'].find('_P-')]
-    bmk_model_path = '.'.join(['benchmark', bmk_name, 'model', option['model']])
-    model_classes = { 'Model': None, 'SvrModel': None, 'CltModel': None}
-    for model_class in model_classes:
-        loading_priority = {
-            bmk_model_path: model_class,
-            '.'.join(['algorithm', option['algorithm']]): option['model'] if model_class=='Model' else model_class,
-        }
-        for model_path, model_name in loading_priority.items():
-            try:
-                model_classes[model_class] = getattr(importlib.import_module(model_path), model_name)
-                break
-            except:
-                continue
-        if model_classes[model_class] is not None: cfg.logger.info('Global model {} in {} was loaded.'.format(model_class, model_path))
-        else: cfg.logger.info('No {} is being used.'.format(model_class))
-    return model_classes['Model'], model_classes['SvrModel'], model_classes['CltModel']
-
-def init_system_environment(objects, option):
-    # init virtual systemic configuration including network state and the distribution of computing power
-    cfg.logger.info('Use `{}` as the system simulator'.format(option['simulator']))
-    flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
-    cfg.clock = flgo.system_simulator.base.ElemClock()
-    simulator = getattr(importlib.import_module('.'.join(['system_simulator', option['simulator']])), 'StateUpdater')(objects, option)
-    cfg.state_updater = simulator
-    cfg.clock.register_state_updater(simulator)
+def clear_temp():
+    tmppath = '/'.join(flgo.tmp.__file__.split('/')[:-1])
+    files = os.listdir(tmppath)
+    for file in files:
+        os.remove(os.path.join(tmppath, file))
 
 def gen_task(config, task_path='', rawdata_path='', seed=0):
     random.seed(3 + seed)
@@ -240,16 +206,22 @@ def init(task, algorithm, option, model_name='', Logger=flgo.experiment.logger.s
     except:
         pass
 
+    # create global variable
+    gv = GlobalVariable()
+
     # init logger
-    cfg.logger = Logger(task=task, option=option, name=str(Logger), level=option['log_level'])
+    gv.logger = Logger(task=task, option=option, name=str(Logger), level=option['log_level'])
 
     # init device
-    cfg.dev_list, cfg.dev_manager = init_device(option)
+    gv.dev_list = [torch.device('cpu')] if option['gpu'] is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
+    gv.dev_manager = gv.create_devmanager()
+    gv.logger.info('Initializing devices: '+','.join([str(dev) for dev in gv.dev_list])+' will be used for this running.')
 
     # init task
     core_module = '.'.join(['flgo','benchmark',benchmark, 'core'])
-    task_pipe = getattr(importlib.import_module(core_module), 'TaskPipe')(task)
-    cfg.TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
+    gv.TaskPipe = getattr(importlib.import_module(core_module), 'TaskPipe')
+    task_pipe = gv.TaskPipe(task)
+    gv.TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
     task_data = task_pipe.load_data(option)
 
     # init model
@@ -267,23 +239,42 @@ def init(task, algorithm, option, model_name='', Logger=flgo.experiment.logger.s
                 break
             except:
                 continue
-        if model_classes[model_class] is not None: cfg.logger.info('Global model {} in {} was loaded.'.format(model_class, model_path))
-        else: cfg.logger.info('No {} is being used.'.format(model_class))
-    cfg.Model, cfg.SvrModel, cfg.CltModel = model_classes['Model'], model_classes['SvrModel'], model_classes['CltModel']
+        if model_classes[model_class] is not None: gv.logger.info('Global model {} in {} was loaded.'.format(model_class, model_path))
+        else: gv.logger.info('No {} is being used.'.format(model_class))
+    gv.Model, gv.SvrModel, gv.CltModel = model_classes['Model'], model_classes['SvrModel'], model_classes['CltModel']
 
     # init objects
+    obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
+    tmp = []
+    for c in obj_class:
+        try:
+            C = getattr(algorithm, c)
+            setattr(C, 'gv', gv)
+            tmp.append(c)
+        except:
+            continue
     objects = task_pipe.generate_objects(option, algorithm, scene=scene)
     task_pipe.distribute(task_data, objects)
     for ob in objects: ob.initialize()
+    for c in tmp:
+        C = getattr(algorithm, c)
+        delattr(C, 'gv')
 
     # init virtual system environment
-    cfg.logger.info('Use `{}` as the system simulator'.format(simulator))
+    gv.logger.info('Use `{}` as the system simulator'.format(simulator))
     flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
-    cfg.clock = flgo.system_simulator.base.ElemClock()
-    cfg.state_updater = getattr(simulator, 'StateUpdater')(objects, option)
-    cfg.clock.register_state_updater(state_updater=cfg.state_updater)
+    gv.clock = flgo.system_simulator.base.ElemClock()
+    gv.state_updater = getattr(simulator, 'StateUpdater')(objects, option)
+    gv.clock.register_state_updater(state_updater=gv.state_updater)
 
-    cfg.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=cfg.clock)
-    cfg.logger.initialize()
-    cfg.logger.info('Ready to start.')
+    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock)
+    gv.logger.initialize()
+    gv.logger.info('Ready to start.')
+
+    # register global variables for objects
+    for ob in objects:
+        ob.gv = gv
+    gv.state_updater.gv = gv
+    gv.clock.gv = gv
+    gv.logger.gv = gv
     return objects[0]

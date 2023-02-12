@@ -1,31 +1,28 @@
 import numpy as np
-import flgo.utils.fmodule
 from flgo.utils import fmodule
 import copy
-import os
 import flgo.system_simulator.base as ss
 import math
 import collections
 import torch.multiprocessing as mp
-import config as cfg
 import torch
 
 class BasicServer:
     def __init__(self, option={}):
         # initialize the global model
-        self.model = cfg.Model()
+        self.model = self.gv.Model()
         if not option['server_with_cpu']:
-            self.model = self.model.to(cfg.dev_list[0])
+            self.model = self.model.to(self.gv.dev_list[0])
         self.device = self.model.get_device()
         if option['pretrain'] != '':
             self.model.load_state_dict(torch.load(option['pretrain'])['model'])
-            cfg.logger.info('The pretrained model parameters in {} will be loaded'.format(option['pretrain']))
+            self.gv.logger.info('The pretrained model parameters in {} will be loaded'.format(option['pretrain']))
         # basic configuration
         self.task = option['task']
         self.eval_interval = option['eval_interval']
         self.num_threads = option['num_threads']
         # server calculator
-        self.calculator = cfg.TaskCalculator(self.device, optimizer_name = option['optimizer'])
+        self.calculator = self.gv.TaskCalculator(self.device, optimizer_name = option['optimizer'])
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
         self.proportion = option['proportion']
@@ -50,34 +47,34 @@ class BasicServer:
         """
         Start the federated learning symtem where the global model is trained iteratively.
         """
-        cfg.logger.time_start('Total Time Cost')
-        cfg.logger.info("--------------Initial Evaluation--------------")
-        cfg.logger.time_start('Eval Time Cost')
-        cfg.logger.log_once()
-        cfg.logger.time_end('Eval Time Cost')
+        self.gv.logger.time_start('Total Time Cost')
+        self.gv.logger.info("--------------Initial Evaluation--------------")
+        self.gv.logger.time_start('Eval Time Cost')
+        self.gv.logger.log_once()
+        self.gv.logger.time_end('Eval Time Cost')
         while self.current_round <= self.num_rounds:
-            cfg.clock.step()
+            self.gv.clock.step()
             # iterate
             updated = self.iterate()
             # using logger to evaluate the model if the model is updated
             if updated is True or updated is None:
-                cfg.logger.info("--------------Round {}--------------".format(self.current_round))
+                self.gv.logger.info("--------------Round {}--------------".format(self.current_round))
                 # check log interval
-                if cfg.logger.check_if_log(self.current_round, self.eval_interval):
-                    cfg.logger.time_start('Eval Time Cost')
-                    cfg.logger.log_once()
-                    cfg.logger.time_end('Eval Time Cost')
+                if self.gv.logger.check_if_log(self.current_round, self.eval_interval):
+                    self.gv.logger.time_start('Eval Time Cost')
+                    self.gv.logger.log_once()
+                    self.gv.logger.time_end('Eval Time Cost')
                 # check if early stopping
-                if cfg.logger.early_stop(): break
+                if self.gv.logger.early_stop(): break
                 self.current_round += 1
             # decay learning rate
             self.global_lr_scheduler(self.current_round)
             # clear package buffer
             self.sending_package_buffer = [None for _ in self.clients]
-        cfg.logger.info("=================End==================")
-        cfg.logger.time_end('Total Time Cost')
+        self.gv.logger.info("=================End==================")
+        self.gv.logger.time_end('Total Time Cost')
         # save results as .json file
-        cfg.logger.save_output_as_json()
+        self.gv.logger.save_output_as_json()
         return
 
     def iterate(self):
@@ -132,7 +129,7 @@ class BasicServer:
             # computing in parallel with torch.multiprocessing
             pool = mp.Pool(self.num_threads)
             for client_id in communicate_clients:
-                self.clients[client_id].update_device(next(cfg.dev_manager))
+                self.clients[client_id].update_device(next(self.gv.dev_manager))
                 packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=(int(client_id),)))
             pool.close()
             pool.join()
@@ -354,8 +351,8 @@ class BasicClient:
         # create local dataset
         self.data_loader = None
         # local calculator
-        self.device = next(cfg.dev_manager)
-        self.calculator = cfg.TaskCalculator(self.device, option['optimizer'])
+        self.device = next(self.gv.dev_manager)
+        self.calculator = self.gv.TaskCalculator(self.device, option['optimizer'])
         # hyper-parameters for training
         self.optimizer_name = option['optimizer']
         self.learning_rate = option['learning_rate']
@@ -463,7 +460,7 @@ class BasicClient:
         :return
             True if the client is active according to the active_rate else False
         """
-        return cfg.state_updater.client_states[self.id]=='idle'
+        return self.gv.state_updater.client_states[self.id]=='idle'
 
     def is_dropped(self):
         """
@@ -472,10 +469,10 @@ class BasicClient:
         :return
             True if the client was being dropped
         """
-        return cfg.state_updater.client_states[self.id]=='dropped'
+        return self.gv.state_updater.client_states[self.id]=='dropped'
 
     def is_working(self):
-        return cfg.state_updater.client_states[self.id]=='working'
+        return self.gv.state_updater.client_states[self.id]=='working'
 
     def train_loss(self, model):
         """
@@ -554,7 +551,7 @@ class BasicClient:
         :return:
         """
         self.device = dev
-        self.calculator = cfg.TaskCalculator(dev, self.calculator.optimizer_name)
+        self.calculator = self.gv.TaskCalculator(dev, self.calculator.optimizer_name)
 
     def set_data(self, data, flag='train'):
         setattr(self, flag+'_data', data)

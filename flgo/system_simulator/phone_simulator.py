@@ -1,10 +1,8 @@
 import copy
-
-from system_simulator.base import BasicStateUpdater
+from flgo.system_simulator.base import BasicStateUpdater
 import os
 import zipfile
 import pandas as pd
-import config as cfg
 import urllib
 import numpy as np
 import re
@@ -239,7 +237,7 @@ class StateUpdater(BasicStateUpdater):
             self.net_speeds = [net_dev_list[nid] for nid in net_ids]
 
     def update_client_availability(self):
-        t = cfg.clock.current_time
+        t = self.gv.clock.current_time
         t = t%self.availability_table.index[-1]
         aid = t-t%15
         try:
@@ -257,14 +255,14 @@ class StateUpdater(BasicStateUpdater):
     def update_client_responsiveness(self, client_ids, *args, **kwargs):
         # calculate time of uploading and downloading model
         latency = []
-        up_pkg_sizes = cfg.state_updater.get_variable(client_ids, '__upload_package_size')
-        down_pkg_sizes = cfg.state_updater.get_variable(client_ids, '__download_package_size')
+        up_pkg_sizes = self.get_variable(client_ids, '__upload_package_size')
+        down_pkg_sizes = self.get_variable(client_ids, '__download_package_size')
         for cid, upsize,down_size in zip(client_ids, up_pkg_sizes, down_pkg_sizes):
             latency.append(int(1.0*upsize/self.net_speeds[cid][0] + 1.0*down_size/self.net_speeds[cid][1]))
         # calculate time of local computing
         tlcs = []
-        model_sizes =  cfg.state_updater.get_variable(client_ids, '__model_size')
-        working_amounts = cfg.state_updater.get_variable(client_ids, 'working_amount')
+        model_sizes =  self.get_variable(client_ids, '__model_size')
+        working_amounts = self.get_variable(client_ids, 'working_amount')
         for cid, model_size, wa in zip(client_ids, model_sizes, working_amounts):
             uk = self.client_us[cid]
             tlc_k = uk*model_size/1000.0*self.clients[cid].batch_size*wa/1000.0

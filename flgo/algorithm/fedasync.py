@@ -1,9 +1,6 @@
 """This is a non-official implementation of 'Asynchronous Federated Optimization' (http://arxiv.org/abs/1903.03934). """
 from .fedbase import BasicServer
 from .fedbase import BasicClient as Client
-import system_simulator.base as ss
-import config as cfg
-import numpy as np
 
 class Server(BasicServer):
     def initialize(self):
@@ -13,9 +10,9 @@ class Server(BasicServer):
 
     def iterate(self):
         # Scheduler periodically triggers the idle clients to locally train the model
-        self.selected_clients = self.sample() if (cfg.clock.current_time%self.period)==0 or cfg.clock.current_time==1 else []
+        self.selected_clients = self.sample() if (self.gv.clock.current_time%self.period)==0 or self.gv.clock.current_time==1 else []
         if len(self.selected_clients)>0:
-            cfg.logger.info('Select clients {} at time {}'.format(self.selected_clients, cfg.clock.current_time))
+            self.gv.logger.info('Select clients {} at time {}'.format(self.selected_clients, self.gv.clock.current_time))
         # Record the timestamp of the selected clients
         for cid in self.selected_clients: self.client_taus[cid] = self.current_round
         # Check the currently received models
@@ -23,7 +20,7 @@ class Server(BasicServer):
         received_models = res['model']
         received_client_ids = res['__cid']
         if len(received_models) > 0:
-            cfg.logger.info('Receive new models from clients {} at time {}'.format(received_client_ids, cfg.clock.current_time))
+            self.gv.logger.info('Receive new models from clients {} at time {}'.format(received_client_ids, self.gv.clock.current_time))
             # averaging the simultaneously received models at the current moment
             taus = [self.client_taus[cid] for cid in received_client_ids]
             alpha_ts = [self.alpha * self.s(self.current_round - tau) for tau in taus]

@@ -9,9 +9,6 @@ C: the degree of the diverse in the `Credits` for tiers. The smaller C is, the u
 """
 from .fedbase import BasicServer
 from .fedbase import BasicClient as Client
-import system_simulator.base as ss
-import config as cfg
-import collections
 import numpy as np
 
 class Server(BasicServer):

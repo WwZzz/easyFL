@@ -1,8 +1,7 @@
 benchmark:
   name: mnist_classification
 partitioner:
-  name: DirichletPartitioner
+  name: IIDPartitioner
   para:
     num_clients: 100
-    alpha: 0.1
 
