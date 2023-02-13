@@ -3,7 +3,8 @@ import os
 import shutil
 import urllib
 import zipfile
-
+import flgo.benchmark
+import os.path
 import numpy as np
 import torch
 from torchvision.datasets import utils
@@ -145,7 +146,7 @@ class REDDIT(Dataset):
         return [self.vocab[word] if word in self.vocab else self.vocab['<UNK>'] for word in token[0]]
 
 class TaskGenerator(BasicTaskGenerator):
-    def __init__(self,  rawdata_path='./RAW_DATA/REDDIT'):
+    def __init__(self,  rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'REDDIT')):
         super(TaskGenerator, self).__init__(benchmark='leaf_reddit',
                                             rawdata_path=rawdata_path)
     def load_data(self):

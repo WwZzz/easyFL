@@ -9,7 +9,8 @@ import re
 import os
 import os.path
 import ujson
-
+import flgo.benchmark
+import os.path
 def download_from_url(url= None, filepath = '.'):
     """Download dataset from url to filepath."""
     if url:urllib.request.urlretrieve(url, filepath)
@@ -251,7 +252,7 @@ class SHAKESPEARE(Dataset):
 
 
 class TaskGenerator(BasicTaskGenerator):
-    def __init__(self, rawdata_path='./RAW_DATA/SHAKESPEARE'):
+    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'SHAKESPEARE')):
         super(TaskGenerator, self).__init__(benchmark='shakespeare_classification', rawdata_path=rawdata_path)
         # Regular expression to capture an actors name, and line continuation
 

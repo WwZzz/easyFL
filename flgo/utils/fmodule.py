@@ -481,10 +481,3 @@ def with_multi_gpus(func):
                 res = res.to(origin_device) if hasattr(res, 'get_device') or hasattr(res, 'device') else res
         return res
     return cal_on_personal_gpu
-#
-# def get_device():
-#     if len(cfg.dev_list)==0: return torch.device('cpu')
-#     crt_dev = 0
-#     while True:
-#         yield cfg.dev_list[crt_dev]
-#         crt_dev = (crt_dev+1)%len(cfg.dev_list)

@@ -3,7 +3,8 @@ import shutil
 import urllib.request
 import random
 import zipfile
-
+import flgo.benchmark
+import os.path
 import ujson
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -121,7 +122,7 @@ class FEMNIST(MNIST):
 TaskCalculator = GeneralCalculator
 
 class TaskGenerator(BuiltinClassGenerator):
-    def __init__(self, rawdata_path='./RAW_DATA/MNIST'):
+    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'MNIST')):
         super(TaskGenerator, self).__init__('femnist_classification', rawdata_path, FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
 
 class TaskPipe(BuiltinClassPipe):
