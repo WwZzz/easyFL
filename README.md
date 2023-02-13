@@ -13,33 +13,11 @@ Our FLGo is a strong and reusable experimental platform for research on federate
 
 ## QuickStart
 
-**First**, follow these steps to generate a fedtask:
-- Enter the parameters needed to divide the dataset in the gen_config.yml file, such as the benchmark name and the selected parttioner name, etc. In the example, we use the Diliclet method to divide the MNIST dataset.
-- Run the command below to get the splited dataset MNIST:
-```sh
-# generate the splited dataset
-python generate_fedtask.py
-```
-
-**Second**, run the command below to quickly get a result of the basic algorithm FedAvg on MNIST with a simple CNN:
 
 ```sh
-python main.py --task B-mnist_classification_P-dir0.10_N-100_S-0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.1 --proportion 0.1 --batch_size 10 --eval_interval 1
-# if using gpu, add the id of the gpu device as '--gpu id' to the end of the command like this
-python main.py --task B-mnist_classification_P-dir0.10_N-100_S-0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.1 --proportion 0.1 --batch_size 10 --eval_interval 1 --gpu 0
+python test.py
 ```
 
-The result will be stored in ` ./fedtask/B-mnist_classification_P-dir0.10_N-100_S-0/record/`.
-
-**Third**, run the command below to get a visualization of the result.
-
-You can modify the parameters of the result visualization in res_config.yml to visualize the results you need.
-```sh
-# change to the ./experiment folder
-cd ../experiment
-# visualize the results
-python analyzer.py
-```
 
 
 

@@ -1,6 +1,6 @@
 Selector:
   task:
-    ./my_task
+    ../my_task
   header:
     - fedavg
     - fedprox
