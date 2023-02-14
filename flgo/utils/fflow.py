@@ -11,7 +11,6 @@ import flgo.system_simulator.base
 import flgo.utils.fmodule
 import flgo.experiment.logger.simple_logger
 import flgo.algorithm
-import flgo.tmp
 import argparse
 import importlib
 import random
