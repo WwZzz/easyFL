@@ -1,7 +1,14 @@
 from torchvision import datasets, transforms
 from benchmark.toolkits import DefaultTaskGen
 from benchmark.toolkits import ClassificationCalculator as TaskCalculator
-from benchmark.toolkits import XYTaskPipe as TaskPipe
+from benchmark.toolkits import XYTaskPipe
+import ujson
+import torch
+from torch.utils.data import Dataset
+import os
+import os.path
+import random
+
 class TaskGen(DefaultTaskGen):
     def __init__(self, dist_id, num_clients = 1, skewness = 0.5, selected_labels = [0,2,6], seed=0):
         super(TaskGen, self).__init__(benchmark='fashion_classification',
@@ -38,4 +45,27 @@ class TaskGen(DefaultTaskGen):
 
     def save_task(self, generator):
         self.convert_data_for_saving()
-        XYTaskPipe.save_task(self)
+        TaskPipe.save_task(self)
+
+class TaskPipe(XYTaskPipe):
+    @classmethod
+    def save_task(cls, generator):
+        generator.convert_data_for_saving()
+        feddata = {
+            'store': 'XY',
+            'client_names': generator.cnames,
+            'dtest': generator.test_data
+        }
+        for cid in range(len(generator.cnames)):
+            feddata[generator.cnames[cid]] = {
+                'dtrain': {
+                    'x': [generator.train_data['x'][did] for did in generator.train_cidxs[cid]],
+                    'y': [generator.train_data['y'][did] for did in generator.train_cidxs[cid]]
+                },
+                'dvalid': {
+                    'x': [generator.train_data['x'][did] for did in generator.valid_cidxs[cid]],
+                    'y': [generator.train_data['y'][did] for did in generator.valid_cidxs[cid]]
+                }
+            }
+        with open(os.path.join(generator.taskpath, 'data.json'), 'w') as outf:
+            ujson.dump(feddata, outf)
