@@ -1,0 +1,7 @@
+benchmark:
+  name: mnist_classification
+partitioner:
+  name: IIDPartitioner
+  para:
+    num_clients: 100
+

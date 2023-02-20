@@ -1,220 +1,50 @@
-# easyFL: A Lightning Framework for Federated Learning
+# FLGo: A Lightning Framework for Federated Learning
 
 This repository is PyTorch implementation for the IJCAI-21 paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/).
 
-Our easyFL is a strong and reusable experimental platform for research on federated learning (FL) algorithm, which has provided a few easy-to-use modules to hold out for those who want to do various federated learning experiments. In short, it is easy for FL-researchers to 
-* quickly realize and compare popular centralized federated learning algorithms ([Look Here](https://github.com/WwZzz/easyFL/blob/main/algorithm/README.md#refer-anchor-1))
-* transform traditional machine learning tasks into federated tasks by following our paradigm of constructing data pipeline ([Look Here](benchmark/README.md))
-* make interesting observations during training time to get a deeper insight of federated learning in a code-incremental manner without destorying the original realization ([Look Here](https://github.com/WwZzz/easyFL/blob/main/algorithm/README.md#refer-anchor-2))
-* efficiently manage and analyze the experiment records with `utils/result_analysis.py`
+Our FLGo is a strong and reusable experimental platform for research on federated learning (FL) algorithm, which has provided a few easy-to-use modules to hold out for those who want to do various federated learning experiments. 
 
 ## Table of Contents
-- [Requirements](#Requirements)
 - [QuickStart](#QuickStart)
 - [Architecture](#Architecture)
-- [Remark](#Remark)
 - [Citation](#Citation)
 - [Contacts](#Contacts)
-- [Publication](#Remark)
 - [References](#References)
 
-
-## Requirements
-
-The project is implemented using Python3 with dependencies below:
-
-```
-numpy>=1.17.2
-pytorch>=1.3.1
-torchvision>=0.4.2
-matplotlib>=3.1.1
-prettytable>=2.1.0
-ujson>=4.0.2
-pyyaml
-```
-
-Additional dependencies are only necessary for particular algorithms like fedmgda+ and clustered_sampling. 
-```
-cvxopt>=1.2.0
-scipy>=1.3.1
-```
 ## QuickStart
 
-**First**, run the command below to get the splited dataset MNIST:
 
 ```sh
-# generate the splited dataset
-python generate_fedtask.py --benchmark mnist_classification --dist 0 --skew 0 --num_clients 100
+python test.py
 ```
 
-**Second**, run the command below to quickly get a result of the basic algorithm FedAvg on MNIST with a simple CNN:
 
-```sh
-python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.1 --proportion 0.1 --batch_size 10 --eval_interval 1
-# if using gpu, add the id of the gpu device as '--gpu id' to the end of the command like this
-python main.py --task mnist_classification_cnum100_dist0_skew0_seed0 --model cnn --algorithm fedavg --num_rounds 20 --num_epochs 5 --learning_rate 0.1 --proportion 0.1 --batch_size 10 --eval_interval 1 --gpu 0
-```
 
-The result will be stored in ` ./fedtask/mnist_classification_cnum100_dist0_skew0_seed0/record/`.
-
-**Third**, run the command below to get a visualization of the result.
-
-```sh
-# change to the ./utils folder
-cd ../utils
-# visualize the results
-python result_analysis.py
-```
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_trainloss.png" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testloss.png" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/example_mnist_testacc.png" width="230" />
-</p>
-
-### Performance
-
-<table>
-   <tr>
-      <td colspan="5">The rounds necessary for FedAVG to achieve 99% test accuracy on MNIST using CNN with E=5 (reported in <a href='#refer-anchor-1'>[McMahan. et al. 2017]</a>  /  ours)</td>
-   </tr>
-   <tr>
-      <td rowspan="2">Proportion</td>
-      <td colspan="2">iid</td>
-      <td colspan="2">non-iid</td>
-   </tr>
-   <tr>
-      <td>B=FULL</td>
-      <td>B=10</td>
-      <td>B=FULL</td>
-      <td>B=10</td>
-   </tr>
-   <tr>
-      <td>0.0</td>
-      <td>387  /  325</td>
-      <td>50  /  91</td>
-      <td>1181  /  1021</td>
-      <td>956  /  771</td>
-   </tr>
-   <tr>
-      <td>0.1</td>
-      <td>339  /  203</td>
-      <td>18  /  18 </td>
-      <td>1100  /  453</td>
-      <td>206  /  107</td>
-   </tr>
-   <tr>
-      <td>0.2</td>
-      <td>337  /  207</td>
-      <td>18  /  19 </td>
-      <td>978  /  525</td>
-      <td>200  /  95</td>
-   </tr>
-   <tr>
-      <td>0.5</td>
-      <td>164  /  214</td>
-      <td>18  /  18 </td>
-      <td>1067  /  606</td>
-      <td>261  /  105</td>
-   </tr> 
-   <tr>
-      <td>1.0</td>
-      <td>246  /  267</td>
-      <td>16  /  18</td>
-      <td>--  /  737</td>
-      <td>97  /  90</td>
-   </tr>
-</table>
-<table>
-   <tr>
-      <td colspan="7"> Accelarating FL Process by Increasing Parallelism For FedAVG on MNIST using CNN (20/100 clients per round)</td>
-   </tr>
-   <tr>
-      <td>Num_threads</td>
-      <td>1 </td>
-      <td>2</td>
-      <td>5</td>
-      <td>10</td>
-      <td>15</td>
-      <td>20</td>
-   </tr>
-   <tr>
-      <td>Mean of time cost per round(s/r)</td>
-      <td>19.5434 </td>
-      <td>13.5733</td>
-      <td>9.9935</td>
-      <td>9.3092</td>
-      <td>9.2885</td>
-      <td><b>8.3867</b></td>
-   </tr>
-</table>
 
 ### Reproduced FL Algorithms
-|Method|Reference|Publication|
-|---|---|---|
-|FedAvg|<a href='#refer-anchor-1'>[McMahan et al., 2017]</a>|AISTATS' 2017|
-|FedProx|<a href='#refer-anchor-2'>[Li et al., 2020]</a>|MLSys' 2020|
-|FedFV|<a href='#refer-anchor-3'>[Wang et al., 2021]</a>|IJCAI' 2021|
-|qFFL|<a href='#refer-anchor-4'>[Li et al., 2019]</a>|ICLR' 2020|
-|AFL|<a href='#refer-anchor-5'>[Mohri et al., 2019]</a>|ICML' 2019|
-|FedMGDA+|<a href='#refer-anchor-6'>[Hu et al., 2020]</a>|pre-print|
-|FedFA|<a href='#refer-anchor-7'>[Huang et al., 2020]</a>|pre-print|
-|SCAFFOLD|<a href='#refer-anchor-11'>[Karimireddy et al., 2020]</a>|ICML' 2020|
-| FedDyn      | <a href='#refer-anchor-12'>[Acar et al., 2021]</a>       | ICLR' 2021    |
-| ...         |||
+| Method   |Reference|Publication|
+|----------|---|---|
+| FedAvg   |<a href='#refer-anchor-1'>[McMahan et al., 2017]</a>|AISTATS' 2017|
+| FedAsync |<a href='#refer-anchor-2'></a>||
+| FedBuff  |<a href='#refer-anchor-2'></a>||
+| TiFL     |<a href='#refer-anchor-2'></a>||
 
-For those who want to realize their own federaed algorithms or reproduce others, please see `algorithms/readme.md`, where we take two simple examples to show how to use easyFL for the popurse.
-
-### Dataset Partition Visualizing
-We also provide the visualization of dataset partitioned by labels. Here we take the partition of CIFAR100/MNIST/CIFAR10 as the examples. Across all the examples, each row in the figure corresponds to the local data of one client, and different colors represent different labels. The x axis is the number of samples in the local dataset.
-#### Di ~ D where dist=0
-Each local dataset is I.I.D. drawn from the global distribution. Here we allocate the data of CIFAR100 to 100 clients. The iid can also be gengerated by setting (dist=2, skew=0) or (dist=1, skew=0). We list the results of the three IID partition manners below (i.e. dist=0,1,2 from left to right).
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist0_skew0_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist1_skew0.0_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar100_classification_cnum100_dist2_skew0.0_seed0.jpg" width="230" />
-</p>
-
-#### |{Di(Y)}|=K where dist=1
-Each local dataset is allocated K labels of data. The visualization of the partition is on MNIST. There are 10 clients in each picture.
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.39_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.69_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/mnist_classification_cnum10_dist1_skew0.79_seed0.jpg" width="230" />
-</p>
-
-#### Di ~ Dirichlet(αP) where dist=2
-Here the partitioned dataset obeys the dirichlet(alpha * p) distirbution. The dataset is allocated to 100 clients and each client has a similar amount data size (i.e. balance). The hyperparameters `skewness` controls the non-i.i.d. degree of the federated dataset, which increases from the left (skewness=0.0 => alpha=inf) to the right (skewness=1.0 => alpha=0). 
-
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.0_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.2_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.4_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.6_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew0.8_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist2_skew1.0_seed0.jpg" width="230" />
-</p>
-
-#### Di ~ Dirichlet(αP) and imbalance where dist=4
-In this case, the label distribution is the same as `dist=2`. However, there exist severe data imbalance, where the local data sizes vary across clients. The hyperparameter `skewness` also controls the non-i.i.d. degree of the partition.
-
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew0.2_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew0.5_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew0.75_seed0.jpg" width="230" />
-   <img src="https://github.com/WwZzz/myfigs/blob/master/cifar10_classification_cnum100_dist4_skew1.0_seed0.jpg" width="230" />
-</p>
-
-To generate these fedtasks, run the command below
-
+### Dataset Partition
+To divide the dataset using different partitions, make the following changes to the contents of the gen_config.yml file:
 ```
 # I.I.D.
-python generate_fedtask.py --dist 0 --skew 0 --num_clients 100 --benchmark cifar100_classification
-# skew=0.39,0.69,0.79
-python generate_fedtask.py --dist 1 --skew 0.39 --num_clients 10 --benchmark mnist_classification
-# varying skew from 0.0 to 1.0
-python generate_fedtask.py --dist 2 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
-# Imbalace & dirichlet, and the skew also varies from 0.2 to 1.0
-python generate_fedtask.py --dist 4 --skew 0.0 --num_clients 100 --benchmark cifar10_classification
+partitioner:
+  name: IIDPartitioner
+  para:
+    num_clients: 100
+    
+# Imbalace & dirichlet
+partitioner:
+  name: DirichletPartitioner
+  para:
+    num_clients: 100
+    imbalance: 0.1
+    alpha: 0.1
 ```
 
 ### Options
@@ -273,12 +103,6 @@ Real Machine-Dependent options:
 
 * `num_workers` is the number of workers of the torch.utils.data.Dataloader
 
-Simulating systemic configuration: 1) network heterogeneity, 2) computing power heterogeneiry
-
-* `network_config` controls the network conditions of all the clients. See `utils.systemic_simulator` for more details. 
-
-* `computing_config` controls the computing resources of all the clients. See `utils.systemic_simulator` for more details. 
-
 Additional hyper-parameters for particular federated algorithms:
 
 * `algo_para` is used to receive the algorithm-dependent hyper-parameters from command lines. Usage: 1) The hyper-parameter will be set as the default value defined in Server.__init__() if not specifying this term, 2) For algorithms with one or more parameters, use `--algo_para v1 v2 ...` to specify the values for the parameters. The input order depends on the dict `Server.algo_para` defined in `Server.__init__()`.
@@ -295,43 +119,60 @@ Logger's setting
 
 ## Architecture
 
-We seperate the FL system into four parts: `benchmark`, `fedtask`, `method` and `utils`.
+We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`, `fedtask`, `system_simulator` and `utils`.
 ```
+├─ algorithm
+│  ├─ fedavg.py                   //fedavg algorithm
+│  ├─ ...
+│  ├─ fedasync.py                 //the base class for asynchronous federated algorithms
+│  └─ fedbase.py                  //the base class for federated algorithms
 ├─ benchmark
 │  ├─ mnist_classification			//classification on mnist dataset
 │  │  ├─ model                   //the corresponding model
 │  |  └─ core.py                 //the core supporting for the dataset, and each contains three necessary classes(e.g. TaskGen, TaskReader, TaskCalculator)							
 │  ├─ ...
 │  ├─ RAW_DATA                   // storing the downloaded raw dataset
-│  └─ toolkits.py						//the basic tools for generating federated dataset
+│  └─ toolkits						//the basic tools for generating federated dataset
+│     ├─ cv                      // common federal division on cv
+│     │  ├─ horizontal           // horizontal fedtask
+│     │  │  └─ image_classification.py   // the base class for image classification
+│     │  └─ ...
+│     ├─ ...
+│     ├─ base.py                 // the base class for all fedtask
+│     ├─ partition.py            // the parttion class for federal division
+│     └─ visualization.py        // visualization after the data set is divided
+├─ experiment
+│  ├─ logger                            //the class that records the experimental process
+│  │  ├─ basic_logger.py		    	//the base logger class
+│  |  └─ simple_logger.py				//a simple logger class
+│  ├─ analyzer.py                  //the class for analyzing and printing experimental results
+│  ├─ res_config.yml                  //hyperparameter file of analyzer.py
+│  ├─ run_config.yml                  //hyperparameter file of runner.py
+|  └─ runner.py                    //the class for generating experimental commands based on hyperparameter combinations and processor scheduling for all experimental commands
 ├─ fedtask
-│  ├─ mnist_client100_dist0_beta0_noise0//IID(beta=0) MNIST for 100 clients with not predefined noise
+│  ├─ B-mnist_classification_P-dir0.10_N-100_S-0 //a fedtask
 │  │  ├─ record							//the directionary of the running result
 │  |  └─ data.json						//the splitted federated dataset (fedtask)
 |  └─ ...
-├─ method
-│  ├─ fedavg.py							//FL algorithm implementation inherit fedbase.py
-│  ├─ fedbase.py						//FL algorithm superclass(i.e.,fedavg)
-│  ├─ fedfv.py							//our FL algorithm
-│  ├─ fedprox.py
+├─ system_simulator                     //system heterogeneity simulation module
+│  ├─ base.py							//the base class for simulate system heterogeneity
+│  ├─ default_simulator.py				//the default class for simulate system heterogeneity
 |  └─ ...
 ├─ utils
 │  ├─ fflow.py							//option to read, initialize,...
-│  ├─ fmodule.py						//model-level operators
-│  ├─ systemic_simulator.py						//simulating the network heterogeneity
-│  └─ result_analysis.py				        //to generate the visualization of record
-├─ generate_fedtask.py					        //generate fedtask
+│  └─ fmodule.py						//model-level operators
+├─ generate_fedtask.py					//generate fedtask
+├─ gen_config.yml                       //hyperparameter file of generate_fedtask.py
 ├─ requirements.txt
 └─ main.py                       //run this file to start easyFL system
 ```
+
 ### Benchmark
 
-<p float="left">
-   <img src="https://github.com/WwZzz/myfigs/blob/master/easyfl_benchmark.jpg" width="800" />
-</p>
-This module is to generate `fedtask` by partitioning the particular distribution data through `generate_fedtask.py`. To generate different `fedtask`, there are three parameters: `dist`, `num_clients `, `beta`. `dist` denotes the distribution type (e.g. `0` denotes iid and balanced distribution, `1` denotes niid-label-quantity and balanced distribution). `num_clients` is the number of clients participate in FL system, and `beta` controls the degree of non-iid for different  `dist`. Each dataset can correspond to differrent models (mlp, cnn, resnet18, …). We refer to <a href='#refer-anchor-1'>[McMahan et al., 2017]</a>, <a href='#refer-anchor-2'>[Li et al., 2020]</a>, <a href='#refer-anchor-8'>[Li et al., 2021]</a>, <a href='#refer-anchor-4'>[Li et al., 2019]</a>, <a href='#refer-anchor-9'>[Caldas et al., 2018]</a>, <a href='#refer-anchor-10'>[He et al., 2020]</a> when realizing this module. Further details are described in `benchmark/README.md`.
+We have added many benchmarks covering several different areas such as CV, NLP, etc
 
 ### Fedtask
+
 We define each task as a combination of the federated dataset of a particular distribution and the experimental results on it. The raw dataset is processed into .json file, following LEAF (https://github.com/TalwalkarLab/leaf). The architecture of the data.json file is described as below:  
 
 ```python
@@ -394,27 +235,24 @@ The clients reponse to the server after the server `communicate_with()` them, wh
 
 Further details of this module are described in `algorithm/README.md`.
 
+### Experiment
+
+The experiment module contains experiment command generation and scheduling operation, which can help FL researchers more conveniently conduct experiments in the field of federated learning.
+
+### System_simulator
+
+The system_simulator module is used to realize the simulation of heterogeneous systems, and we set multiple states such as network speed and availability to better simulate the system heterogeneity of federated learning parties.
+
 ### Utils
-Utils is composed of commonly used operations: model-level operation (we convert model layers and parameters to dictionary type and apply it in the whole FL system), the flow controlling of the framework in and the supporting visualization templates to the result. To visualize the results, please run `./utils/result_analysis.py`. Further details are described in `utils/README.md`.
 
-## Remark
-
-* Since we've made great changes on the latest version, to fully reproduce the reported results in our paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/), please use another branch `easyFL v1.0` of this project. 
-
-# Publication Using easyFL 
-* A realization of federated learning algorithm on Road Markings Extraction from Mobile LiDAR Point Clouds (FedRME, https://fanxlxmu.github.io/publication/paper/CSCWD22-FedRME.pdf) was accepted by 2022 IEEE 25th International Conference on Computer Supported Cooperative Work in Design (IEEE CSCWD 2022). The source code for FedRME will be release as soon as possible.
+Utils is composed of commonly used operations: model-level operation (we convert model layers and parameters to dictionary type and apply it in the whole FL system). Further details are described in `utils/README.md`.
 
 ## Citation
 
 Please cite our paper in your publications if this code helps your research.
 
 ```
-@article{wang2021federated,
-  title={Federated Learning with Fair Averaging},
-  author={Wang, Zheng and Fan, Xiaoliang and Qi, Jianzhong and Wen, Chenglu and Wang, Cheng and Yu, Rongshan},
-  journal={arXiv preprint arXiv:2104.14937},
-  year={2021}
-}te
+
 ```
 
 ## Contacts
@@ -426,49 +264,4 @@ Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
 <div id='refer-anchor-1'></div>
 
 \[McMahan. et al., 2017\] [Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2017.](https://arxiv.org/abs/1602.05629)
-
-<div id='refer-anchor-2'></div>
-
-\[Li et al., 2020\] [Tian Li, Anit Kumar Sahu, Manzil Zaheer, Maziar Sanjabi, Ameet Talwalkar, and Virginia Smith. Federated optimization in heterogeneous networks. arXiv e-prints, page arXiv:1812.06127, 2020.](https://arxiv.org/abs/1812.06127)
-
-<div id='refer-anchor-3'></div>
-
-\[Wang et al., 2021\] [Zheng Wang, Xiaoliang Fan, Jianzhong Qi, Chenglu Wen, Cheng Wang and Rongshan Yu. Federated Learning with Fair Averaging. arXiv e-prints, page arXiv:2104.14937, 2021.](https://arxiv.org/abs/2104.14937)
-
-
-<div id='refer-anchor-4'></div>
-
-\[Li et al., 2019\] [ Tian Li, Maziar Sanjabi, and Virginia Smith. Fair resource allocation in federated learning. CoRR, abs/1905.10497, 2019.](https://arxiv.org/abs/1905.10497)
-
-<div id='refer-anchor-5'></div>
-
-\[Mohri et al., 2019\] [Mehryar Mohri, Gary Sivek, and Ananda Theertha Suresh. Agnostic federated learning. CoRR, abs/1902.00146, 2019.](https://arxiv.org/abs/1902.00146)
-
-<div id='refer-anchor-6'></div>
-
-\[Hu et al., 2020\] [Zeou Hu, Kiarash Shaloudegi, Guojun Zhang, and Yaoliang Yu. Fedmgda+: Federated learning meets multi-objective optimization. arXiv e-prints, page arXiv:2006.11489, 2020.](https://arxiv.org/abs/2006.11489)
-
-<div id='refer-anchor-7'></div>
-
-\[Huang et al., 2020\] [Wei Huang, Tianrui Li, Dexian Wang, Shengdong Du, and Junbo Zhang. Fairness and accuracy in federated learning. arXiv e-prints, page arXiv:2012.10069, 2020.](https://arxiv.org/abs/2012.10069) 
-
-<div id='refer-anchor-8'></div>
-
-\[Li et al., 2021\][Li, Qinbin and Diao, Yiqun and Chen, Quan and He, Bingsheng. Federated Learning on Non-IID Data Silos: An Experimental Study. arXiv preprint arXiv:2102.02079, 2021.](https://arxiv.org/abs/2102.02079)
-
-<div id='refer-anchor-9'></div>
-
-\[Caldas et al., 2018\] [Sebastian Caldas, Sai Meher Karthik Duddu, Peter Wu, Tian Li, Jakub Konečný, H. Brendan McMahan, Virginia Smith, Ameet Talwalkar. LEAF: A Benchmark for Federated Settings. arXiv preprint arXiv:1812.01097, 2018.](https://arxiv.org/abs/1812.01097)
-
-<div id='refer-anchor-10'></div>
-
-\[He et al., 2020\] [He, Chaoyang and Li, Songze and So, Jinhyun and Zhang, Mi and Wang, Hongyi and Wang, Xiaoyang and Vepakomma, Praneeth and Singh, Abhishek and Qiu, Hang and Shen, Li and Zhao, Peilin and Kang, Yan and Liu, Yang and Raskar, Ramesh and Yang, Qiang and Annavaram, Murali and Avestimehr, Salman. FedML: A Research Library and Benchmark for Federated Machine Learning. arXiv preprint arXiv:2007.13518, 2020.](https://arxiv.org/abs/2007.13518)
-
-<div id='refer-anchor-11'></div>
-
-\[Karimireddy et al., 2020\] [Sai Praneeth Karimireddy, Satyen Kale, Mehryar Mohri, Sashank Reddi, Sebastian Stich, Ananda Theertha Suresh, SCAFFOLD: Stochastic Controlled Averaging for Federated Learning, Proceedings of the 37th International Conference on Machine Learning, PMLR 119:5132-5143, 2020.](https://arxiv.org/abs/1910.06378v3)
-
-<div id='refer-anchor-12'></div>
-
-[Acar et al., 2021] [Durmus Alp Emre Acar, Yue Zhao, Ramon Matas, Matthew Mattina, Paul Whatmough, Venkatesh Saligrama. Federated Learning Based on Dynamic Regularization. International Conference on Learning Representations (ICLR), 2021](https://openreview.net/forum?id=B7v4QMR6Z9w)
 

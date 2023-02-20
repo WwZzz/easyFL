@@ -1,0 +1,20 @@
+Selector:
+  task:
+    ../my_task
+  header:
+    - fedavg
+    - fedprox
+  filter: {}
+  legend_with: []
+
+Painter:
+  Curve:
+    - args:
+        x: communication_round
+        y: valid_loss
+      fig_option:
+        xlabel: communication round
+        ylabel: valid loss
+        title: valid loss on MNIST
+
+
