@@ -1,0 +1,89 @@
+#=======================================================================================
+# The first part of `config.yml` is to used to load and filter the saved experimental
+# records. `*` means necessary.
+#=======================================================================================
+#  * `task`:      string as default.    The task name of records. Only the records in
+#                                       `fedtask/taskname/record` will be considered.
+#---------------------------------------------------------------------------------------
+#  * `header`:    list as default.      The name of algorithms. e.g. `header`=['fedavg']
+#                                       will only read records runned with fedavg.
+#---------------------------------------------------------------------------------------
+#  `flt`:       dict as default.      The filter excluding records whose hyper-parameters
+#                                       not satisfied the constraint defined in flt below:
+#                                       Examples:
+#                                       1) if flt['B']=='64', then only records with
+#                                          batch_size==64 will be preserved;
+#                                       2) if flt['LR']=='<0.1', then only records with
+#                                          learning_rate<=0.1 will be preserved;
+#---------------------------------------------------------------------------------------
+# `legend_flt`: list as default.       The filter is used to decide which parameters should
+#                                       be selected when generating legends for matplotlib.
+#                                       Examples:
+#                                       1) if `legend_flt`==[], the legend for each record is
+#                                       its algorithm name (e.g. fedavg for records run with fedavg.py).
+#                                       2) if `legend_flt`==[B,LR], the legend for each record
+#                                       is its algorithm name combined with parameters `batch_size`
+#                                       and `learning_rate` (e.g. `fedavg B64 LR0.1`).
+#---------------------------------------------------------------------------------------
+task:
+  mnist_classification_cnum100_dist0_skew0_seed0
+
+header:
+  - fedavg
+
+flt:
+  B: <512
+
+legend_flt: []
+
+ploter:
+  plot:
+    - x: communication_round
+      y: valid_loss
+      xlabel: communication round
+      ylabel: valid loss
+      title: valid loss on MNIST
+    - x: communication_round
+      y: valid_accuracy
+      xlabel: communication round
+      ylabel: valid accuracy
+      title: valid accuracy on MNIST
+
+  bar:
+    - x: client_id
+      y: valid_loss_dist
+      x_label: client ID
+      title: local validating loss distribution
+info:
+  final_value:
+    - valid_loss
+  min_value:
+    - valid_loss
+
+#=======================================================================================
+# The second part of `config.yml` is to used to decide which figure to plot and what to
+# show in the table.
+#=======================================================================================
+#               |     method_name    |   plot_object: describe the plot manner
+#---------------------------------------------------------------------------------------
+#               |                    | use plt.plot to plot curve for records. To use this
+#               |         plot       | method, `x` and `y` should be specified, since the
+#               |                    | final plot will be like:
+#               |                    |       plt.plot(rec_dict[config['x']], rec_dict[config['y']])
+#               |--------------------|--------------------------------------------------
+#  `ploter`:    |     scatter        | to be finished
+#               |--------------------|--------------------------------------------------
+#               |    group_plot      | to be finished
+#               |--------------------|--------------------------------------------------
+#               |       bar          | to be finished
+#               |--------------------|--------------------------------------------------
+#               |     trace_2d       | to be finished
+#---------------------------------------------------------------------------------------
+#               |    final_value     | to be finished
+#               |--------------------|--------------------------------------------------
+#  `former`:    |    max_value       | to be finished
+#               |--------------------|--------------------------------------------------
+#               |    min_value       | to be finished
+#               |--------------------|--------------------------------------------------
+#               | group_mean_with_std| to be finished
+#---------------------------------------------------------------------------------------
