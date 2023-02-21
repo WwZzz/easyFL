@@ -7,8 +7,24 @@ import collections
 import torch.multiprocessing as mp
 import torch
 
-class BasicServer:
+class BasicObject:
+    def __init__(self, *args, **kwargs):
+        self.actions = {}
+        self.id = None
+
+    def register_action_to_mtype(self, action_name, mtype):
+        if action_name not in self.__dict__.keys():
+            raise NotImplementedError("There is no method named `{}` in the class instance.".format(action_name))
+        self.actions[mtype] = self.__dict__[action_name]
+
+    def message_handler(self, package, mtype):
+        if mtype not in self.actions.keys():
+            raise NotImplementedError("There is no action corresponding to message type {}.".format(mtype))
+        return self.actions[mtype](package)
+
+class BasicServer(BasicObject):
     def __init__(self, option={}):
+        super().__init__()
         # initialize the global model
         self.model = self.gv.Model()
         if not option['server_with_cpu']:
@@ -39,6 +55,7 @@ class BasicServer:
         self.current_round = 1
         # all options
         self.option = option
+        self.id = -1
 
     def initialize(self, *args, **kwargs):
         return
@@ -94,7 +111,7 @@ class BasicServer:
 
     @ss.with_dropout
     @ss.with_clock
-    def communicate(self, selected_clients, asynchronous=False):
+    def communicate(self, selected_clients, mtype=0, asynchronous=False):
         """
         The whole simulating communication procedure with the selected clients.
         This part supports for simulating the client dropping out.
@@ -120,17 +137,19 @@ class BasicServer:
                 self.model.to(self.device)
             else:
                 raise e
+        # communicate with selected clients
         if self.num_parallels <= 1:
             # computing iteratively
             for client_id in communicate_clients:
-                response_from_client_id = self.communicate_with(client_id)
+                response_from_client_id = self.communicate_with(client_id, package=self.sending_package_buffer[cid], mtype=mtype)
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel with torch.multiprocessing
             pool = mp.Pool(self.num_parallels)
             for client_id in communicate_clients:
                 self.clients[client_id].update_device(self.gv.apply_for_device())
-                packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=(int(client_id),)))
+                args = (int(client_id), self.sending_package_buffer[cid], mtype)
+                packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
             pool.close()
             pool.join()
             packages_received_from_clients = list(map(lambda x: x.get(), packages_received_from_clients))
@@ -139,16 +158,18 @@ class BasicServer:
         self.received_clients = selected_clients
         return self.unpack(packages_received_from_clients)
 
-    def communicate_with(self, client_id):
+    def communicate_with(self, client_id, package={}, mtype=0):
         """
         Pack the information that is needed for client_id to improve the global model
         :param
             client_id: the id of the client to communicate with
+            package: the package to be sended to the client
+            mtype: the type of the message that is used to decide the action of the client
         :return
             client_package: the reply from the client and will be 'None' if losing connection
         """
         # listen for the client's response
-        return self.clients[client_id].reply(self.sending_package_buffer[client_id])
+        return self.gv.communicator.request(self.id, client_id, package, mtype)
 
     def pack(self, client_id):
         """
@@ -345,8 +366,9 @@ class BasicServer:
     def set_data(self, data, flag='test'):
         setattr(self, flag+'_data', data)
 
-class BasicClient:
+class BasicClient(BasicObject):
     def __init__(self, option={}):
+        super().__init__()
         self.id = None
         # create local dataset
         self.data_loader = None
@@ -370,6 +392,8 @@ class BasicClient:
         self._latency = 0
         # server
         self.server = None
+        # actions of different message type
+        self.actions = {0: self.reply}
 
     def initialize(self):
         return

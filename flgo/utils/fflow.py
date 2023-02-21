@@ -250,6 +250,8 @@ def init(task, algorithm, option, model_name='', Logger=flgo.experiment.logger.s
         C = getattr(algorithm, c)
         delattr(C, 'gv')
 
+    gv.communicator = flgo.VirtualCommunicator(objects)
+
     # init virtual system environment
     gv.logger.info('Use `{}` as the system simulator'.format(simulator))
     flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
