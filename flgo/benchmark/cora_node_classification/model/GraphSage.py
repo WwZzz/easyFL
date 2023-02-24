@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.fmodule import FModule
+from flgo.utils.fmodule import FModule
 from torch_geometric.nn import SAGEConv
 
 class NeighborAggregator(nn.Module):

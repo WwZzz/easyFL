@@ -1,6 +1,6 @@
 import torch
 from torch_geometric.nn import GCNConv
-from utils.fmodule import FModule
+from flgo.utils.fmodule import FModule
 
 class Model(FModule):
     def __init__(self):

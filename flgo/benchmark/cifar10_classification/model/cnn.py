@@ -1,5 +1,5 @@
 from torch import nn
-from utils.fmodule import FModule
+from flgo.utils.fmodule import FModule
 
 class Model(FModule):
     def __init__(self):

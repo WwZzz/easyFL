@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import ujson
 
-from utils.fmodule import FModule
+from flgo.utils.fmodule import FModule
 
 class Model(FModule):
 

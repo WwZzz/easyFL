@@ -1,6 +1,4 @@
 import flgo.experiment.logger.basic_logger as bl
-import numpy as np
-import flgo.system_simulator.base as ss
 
 class Logger(bl.Logger):
     def initialize(self):

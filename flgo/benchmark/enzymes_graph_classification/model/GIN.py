@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
-from utils.fmodule import FModule
+from flgo.utils.fmodule import FModule
 from torch.nn import Sequential, Linear, ReLU
 
 class Model(FModule):

@@ -3,7 +3,6 @@ import flgo.experiment.analyzer
 import os
 import torch.multiprocessing as mp
 
-
 if __name__ == '__main__':
     mp.set_start_method('spawn', force=True)
     mp.set_sharing_strategy('file_system')

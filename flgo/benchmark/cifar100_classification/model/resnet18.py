@@ -8,7 +8,7 @@
     https://arxiv.org/abs/1512.03385v1
 """
 import torch.nn as nn
-from utils.fmodule import FModule
+from flgo.utils.fmodule import FModule
 
 class BasicBlock(nn.Module):
     """Basic Block for resnet 18 and resnet 34
