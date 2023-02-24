@@ -4,6 +4,9 @@ import random
 import numpy as np
 import collections
 
+import torch
+
+
 class AbstractPartitioner(metaclass=ABCMeta):
     @ abstractmethod
     def __call__(self, *args, **kwargs):
@@ -262,3 +265,51 @@ class IDPartitioner(BasicPartitioner):
             random.shuffle(local_datas)
             local_datas = local_datas[:self.num_clients]
         return local_datas
+
+class VerticalSplittedPartitioner(BasicPartitioner):
+    def __init__(self, num_parties=-1, imbalance=0, dim=-1):
+        self.num_parties = int(num_parties)
+        self.imbalance = imbalance
+        self.feature_pointers = []
+        self.dim = dim
+
+    def __str__(self):
+        return 'vertical_splitted_IBM{}'.format(self.imbalance)
+
+    def __call__(self, data):
+        local_datas = []
+        feature = data[0][0]
+        shape = feature.shape
+        if self.dim==-1: self.dim = np.argmax(shape)
+        self.num_parties = min(shape[self.dim], self.num_parties)
+        feature_sizes = self.gen_feature_size(shape[self.dim], self.num_parties, self.imbalance)
+        for pid in range(self.num_parties):
+            pdata = {'sample_idxs':list(range(len(data))), 'pt_feature':(self.dim, feature_sizes, pid), 'with_label':(pid==0)}
+            local_datas.append(pdata)
+        return local_datas
+
+    def gen_feature_size(self, total_size, num_parties, imbalance=0):
+        size_partitions = []
+        size_gen = self.integer_k_partition(total_size, num_parties)
+        while True:
+            try:
+                tmp = next(size_gen)
+                if tmp is not None:
+                    size_partitions.append(tmp)
+            except StopIteration:
+                break
+        size_partitions = sorted(size_partitions, key=lambda x: np.std(x))
+        res = size_partitions[int(imbalance*(len(size_partitions)-1))]
+        return res
+
+    def integer_k_partition(self, n, k, l=1):
+        '''n is the integer to partition, k is the length of partitions, l is the min partition element size'''
+        if k < 1:
+            return None
+        if k == 1:
+            if n >= l:
+                yield (n,)
+            return None
+        for i in range(l, n + 1):
+            for result in self.integer_k_partition(n - i, k - 1, i):
+                yield (i,) + result

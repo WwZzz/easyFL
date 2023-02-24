@@ -7,7 +7,7 @@ import collections
 import torch.multiprocessing as mp
 import torch
 
-class BasicObject:
+class BasicParty:
     def __init__(self, *args, **kwargs):
         self.actions = {}
         self.id = None
@@ -22,7 +22,29 @@ class BasicObject:
             raise NotImplementedError("There is no action corresponding to message type {}.".format(mtype))
         return self.actions[mtype](package)
 
-class BasicServer(BasicObject):
+    def set_data(self, data, flag='train') -> None:
+        setattr(self, flag+'_data', data)
+        if flag=='train':
+            self.datavol = len(data)
+            if hasattr(self, 'batch_size'):
+                # reset batch_size
+                if self.batch_size<0: self.batch_size = len(self.train_data)
+                elif self.batch_size>=1: self.batch_size = int(self.batch_size)
+                else: self.batch_size = int(self.datavol * self.batch_size)
+            # reset num_steps
+            if hasattr(self, 'num_steps') and hasattr(self, 'num_epochs'):
+                if self.num_steps > 0:
+                    self.num_epochs = 1.0 * self.num_steps/(math.ceil(self.datavol / self.batch_size))
+                else:
+                    self.num_steps = self.num_epochs * math.ceil(self.datavol / self.batch_size)
+
+    def register_parties(self, parties):
+        self.parties = parties
+
+    def initialize(self, *args, **kwargs):
+        return
+
+class BasicServer(BasicParty):
     def __init__(self, option={}):
         super().__init__()
         # initialize the global model
@@ -32,7 +54,7 @@ class BasicServer(BasicObject):
         self.device = self.model.get_device()
         if option['pretrain'] != '':
             self.model.load_state_dict(torch.load(option['pretrain'])['model'])
-            self.gv.logger.info('The pretrained model parameters in {} will be loaded'.format(option['pretrain']))
+            self.gv.logger.info('The pretrained model parameters in {} will be loaded.'.format(option['pretrain']))
         # basic configuration
         self.task = option['task']
         self.eval_interval = option['eval_interval']
@@ -56,9 +78,6 @@ class BasicServer(BasicObject):
         # all options
         self.option = option
         self.id = -1
-
-    def initialize(self, *args, **kwargs):
-        return
 
     def run(self):
         """
@@ -128,12 +147,12 @@ class BasicServer(BasicObject):
             received_package_buffer[cid] = None
         try:
             for cid in communicate_clients:
-                self.sending_package_buffer[cid] = self.pack(cid)
+                self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
         except Exception as e:
             if str(self.device) != 'cpu':
                 self.model.to(torch.device('cpu'))
                 for cid in communicate_clients:
-                    self.sending_package_buffer[cid] = self.pack(cid)
+                    self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
                 self.model.to(self.device)
             else:
                 raise e
@@ -171,7 +190,7 @@ class BasicServer(BasicObject):
         # listen for the client's response
         return self.gv.communicator.request(self.id, client_id, package, mtype)
 
-    def pack(self, client_id):
+    def pack(self, client_id, mtype=0, *args, **kwargs):
         """
         Pack the necessary information for the client's local training.
         Any operations of compression or encryption should be done here.
@@ -363,10 +382,7 @@ class BasicServer(BasicObject):
         self.selected_clients = []
         self.dropped_clients = []
 
-    def set_data(self, data, flag='test'):
-        setattr(self, flag+'_data', data)
-
-class BasicClient(BasicObject):
+class BasicClient(BasicParty):
     def __init__(self, option={}):
         super().__init__()
         self.id = None
@@ -576,17 +592,3 @@ class BasicClient(BasicObject):
         """
         self.device = dev
         self.calculator = self.gv.TaskCalculator(dev, self.calculator.optimizer_name)
-
-    def set_data(self, data, flag='train'):
-        setattr(self, flag+'_data', data)
-        if flag=='train':
-            self.datavol = len(data)
-            # reset batch_size
-            if self.batch_size<0: self.batch_size = len(self.train_data)
-            elif self.batch_size>=1: self.batch_size = int(self.batch_size)
-            else: self.batch_size = int(self.datavol * self.batch_size)
-            # reset num_steps
-            if self.num_steps > 0:
-                self.num_epochs = 1.0 * self.num_steps/(math.ceil(self.datavol / self.batch_size))
-            else:
-                self.num_steps = self.num_epochs * math.ceil(self.datavol / self.batch_size)

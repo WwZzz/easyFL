@@ -65,7 +65,6 @@ class AbstractTaskCalculator(metaclass=ABCMeta):
     def get_optimizer(self, model, *args, **kwargs):
         pass
 
-
 class BasicTaskGenerator(AbstractTaskGenerator):
     def __init__(self, benchmark, rawdata_path):
         """
@@ -117,8 +116,7 @@ class BasicTaskGenerator(AbstractTaskGenerator):
         return
 
     def get_task_name(self):
-        return '_'.join(['B-' + self.benchmark, 'P-' + str(self.partitioner), 'N-' + str(self.partitioner.num_clients)])
-
+        return '_'.join(['B-' + self.benchmark, 'P-' + str(self.partitioner), 'N-' + str(self.partitioner.num_parties)])
 
 class BasicTaskPipe(AbstractTaskPipe):
     TaskDataset = None
@@ -155,12 +153,24 @@ class BasicTaskPipe(AbstractTaskPipe):
             # return objects as list
             objects = [server]
             objects.extend(clients)
+        elif scene=='vertical':
+            PassiveParty = algorithm.PassiveParty
+            ActiveParty = algorithm.ActiveParty
+            objects = []
+            for pid, pname in enumerate(self.feddata['party_names']):
+                is_active = self.feddata[pname]['data']['with_label']
+                obj = ActiveParty(running_time_option) if is_active else PassiveParty(running_time_option)
+                obj.id = pid
+                obj.name = pname
+                objects.append(obj)
+            for party in objects:
+                party.register_parties(objects)
         return objects
 
     def save_info(self, generator):
         info = {'benchmark': generator.benchmark}
         info['scene'] = generator.scene if hasattr(generator, 'scene') else 'unknown'
-        info['num_clients'] = generator.num_clients if hasattr(generator, 'num_clients') else 'unknown'
+        info['num_clients'] = generator.num_parties if hasattr(generator, 'num_clients') else 'unknown'
         with open(os.path.join(self.task_path, 'info'), 'w') as outf:
             json.dump(info, outf)
 

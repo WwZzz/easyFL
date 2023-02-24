@@ -293,15 +293,15 @@ def with_availability(sample):
 # communicating phase
 def with_dropout(communicate):
     @functools.wraps(communicate)
-    def communicate_with_dropout(self, selected_clients, asynchronous=False):
+    def communicate_with_dropout(self, selected_clients, mtype=0, asynchronous=False):
         if len(selected_clients) > 0:
             self.gv.state_updater.update_client_connectivity(selected_clients)
             probs_drop = self.gv.state_updater.get_variable(selected_clients, 'prob_drop')
             self._dropped_selected_clients = [cid for cid,prob in zip(selected_clients, probs_drop) if self.gv.state_updater.random_module.rand() <= prob]
             self.gv.state_updater.set_client_state(self._dropped_selected_clients, 'dropped')
-            return communicate(self, [cid for cid in selected_clients if cid not in self._dropped_selected_clients], asynchronous)
+            return communicate(self, [cid for cid in selected_clients if cid not in self._dropped_selected_clients], mtype, asynchronous)
         else:
-            return communicate(self, selected_clients, asynchronous)
+            return communicate(self, selected_clients, mtype, asynchronous)
     return communicate_with_dropout
 
 # # communicating phase
@@ -334,9 +334,9 @@ def with_completeness(train):
     return train_with_incomplete_update
 
 def with_clock(communicate):
-    def communicate_with_clock(self, selected_clients, asynchronous=False):
+    def communicate_with_clock(self, selected_clients, mtype=0, asynchronous=False):
         self.gv.state_updater.update_client_completeness(selected_clients)
-        res = communicate(self, selected_clients, asynchronous)
+        res = communicate(self, selected_clients, mtype, asynchronous)
         # If all the selected clients are unavailable, directly return the result without waiting.
         # Else if all the available clients have dropped out and not using asynchronous communication,  waiting for `tolerance_for_latency` time units.
         tolerance_for_latency = self.get_tolerance_for_latency()

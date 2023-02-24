@@ -162,6 +162,8 @@ def gen_task(config, task_path='', rawdata_path='', seed=0):
         pass
 
 def init(task, algorithm, option, model_name='', Logger=flgo.experiment.logger.simple_logger.Logger, simulator=flgo.system_simulator.default_simulator, scene='horizontal'):
+    """This function is to initialize a runner in FLGo, which is to optimize a model on a specific task
+    (i.e. IID-mnist-of-100-clients) by the selected federated algorithm. """
     # init option
     default_option = read_option()
     for op_key in option:
@@ -199,7 +201,6 @@ def init(task, algorithm, option, model_name='', Logger=flgo.experiment.logger.s
 
     # create global variable
     gv = GlobalVariable()
-
     # init logger
     gv.logger = Logger(task=task, option=option, name=str(Logger), level=option['log_level'])
 
@@ -207,66 +208,133 @@ def init(task, algorithm, option, model_name='', Logger=flgo.experiment.logger.s
     gv.dev_list = [torch.device('cpu')] if option['gpu'] is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
     gv.logger.info('Initializing devices: '+','.join([str(dev) for dev in gv.dev_list])+' will be used for this running.')
 
-    # init task
-    core_module = '.'.join(['flgo','benchmark',benchmark, 'core'])
-    gv.TaskPipe = getattr(importlib.import_module(core_module), 'TaskPipe')
-    task_pipe = gv.TaskPipe(task)
-    gv.TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
-    task_data = task_pipe.load_data(option)
+    if scene=='horizontal':
+        # init task
+        core_module = '.'.join(['flgo','benchmark',benchmark, 'core'])
+        gv.TaskPipe = getattr(importlib.import_module(core_module), 'TaskPipe')
+        task_pipe = gv.TaskPipe(task)
+        gv.TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
+        task_data = task_pipe.load_data(option)
 
-    # init model
-    if model_name=='': model_name = getattr(importlib.import_module('.'.join(['flgo','benchmark',benchmark])), 'default_model')
-    benchmark_model_module = '.'.join(['flgo','benchmark',benchmark, 'model', model_name])
-    model_classes = { 'Model': None, 'SvrModel': None, 'CltModel': None}
-    for model_class in model_classes:
-        loading_priority = {
-            benchmark_model_module: model_class,
-            algorithm: model_name if model_class=='Model' else model_class,
-        }
-        for model_path, model_name in loading_priority.items():
+        # init model
+        if model_name=='': model_name = getattr(importlib.import_module('.'.join(['flgo','benchmark',benchmark])), 'default_model')
+        benchmark_model_module = '.'.join(['flgo','benchmark',benchmark, 'model', model_name])
+        model_classes = { 'Model': None, 'SvrModel': None, 'CltModel': None}
+        for model_class in model_classes:
+            loading_priority = {
+                benchmark_model_module: model_class,
+                algorithm: model_name if model_class=='Model' else model_class,
+            }
+            for model_path, model_name in loading_priority.items():
+                try:
+                    model_classes[model_class] = getattr(importlib.import_module(model_path), model_name)
+                    break
+                except:
+                    continue
+            if model_classes[model_class] is not None: gv.logger.info('Global model {} in {} was loaded.'.format(model_class, model_path))
+            else: gv.logger.info('No {} is being used.'.format(model_class))
+        gv.Model, gv.SvrModel, gv.CltModel = model_classes['Model'], model_classes['SvrModel'], model_classes['CltModel']
+
+        # init objects
+        obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
+        tmp = []
+        for c in obj_class:
             try:
-                model_classes[model_class] = getattr(importlib.import_module(model_path), model_name)
-                break
+                C = getattr(algorithm, c)
+                setattr(C, 'gv', gv)
+                tmp.append(c)
             except:
                 continue
-        if model_classes[model_class] is not None: gv.logger.info('Global model {} in {} was loaded.'.format(model_class, model_path))
-        else: gv.logger.info('No {} is being used.'.format(model_class))
-    gv.Model, gv.SvrModel, gv.CltModel = model_classes['Model'], model_classes['SvrModel'], model_classes['CltModel']
-
-    # init objects
-    obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
-    tmp = []
-    for c in obj_class:
-        try:
+        objects = task_pipe.generate_objects(option, algorithm, scene=scene)
+        task_pipe.distribute(task_data, objects)
+        for ob in objects: ob.initialize()
+        for c in tmp:
             C = getattr(algorithm, c)
-            setattr(C, 'gv', gv)
-            tmp.append(c)
+            delattr(C, 'gv')
+
+        gv.communicator = flgo.VirtualCommunicator(objects)
+
+        # init virtual system environment
+        gv.logger.info('Use `{}` as the system simulator'.format(simulator))
+        flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
+        gv.clock = flgo.system_simulator.base.ElemClock()
+        gv.state_updater = getattr(simulator, 'StateUpdater')(objects, option)
+        gv.clock.register_state_updater(state_updater=gv.state_updater)
+
+        gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock)
+        gv.logger.initialize()
+        gv.logger.info('Ready to start.')
+
+        # register global variables for objects
+        for ob in objects:
+            ob.gv = gv
+        gv.state_updater.gv = gv
+        gv.clock.gv = gv
+        gv.logger.gv = gv
+    elif scene=='vertical':
+        # init task
+        core_module = '.'.join(['flgo','benchmark',benchmark, 'core'])
+        gv.TaskPipe = getattr(importlib.import_module(core_module), 'TaskPipe')
+        task_pipe = gv.TaskPipe(task)
+        gv.TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
+        task_data = task_pipe.load_data(option)
+        # init model
+        if model_name=='':
+            try:
+                model_name = getattr(importlib.import_module('.'.join(['flgo','benchmark',benchmark])), 'default_model')
+            except:
+                raise NotImplementedError('default_model should be claimed in __init__.py of the module flgo.benchmark.{} if the model_name is not specified.'.format(benchmark) )
+        benchmark_model_module = '.'.join(['flgo','benchmark',benchmark, 'model', model_name])
+        try:
+            model_module = importlib.import_module(benchmark_model_module)
         except:
-            continue
-    objects = task_pipe.generate_objects(option, algorithm, scene=scene)
-    task_pipe.distribute(task_data, objects)
-    for ob in objects: ob.initialize()
-    for c in tmp:
-        C = getattr(algorithm, c)
-        delattr(C, 'gv')
+            model_module = algorithm
+        init_local_module = getattr(model_module, 'init_local_module')
+        init_global_module = getattr(model_module, 'init_global_module')
+        local_modules = []
+        global_modules = []
+        for pname in task_data.keys():
+            partial_sample = task_data[pname]['train'][0]
+            local_modules.append(init_local_module(partial_sample))
+            global_modules.append(init_global_module(partial_sample))
+        # init objects
+        obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
+        tmp = []
+        for c in obj_class:
+            try:
+                C = getattr(algorithm, c)
+                setattr(C, 'gv', gv)
+                tmp.append(c)
+            except:
+                continue
+        objects = task_pipe.generate_objects(option, algorithm, scene=scene)
+        task_pipe.distribute(task_data, objects)
+        for obj, lm, gm in zip(objects, local_modules, global_modules):
+            obj.local_module = lm.to(obj.device) if lm is not None else None
+            obj.global_module = gm.to(obj.device) if gm is not None else None
+        for ob in objects: ob.initialize()
+        for c in tmp:
+            C = getattr(algorithm, c)
+            delattr(C, 'gv')
 
-    gv.communicator = flgo.VirtualCommunicator(objects)
+        gv.communicator = flgo.VirtualCommunicator(objects)
 
-    # init virtual system environment
-    gv.logger.info('Use `{}` as the system simulator'.format(simulator))
-    flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
-    gv.clock = flgo.system_simulator.base.ElemClock()
-    gv.state_updater = getattr(simulator, 'StateUpdater')(objects, option)
-    gv.clock.register_state_updater(state_updater=gv.state_updater)
+        # init virtual system environment
+        gv.logger.info('Use `{}` as the system simulator'.format(simulator))
+        flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
+        gv.clock = flgo.system_simulator.base.ElemClock()
+        gv.state_updater = getattr(simulator, 'StateUpdater')(objects, option)
+        gv.clock.register_state_updater(state_updater=gv.state_updater)
 
-    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock)
-    gv.logger.initialize()
-    gv.logger.info('Ready to start.')
+        gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock)
+        gv.logger.initialize()
+        gv.logger.info('Ready to start.')
 
-    # register global variables for objects
-    for ob in objects:
-        ob.gv = gv
-    gv.state_updater.gv = gv
-    gv.clock.gv = gv
-    gv.logger.gv = gv
+        # register global variables for objects
+        for ob in objects:
+            ob.gv = gv
+        gv.state_updater.gv = gv
+        gv.clock.gv = gv
+        gv.logger.gv = gv
+
     return objects[0]
