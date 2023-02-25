@@ -20,3 +20,10 @@ class Model(FModule):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+
+def init_local_module(object):
+    pass
+
+def init_global_module(object):
+    if 'Server' in object.__class__.__name__:
+        object.model = Model().to(object.device)

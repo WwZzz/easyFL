@@ -13,7 +13,7 @@ if __name__ == '__main__':
         flgo.gen_task('gen_config.yml', task_path=task)
 
     # running fedavg on the specified task
-    runner = flgo.init(task, fedavg, {'gpu':[0,], 'num_rounds':5, 'log_file':True, 'num_steps':5})
+    runner = flgo.init(task, fedavg, {'gpu':[0,],'log_file':True, 'num_steps':5})
     runner.run()
 
     # visualize the experimental result

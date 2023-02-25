@@ -8,7 +8,7 @@ try:
 except:
     import json
 
-class Logger(logging.Logger):
+class BasicLogger(logging.Logger):
 
     _LEVEL = {
         "DEBUG": logging.DEBUG,
@@ -25,7 +25,7 @@ class Logger(logging.Logger):
     def __init__(self, task, option, *args, **kwargs):
         self.task_path = task
         self.option = option
-        super(Logger, self).__init__(*args, **kwargs)
+        super(BasicLogger, self).__init__(*args, **kwargs)
         self.output = collections.defaultdict(list)
         self.current_round = -1
         self.temp = "{:<30s}{:.4f}"

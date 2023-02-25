@@ -25,3 +25,10 @@ class Model(FModule):
         encoding = torch.cat((lstm_out[0], lstm_out[-1]), dim=1)
         output = self.fc(encoding)
         return output
+
+def init_local_module(object):
+    pass
+
+def init_global_module(object):
+    if 'Server' in object.__class__.__name__:
+        object.model = Model().to(object.device)

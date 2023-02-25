@@ -92,3 +92,10 @@ class Model(FModule):
                 next_hidden.append(h)
             hidden = next_hidden
         return hidden[0]
+
+def init_local_module(object):
+    pass
+
+def init_global_module(object):
+    if 'Server' in object.__class__.__name__:
+        object.model = Model().to(object.device)

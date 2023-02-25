@@ -23,3 +23,9 @@ class Model(FModule):
         x = self.fc2(x)
         x = F.relu(x)
         return x
+
+def init_local_module(object):
+    pass
+
+def init_global_module(object):
+    object.model = Model().to(object.device) if 'Server' in object.__class__.__name__ else None

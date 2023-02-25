@@ -21,7 +21,7 @@ class PriorityQueue:
     def get(self):
         return heapq.heappop(self.queue)
 
-class AbstractStateUpdater(metaclass=ABCMeta):
+class AbstractSimulator(metaclass=ABCMeta):
     @abstractmethod
     def flush(self):
         # flush the states for all the things in the system as time steps
@@ -121,7 +121,7 @@ class ElemClock:
     def register_state_updater(self, state_updater):
         self.state_updater = state_updater
 
-class BasicStateUpdater(AbstractStateUpdater):
+class BasicSimulator(AbstractSimulator):
     _STATE = ['offline', 'idle', 'selected', 'working', 'dropped']
     _VAR_NAMES = ['prob_available', 'prob_unavailable', 'prob_drop', 'working_amount', 'latency']
     def __init__(self, objects, *args, **kwargs):

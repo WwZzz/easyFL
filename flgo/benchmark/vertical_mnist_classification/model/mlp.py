@@ -24,17 +24,12 @@ class Classifier(torch.nn.Module):
         x = self.mlp(x)
         return x
 
-def init_local_module(partial_sample):
+def init_local_module(object):
+    partial_sample = object.train_data[0]
     feature = partial_sample[0]
-    if feature is None: return None
-    else:
-        input_size = len(feature.view(-1))
-        return PartialMLPLayer(input_size, EMBEDDING_SIZE)
+    object.local_module = None if feature is None else PartialMLPLayer(len(feature.view(-1)), EMBEDDING_SIZE).to(object.device)
 
-def init_global_module(partial_sample):
+def init_global_module(object):
+    partial_sample = object.train_data[0]
     feature, label, id = partial_sample
-    if label is None:
-        return None
-    else:
-        return Classifier(EMBEDDING_SIZE, NUM_CLASS)
-
+    object.global_module = None if label is None else Classifier(EMBEDDING_SIZE, NUM_CLASS).to(object.device)

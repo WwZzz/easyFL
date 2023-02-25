@@ -102,8 +102,6 @@ class TaskPipe(BasicTaskPipe):
             task_data[party_name] = {'train':local_train_data, 'valid':local_valid_data, 'test':local_test_data}
         return task_data
 
-
-
 class TaskCalculator(BasicTaskCalculator):
     def __init__(self, device, optimizer_name='sgd'):
         super(TaskCalculator, self).__init__(device, optimizer_name)

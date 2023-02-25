@@ -3,7 +3,61 @@ import collections
 import torch
 import torch.multiprocessing as mp
 
-class ActiveParty(BasicServer):
+class PassiveParty(BasicParty):
+    def __init__(self, option):
+        self.option = option
+        self.actions = {0: self.forward, 1:self.backward, 2:self.forward_test}
+        self.id = None
+        # create local dataset
+        self.data_loader = None
+        # local calculator
+        self.device = self.gv.apply_for_device()
+        self.calculator = self.gv.TaskCalculator(self.device, option['optimizer'])
+        # hyper-parameters for training
+        self.optimizer_name = option['optimizer']
+        self.lr = option['learning_rate']
+        self.momentum = option['momentum']
+        self.weight_decay = option['weight_decay']
+        self.batch_size = option['batch_size']
+        self.num_steps = option['num_steps']
+        self.num_epochs = option['num_epochs']
+        self.model = None
+        self.test_batch_size = option['test_batch_size']
+        self.loader_num_workers = option['num_workers']
+        self.current_steps = 0
+        # system setting
+        self._effective_num_steps = self.num_steps
+        self._latency = 0
+
+    def forward(self, package):
+        batch_ids = package['batch']
+        tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
+        dataset = tmp[package['data_type']]
+        # select samples in batch
+        self.activation = self.local_module(dataset.get_batch_by_id(batch_ids)[0].to(self.device))
+        return {'activation': self.activation.clone().detach()}
+
+    def backward(self, package):
+        derivation = package['derivation']
+        self.update_local_module(derivation, self.activation)
+        return
+
+    def update_local_module(self, derivation, activation):
+        optimizer = self.calculator.get_optimizer(self.local_module, self.lr)
+        loss_surrogat = (derivation*activation).sum()
+        loss_surrogat.backward()
+        optimizer.step()
+        return
+
+    def forward_test(self, package):
+        batch_ids = package['batch']
+        tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
+        dataset = tmp[package['data_type']]
+        # select samples in batch
+        self.activation = self.local_module(dataset.get_batch_by_id(batch_ids)[0].to(self.device))
+        return {'activation': self.activation}
+
+class ActiveParty(BasicServer, PassiveParty):
     def __init__(self, option):
         self.actions = {0: self.forward, 1: self.backward,2:self.forward_test}
         self.device = torch.device('cpu') if option['server_with_cpu'] else self.gv.apply_for_device()
@@ -80,6 +134,19 @@ class ActiveParty(BasicServer):
         self.received_clients = selected_clients
         return self.unpack(packages_received_from_clients)
 
+    def communicate_with(self, client_id, package={}, mtype=0):
+        """
+        Pack the information that is needed for client_id to improve the global model
+        :param
+            client_id: the id of the client to communicate with
+            package: the package to be sended to the client
+            mtype: the type of the message that is used to decide the action of the client
+        :return
+            client_package: the reply from the client and will be 'None' if losing connection
+        """
+        # listen for the client's response
+        return self.gv.communicator.request(self.id-1, client_id-1, package, mtype)
+
     def run(self):
         """
         Start the federated learning symtem where the global model is trained iteratively.
@@ -151,39 +218,6 @@ class ActiveParty(BasicServer):
     def defuse(self, fusion):
         return [fusion.grad for _ in self.parties]
 
-    def update_local_module(self, derivation, activation):
-        optimizer = self.calculator.get_optimizer(self.local_module, self.lr)
-        loss_surrogat = (derivation*activation).sum()
-        loss_surrogat.backward()
-        optimizer.step()
-        return
-
-    def forward(self, package):
-        batch_ids = package['batch']
-        tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
-        dataset = tmp[package['data_type']]
-        # select samples in batch
-        self.activation = self.local_module(dataset.get_batch_by_id(batch_ids)[0].to(self.device))
-        return {'activation': self.activation.clone().detach()}
-
-    def backward(self, package):
-        derivation = package['derivation']
-        self.update_local_module(derivation, self.activation)
-        return
-
-    def communicate_with(self, client_id, package={}, mtype=0):
-        """
-        Pack the information that is needed for client_id to improve the global model
-        :param
-            client_id: the id of the client to communicate with
-            package: the package to be sended to the client
-            mtype: the type of the message that is used to decide the action of the client
-        :return
-            client_package: the reply from the client and will be 'None' if losing connection
-        """
-        # listen for the client's response
-        return self.gv.communicator.request(self.id-1, client_id-1, package, mtype)
-
     def test(self, flag='test'):
         self.set_model_mode('eval')
         flag_dict = {'test':self.test_data, 'train':self.train_data, 'valid':self.valid_data}
@@ -205,78 +239,15 @@ class ActiveParty(BasicServer):
         self.set_model_mode('train')
         return {'accuracy': 1.0 * num_correct / len(dataset), 'loss': total_loss / len(dataset)}
 
-    def forward_test(self, package):
-        batch_ids = package['batch']
-        tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
-        dataset = tmp[package['data_type']]
-        # select samples in batch
-        self.activation = self.local_module(dataset.get_batch_by_id(batch_ids)[0].to(self.device))
-        return {'activation': self.activation}
-
     def set_model_mode(self,mode = 'train'):
         for party in self.parties:
-            if party.local_module is not None:
+            if hasattr(party, 'local_module') and party.local_module is not None:
                 if mode == 'train':
                     party.local_module.train()
                 else:
                     party.local_module.eval()
-            if party.global_module is not None:
+            if hasattr(party, 'global_module') and party.global_module is not None:
                 if mode == 'train':
                     party.global_module.train()
                 else:
                     party.global_module.eval()
-
-class PassiveParty(BasicParty):
-    def __init__(self, option):
-        self.option = option
-        self.actions = {0: self.forward, 1:self.backward, 2:self.forward_test}
-        self.id = None
-        # create local dataset
-        self.data_loader = None
-        # local calculator
-        self.device = self.gv.apply_for_device()
-        self.calculator = self.gv.TaskCalculator(self.device, option['optimizer'])
-        # hyper-parameters for training
-        self.optimizer_name = option['optimizer']
-        self.lr = option['learning_rate']
-        self.momentum = option['momentum']
-        self.weight_decay = option['weight_decay']
-        self.batch_size = option['batch_size']
-        self.num_steps = option['num_steps']
-        self.num_epochs = option['num_epochs']
-        self.model = None
-        self.test_batch_size = option['test_batch_size']
-        self.loader_num_workers = option['num_workers']
-        self.current_steps = 0
-        # system setting
-        self._effective_num_steps = self.num_steps
-        self._latency = 0
-
-
-    def forward(self, package):
-        batch_ids = package['batch']
-        tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
-        dataset = tmp[package['data_type']]
-        # select samples in batch
-        self.activation = self.local_module(dataset.get_batch_by_id(batch_ids)[0].to(self.device))
-        return {'activation': self.activation.clone().detach()}
-
-    def backward(self, package):
-        derivation = package['derivation']
-        self.update_local_module(derivation, self.activation)
-        return
-
-    def update_local_module(self, derivation, activation):
-        optimizer = self.calculator.get_optimizer(self.local_module, self.lr)
-        loss_surrogat = (derivation*activation).sum()
-        loss_surrogat.backward()
-        optimizer.step()
-        return
-
-    def forward_test(self, package):
-        batch_ids = package['batch']
-        tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
-        dataset = tmp[package['data_type']]
-        # select samples in batch
-        self.activation = self.local_module(dataset.get_batch_by_id(batch_ids)[0].to(self.device))
-        return {'activation': self.activation}

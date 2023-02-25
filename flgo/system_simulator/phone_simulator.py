@@ -1,5 +1,5 @@
 import copy
-from flgo.system_simulator.base import BasicStateUpdater
+from flgo.system_simulator.base import BasicSimulator
 import os
 import zipfile
 import pandas as pd
@@ -18,7 +18,7 @@ https://www.kaggle.com/datasets/bhuvanchennoju/mobile-usage-time-prediction .
 Before using this simulator, you should manually download and unzip the original file in kaggle to
 ensure the  existence of file `benchmark/RAW_DATA/USER_ACTIVE_TIME/pings.csv`.
 """
-class StateUpdater(BasicStateUpdater):
+class Simulator(BasicSimulator):
     def __init__(self, objects = [], option = None):
         super().__init__(objects)
         self.option = option

@@ -1,4 +1,4 @@
-from flgo.system_simulator.base import BasicStateUpdater
+from flgo.system_simulator.base import BasicSimulator
 import random
 import numpy as np
 import collections
@@ -266,7 +266,7 @@ responsiveness_modes = {
     'UNI': uniform_client_responsiveness,
 }
 
-class StateUpdater(BasicStateUpdater):
+class Simulator(BasicSimulator):
     def __init__(self, objects, option = None):
         super().__init__(objects)
         self.option = option

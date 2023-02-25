@@ -1,6 +1,6 @@
-from system_simulator.base import BasicStateUpdater
+from flgo.system_simulator.base import BasicSimulator
 import numpy as np
-class StateUpdater(BasicStateUpdater):
+class Simulator(BasicSimulator):
     def update_client_connectivity(self, client_ids):
         probs = [0.1 for _ in client_ids]
         self.set_variable(client_ids, 'prob_drop', probs)
