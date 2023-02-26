@@ -321,10 +321,19 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     return objects[0]
 
 def _call_by_process(task, algorithm_name,  opt, model_name, Logger, scene):
-    algorithm = importlib.import_module(algorithm_name)
-    model = importlib.import_module(model_name)
+    if model_name is None: model = None
+    else:
+        try:
+            model = importlib.import_module(model_name)
+        except:
+            model = model_name
+    try:
+        algorithm = importlib.import_module(algorithm_name)
+    except:
+        algorithm = algorithm_name
     runner = flgo.init(task, algorithm, model=model, option=opt, Logger=Logger, scene=scene)
     runner.run()
+    return runner.gv.logger.output
 
 def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, scene='horizontal'):
     # generate combinations of hyper-parameters
@@ -350,9 +359,26 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
         torch.multiprocessing.set_sharing_strategy('file_system')
     except:
         pass
-
+    if model is None:
+        model_name = None
+    else:
+        if hasattr(model, '__name__'):
+            model_name = model.__name__
+        else:
+            model_name = model
+    algorithm_name = algorithm.__name__ if hasattr(algorithm, '__name__') else algorithm
     mp = torch.multiprocessing.Pool(6)
-    for opt in options:
-        mp.apply_async(_call_by_process, args=(task, algorithm.__name__, opt, model.__name__, Logger, scene))
+    x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, scene)) for opt in options]
     mp.close()
     mp.join()
+    outputs = [xi.get() for xi in x]
+    optimal_idx = int(np.argmin([min(output['valid_loss']) for output in outputs]))
+    optimal_para = options[optimal_idx]
+    print("The optimal combination of hyper-parameters is:")
+    print('-----------------------------------------------')
+    for k,v in optimal_para.items():
+        print("{}\t\t\t|{}".format(k,v))
+    print('-----------------------------------------------')
+    op_round = np.argmin(outputs[optimal_idx]['valid_loss'])
+    if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
+    print('The minimal validation loss occurs at the round {}'.format(op_round))
