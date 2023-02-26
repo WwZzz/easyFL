@@ -1,5 +1,8 @@
 import copy
-from collections import Iterable
+try:
+    from collections import Iterable
+except ImportError:
+    from collections.abc import Iterable
 import numpy as np
 import torch
 import os.path
