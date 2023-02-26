@@ -40,3 +40,4 @@ def visualize_by_class(generator, partitioner):
     plt.ylim(-0.5, generator.partitioner.num_parties - 0.5)
     plt.ylabel('Client ID')
     plt.xlabel('Number of Samples')
+    plt.show()
