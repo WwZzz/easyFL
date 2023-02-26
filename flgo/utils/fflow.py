@@ -377,6 +377,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     print("The optimal combination of hyper-parameters is:")
     print('-----------------------------------------------')
     for k,v in optimal_para.items():
+        if k=='gpu': continue
         print("{}\t\t\t|{}".format(k,v))
     print('-----------------------------------------------')
     op_round = np.argmin(outputs[optimal_idx]['valid_loss'])
