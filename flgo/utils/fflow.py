@@ -1,8 +1,8 @@
+import copy
+from collections import Iterable
 import numpy as np
 import torch
 import os.path
-from collections import Iterable
-import itertools
 try:
     import ujson as json
 except:
@@ -13,9 +13,10 @@ import flgo.system_simulator.base
 import flgo.utils.fmodule
 import flgo.experiment.logger.simple_logger
 import flgo.experiment.logger.tune_logger
-from flgo.experiment.logger.basic_logger import BasicLogger
+import flgo.experiment.logger
 from flgo.system_simulator.base import BasicSimulator
 import flgo.algorithm
+import itertools
 import argparse
 import importlib
 import random
@@ -189,7 +190,7 @@ def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
     except:
         pass
 
-def init(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator: BasicSimulator=flgo.system_simulator.default_simulator, scene='horizontal'):
+def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator: BasicSimulator=flgo.system_simulator.default_simulator.BasicSimulator, scene='horizontal'):
     r"""
     Initialize a runner in FLGo, which is to optimize a model on a specific task (i.e. IID-mnist-of-100-clients) by the selected federated algorithm.
     :param
@@ -254,7 +255,7 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogge
     # create global variable
     gv = GlobalVariable()
     # init logger
-    gv.logger = Logger(task=task, option=option, name=str(Logger), level=option['log_level'])
+    gv.logger = Logger(task=task, option=option, name=str(id(gv))+str(Logger), level=option['log_level'])
 
     # init device
     gv.dev_list = [torch.device('cpu')] if option['gpu'] is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
@@ -298,10 +299,10 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogge
     for ob in objects: ob.initialize()
 
     # init virtual system environment
-    gv.logger.info('Use `{}` as the system simulator'.format(Simulator))
+    gv.logger.info('Use `{}` as the system simulator'.format(str(Simulator)))
     flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
     gv.clock = flgo.system_simulator.base.ElemClock()
-    gv.state_updater = getattr(Simulator, 'Simulator')(objects, option)
+    gv.state_updater = Simulator(objects, option)
     gv.clock.register_state_updater(state_updater=gv.state_updater)
 
     gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene)
@@ -316,8 +317,13 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogge
     gv.logger.gv = gv
     return objects[0]
 
+def _call_by_process(task, algorithm_name,  opt, model_name, Logger, scene):
+    algorithm = importlib.import_module(algorithm_name)
+    model = importlib.import_module(model_name)
+    runner = flgo.init(task, algorithm, model=model, option=opt, Logger=Logger, scene=scene)
+    runner.run()
 
-def tune(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, scene='horizontal'):
+def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, scene='horizontal'):
     # generate combinations of hyper-parameters
     if 'gpu' in option.keys():
         device_ids = option['gpu']
@@ -328,13 +334,22 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogge
     keys = list(option.keys())
     for k in keys: option[k] = [option[k]] if not isinstance(option[k], Iterable) else option[k]
     para_combs = [para_comb for para_comb in itertools.product(*(option[k] for k in keys))]
-    options = [{k: v for k, v in zip(keys, paras)} for paras in para_combs]
+    options = [{k:v for k,v in zip(keys, paras)} for paras in para_combs]
     # allocate gpu to different configurations
     crt_dev_idx = 0
     for op in options:
         op['gpu'] = [device_ids[crt_dev_idx]]
-        crt_dev_idx = (crt_dev_idx + 1) % len(device_ids)
-    # create runners
-    runners = [flgo.init(task, algorithm, op, model=model, Logger=Logger, scene=scene) for op in options]
+        crt_dev_idx = (crt_dev_idx+1)%len(device_ids)
 
-    for runner in runners: runner.run()
+    try:
+        # init multiprocess
+        torch.multiprocessing.set_start_method('spawn', force=True)
+        torch.multiprocessing.set_sharing_strategy('file_system')
+    except:
+        pass
+
+    mp = torch.multiprocessing.Pool(6)
+    for opt in options:
+        mp.apply_async(_call_by_process, args=(task, algorithm.__name__, opt, model.__name__, Logger, scene))
+    mp.close()
+    mp.join()

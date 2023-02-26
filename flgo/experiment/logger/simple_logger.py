@@ -1,8 +1,8 @@
-import flgo.experiment.logger.basic_logger as bl
+from flgo.experiment.logger import BasicLogger
 import numpy as np
 import flgo.system_simulator.base as ss
 
-class SimpleLogger(bl.BasicLogger):
+class SimpleLogger(BasicLogger):
     def initialize(self):
         """This method is used to record the stastic variables that won't change across rounds (e.g. local data size)"""
         for c in self.participants:

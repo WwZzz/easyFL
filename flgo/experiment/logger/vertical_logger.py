@@ -1,6 +1,6 @@
-import flgo.experiment.logger.basic_logger as bl
+from flgo.experiment.logger import BasicLogger
 
-class VerticalLogger(bl.BasicLogger):
+class VerticalLogger(BasicLogger):
     def initialize(self):
         """This method is used to record the stastic variables that won't change across rounds (e.g. local data size)"""
         for c in self.participants:
