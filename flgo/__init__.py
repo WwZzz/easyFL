@@ -1,5 +1,6 @@
 from .utils.fflow import init
 from .utils.fflow import gen_task
+from .utils.fflow import tune
 
 communicator = None
 

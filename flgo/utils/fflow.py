@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 import os.path
+from collections import Iterable
+import itertools
 try:
     import ujson as json
 except:
@@ -10,6 +12,7 @@ import flgo.system_simulator.default_simulator
 import flgo.system_simulator.base
 import flgo.utils.fmodule
 import flgo.experiment.logger.simple_logger
+import flgo.experiment.logger.tune_logger
 from flgo.experiment.logger.basic_logger import BasicLogger
 from flgo.system_simulator.base import BasicSimulator
 import flgo.algorithm
@@ -301,7 +304,7 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogge
     gv.state_updater = getattr(Simulator, 'Simulator')(objects, option)
     gv.clock.register_state_updater(state_updater=gv.state_updater)
 
-    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock)
+    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene)
     gv.logger.initialize()
     gv.logger.info('Ready to start.')
 
@@ -312,3 +315,26 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogge
     gv.clock.gv = gv
     gv.logger.gv = gv
     return objects[0]
+
+
+def tune(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, scene='horizontal'):
+    # generate combinations of hyper-parameters
+    if 'gpu' in option.keys():
+        device_ids = option['gpu']
+        option.pop('gpu')
+        if not isinstance(device_ids, Iterable): device_ids = [device_ids]
+    else:
+        device_ids = [-1]
+    keys = list(option.keys())
+    for k in keys: option[k] = [option[k]] if not isinstance(option[k], Iterable) else option[k]
+    para_combs = [para_comb for para_comb in itertools.product(*(option[k] for k in keys))]
+    options = [{k: v for k, v in zip(keys, paras)} for paras in para_combs]
+    # allocate gpu to different configurations
+    crt_dev_idx = 0
+    for op in options:
+        op['gpu'] = [device_ids[crt_dev_idx]]
+        crt_dev_idx = (crt_dev_idx + 1) % len(device_ids)
+    # create runners
+    runners = [flgo.init(task, algorithm, op, model=model, Logger=Logger, scene=scene) for op in options]
+
+    for runner in runners: runner.run()
