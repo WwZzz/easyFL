@@ -8,9 +8,10 @@ import torch
 
 
 class AbstractPartitioner(metaclass=ABCMeta):
-    @ abstractmethod
+    @abstractmethod
     def __call__(self, *args, **kwargs):
         pass
+
 
 class BasicPartitioner(AbstractPartitioner):
     def __call__(self, *args, **kwargs):
@@ -21,15 +22,15 @@ class BasicPartitioner(AbstractPartitioner):
 
     def data_imbalance_generator(self, num_clients, datasize, imbalance=0):
         if imbalance == 0:
-            samples_per_client =  [int(datasize / num_clients) for _ in range(num_clients)]
-            for _ in range(datasize%num_clients): samples_per_client[_] += 1
+            samples_per_client = [int(datasize / num_clients) for _ in range(num_clients)]
+            for _ in range(datasize % num_clients): samples_per_client[_] += 1
         else:
             imbalance = max(0.1, imbalance)
             sigma = imbalance
             mean_datasize = datasize / num_clients
-            mu = np.log(mean_datasize) - sigma**2/2.0
+            mu = np.log(mean_datasize) - sigma ** 2 / 2.0
             samples_per_client = np.random.lognormal(mu, sigma, (num_clients)).astype(int)
-            thresold = int(imbalance**1.5 * (datasize - num_clients*10))
+            thresold = int(imbalance ** 1.5 * (datasize - num_clients * 10))
             delta = int(0.1 * thresold)
             crt_data_size = sum(samples_per_client)
             # force current data size to match the total data size
@@ -37,10 +38,11 @@ class BasicPartitioner(AbstractPartitioner):
                 if crt_data_size - datasize >= thresold:
                     maxid = np.argmax(samples_per_client)
                     maxvol = samples_per_client[maxid]
-                    new_samples = np.random.lognormal(mu, sigma, (10*num_clients))
-                    while min(new_samples)>maxvol:
+                    new_samples = np.random.lognormal(mu, sigma, (10 * num_clients))
+                    while min(new_samples) > maxvol:
                         new_samples = np.random.lognormal(mu, sigma, (10 * num_clients))
-                    new_size_id = np.argmin([np.abs(crt_data_size - samples_per_client[maxid] + s - datasize) for s in new_samples])
+                    new_size_id = np.argmin(
+                        [np.abs(crt_data_size - samples_per_client[maxid] + s - datasize) for s in new_samples])
                     samples_per_client[maxid] = new_samples[new_size_id]
                 elif crt_data_size - datasize >= delta:
                     maxid = np.argmax(samples_per_client)
@@ -51,10 +53,11 @@ class BasicPartitioner(AbstractPartitioner):
                 elif datasize - crt_data_size >= thresold:
                     minid = np.argmin(samples_per_client)
                     minvol = samples_per_client[minid]
-                    new_samples = np.random.lognormal(mu, sigma, (10*num_clients))
-                    while max(new_samples)<minvol:
+                    new_samples = np.random.lognormal(mu, sigma, (10 * num_clients))
+                    while max(new_samples) < minvol:
                         new_samples = np.random.lognormal(mu, sigma, (10 * num_clients))
-                    new_size_id = np.argmin([np.abs(crt_data_size - samples_per_client[minid] + s - datasize) for s in new_samples])
+                    new_size_id = np.argmin(
+                        [np.abs(crt_data_size - samples_per_client[minid] + s - datasize) for s in new_samples])
                     samples_per_client[minid] = new_samples[new_size_id]
                 elif datasize - crt_data_size >= delta:
                     minid = np.argmin(samples_per_client)
@@ -65,6 +68,7 @@ class BasicPartitioner(AbstractPartitioner):
                 crt_data_size = sum(samples_per_client)
         return samples_per_client
 
+
 class IIDPartitioner(BasicPartitioner):
     def __init__(self, num_clients=100, imbalance=0):
         self.num_clients = num_clients
@@ -72,7 +76,7 @@ class IIDPartitioner(BasicPartitioner):
 
     def __str__(self):
         name = "iid"
-        if self.imbalance>0: name += '_imb{:.1f}'.format(self.imbalance)
+        if self.imbalance > 0: name += '_imb{:.1f}'.format(self.imbalance)
         return name
 
     def __call__(self, data):
@@ -82,16 +86,18 @@ class IIDPartitioner(BasicPartitioner):
         local_datas = [di.tolist() for di in local_datas]
         return local_datas
 
+
 class DirichletPartitioner(BasicPartitioner):
-    def __init__(self, num_clients = 100, alpha=1.0, imbalance=0, flag_index=-1):
+    def __init__(self, num_clients=100, alpha=1.0, error_bar=1e-6, imbalance=0, flag_index=-1):
         self.num_clients = num_clients
         self.alpha = alpha
         self.imbalance = imbalance
         self.flag_index = flag_index
+        self.error_bar = error_bar
 
     def __str__(self):
-        name = "dir{:.2f}".format(self.alpha)
-        if self.imbalance>0: name += '_imb{:.1f}'.format(self.imbalance)
+        name = "dir{:.2f}_err{}".format(self.alpha, self.error_bar)
+        if self.imbalance > 0: name += '_imb{:.1f}'.format(self.imbalance)
         return name
 
     def __call__(self, data):
@@ -110,7 +116,7 @@ class DirichletPartitioner(BasicPartitioner):
             proportions = [np.random.dirichlet(self.alpha * p) for _ in range(self.num_clients)]
         sorted_cid_map = {k: i for k, i in zip(np.argsort(samples_per_client), [_ for _ in range(self.num_clients)])}
         error_increase_interval = 500
-        max_error = 1e-6 / num_attrs
+        max_error = self.error_bar
         loop_count = 0
         crt_id = 0
         crt_error = 100000
@@ -132,7 +138,7 @@ class DirichletPartitioner(BasicPartitioner):
             sup_prop = [np.random.dirichlet(self.alpha * p) for _ in range(self.num_clients)]
             del_prop = np.sum([pi * di for pi, di in zip(proportions, samples_per_client)], axis=0)
             del_prop -= samples_per_client[excid] * proportions[excid]
-            for i in range(error_increase_interval-loop_count):
+            for i in range(error_increase_interval - loop_count):
                 alter_norms = []
                 for cid in range(self.num_clients):
                     if np.any(np.isnan(sup_prop[cid])):
@@ -141,7 +147,7 @@ class DirichletPartitioner(BasicPartitioner):
                     alter_prop = alter_prop / alter_prop.sum()
                     error_alter = ((alter_prop - p) ** 2).sum()
                     alter_norms.append(error_alter)
-                if min(alter_norms)<error_norm:
+                if min(alter_norms) < error_norm:
                     break
             if len(alter_norms) > 0 and min(alter_norms) < error_norm:
                 alcid = np.argmin(alter_norms)
@@ -162,12 +168,13 @@ class DirichletPartitioner(BasicPartitioner):
         self.local_datas = local_datas
         return local_datas
 
+
 class DiversityPartitioner(BasicPartitioner):
     def __init__(self, num_clients=100, diversity=1.0, flag_index=-1):
         self.num_clients = num_clients
         self.diversity = diversity
         self.flag_index = flag_index
-        
+
     def __str__(self):
         name = "div{:.1f}".format(self.diversity)
         return name
@@ -175,8 +182,8 @@ class DiversityPartitioner(BasicPartitioner):
     def __call__(self, data):
         labels = [d[self.flag_index] for d in data]
         num_classes = len(set(labels))
-        dpairs = [[did, lb] for did,lb in zip(list(range(len(data))), labels)]
-        num = max(int(self.diversity* num_classes), 1)
+        dpairs = [[did, lb] for did, lb in zip(list(range(len(data))), labels)]
+        num = max(int(self.diversity * num_classes), 1)
         K = num_classes
         local_datas = [[] for _ in range(self.num_clients)]
         if num == K:
@@ -211,6 +218,7 @@ class DiversityPartitioner(BasicPartitioner):
                         ids += 1
         return local_datas
 
+
 class GaussianPerturbationPartitioner(BasicPartitioner):
     def __init__(self, num_clients=100, imbalance=0.0, sigma=0.1, scale=0.1, feature_index=0):
         self.num_clients = num_clients
@@ -221,7 +229,7 @@ class GaussianPerturbationPartitioner(BasicPartitioner):
 
     def __str__(self):
         name = "perturb_gs{:.1f}_{:.1f}".format(self.sigma, self.scale)
-        if self.imbalance>0: name += '_imb{:.1f}'.format(self.imbalance)
+        if self.imbalance > 0: name += '_imb{:.1f}'.format(self.imbalance)
         return name
 
     def __call__(self, data):
@@ -231,16 +239,18 @@ class GaussianPerturbationPartitioner(BasicPartitioner):
         local_datas = np.split(d_idxs, np.cumsum(samples_per_client))[:-1]
         local_datas = [di.tolist() for di in local_datas]
         local_perturbation_means = [np.random.normal(0, self.sigma, shape) for _ in range(self.num_clients)]
-        local_perturbation_stds = [0.1*np.ones(shape) for _ in range(self.num_clients)]
+        local_perturbation_stds = [0.1 * np.ones(shape) for _ in range(self.num_clients)]
         local_perturbation = []
         for cid in range(self.num_clients):
-            c_perturbation = [np.random.normal(local_perturbation_means[cid], local_perturbation_stds[cid]).tolist() for _ in range(len(local_datas[cid]))]
+            c_perturbation = [np.random.normal(local_perturbation_means[cid], local_perturbation_stds[cid]).tolist() for
+                              _ in range(len(local_datas[cid]))]
             local_perturbation.append(c_perturbation)
         self.local_perturbation = local_perturbation
         return local_datas
 
+
 class IDPartitioner(BasicPartitioner):
-    def __init__(self, num_clients=-1,  priority = 'max'):
+    def __init__(self, num_clients=-1, priority='max'):
         self.num_clients = int(num_clients)
         self.priorty = priority
         return
@@ -255,16 +265,17 @@ class IDPartitioner(BasicPartitioner):
         for idx in range(len(all_data)):
             local_datas[data_owners[idx]].append(all_data[idx])
         local_datas = list(local_datas.values())
-        if self.num_clients<0:
+        if self.num_clients < 0:
             self.num_clients = len(local_datas)
-        elif self.priorty=='max':
+        elif self.priorty == 'max':
             local_datas = sorted(local_datas, key=lambda x: len('x'), reverse=True)[:self.num_clients]
-        elif self.priorty=='min':
+        elif self.priorty == 'min':
             local_datas = sorted(local_datas, key=lambda x: len('x'))[:self.num_clients]
-        elif self.priorty=='none':
+        elif self.priorty == 'none':
             random.shuffle(local_datas)
             local_datas = local_datas[:self.num_clients]
         return local_datas
+
 
 class VerticalSplittedPartitioner(BasicPartitioner):
     def __init__(self, num_parties=-1, imbalance=0, dim=-1):
@@ -280,11 +291,12 @@ class VerticalSplittedPartitioner(BasicPartitioner):
         local_datas = []
         feature = data[0][0]
         shape = feature.shape
-        if self.dim==-1: self.dim = int(np.argmax(shape))
+        if self.dim == -1: self.dim = int(np.argmax(shape))
         self.num_parties = min(shape[self.dim], self.num_parties)
         feature_sizes = self.gen_feature_size(shape[self.dim], self.num_parties, self.imbalance)
         for pid in range(self.num_parties):
-            pdata = {'sample_idxs':list(range(len(data))), 'pt_feature':(self.dim, feature_sizes, pid), 'with_label':(pid==0)}
+            pdata = {'sample_idxs': list(range(len(data))), 'pt_feature': (self.dim, feature_sizes, pid),
+                     'with_label': (pid == 0)}
             local_datas.append(pdata)
         return local_datas
 
@@ -299,7 +311,7 @@ class VerticalSplittedPartitioner(BasicPartitioner):
             except StopIteration:
                 break
         size_partitions = sorted(size_partitions, key=lambda x: np.std(x))
-        res = size_partitions[int(imbalance*(len(size_partitions)-1))]
+        res = size_partitions[int(imbalance * (len(size_partitions) - 1))]
         return res
 
     def integer_k_partition(self, n, k, l=1):
