@@ -378,7 +378,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
         else:
             model_name = model
     algorithm_name = algorithm.__name__ if hasattr(algorithm, '__name__') else algorithm
-    mp = torch.multiprocessing.Pool(6)
+    mp = torch.multiprocessing.Pool(len(options))
     x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, scene)) for opt in options]
     mp.close()
     outputs = [None for _ in x]
