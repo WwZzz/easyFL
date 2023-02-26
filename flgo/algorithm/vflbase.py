@@ -66,8 +66,6 @@ class ActiveParty(BasicServer, PassiveParty):
         self.task = option['task']
         self.eval_interval = option['eval_interval']
         self.num_parallels = option['num_parallels']
-        # server calculator
-        # self.calculator = self.gv.TaskCalculator(self.device, optimizer_name=option['optimizer'])
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
         self.proportion = option['proportion']
@@ -105,11 +103,13 @@ class ActiveParty(BasicServer, PassiveParty):
         try:
             for cid in communicate_clients:
                 self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
+                self.sending_package_buffer[cid]['__mtype__'] = mtype
         except MemoryError as e:
             if str(self.device) != 'cpu':
                 self.model.to(torch.device('cpu'))
                 for cid in communicate_clients:
                     self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
+                    self.sending_package_buffer[cid]['__mtype__'] = mtype
                 self.model.to(self.device)
             else:
                 raise e
@@ -117,14 +117,14 @@ class ActiveParty(BasicServer, PassiveParty):
         if self.num_parallels <= 1:
             # computing iteratively
             for client_id in communicate_clients:
-                response_from_client_id = self.communicate_with(client_id, package=self.sending_package_buffer[cid], mtype=mtype)
+                response_from_client_id = self.communicate_with(client_id, package=self.sending_package_buffer[cid])
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel with torch.multiprocessing
             pool = mp.Pool(self.num_parallels)
             for client_id in communicate_clients:
                 self.clients[client_id].update_device(self.gv.apply_for_device())
-                args = (int(client_id), self.sending_package_buffer[cid], mtype)
+                args = (int(client_id), self.sending_package_buffer[cid])
                 packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
             pool.close()
             pool.join()
@@ -134,18 +134,17 @@ class ActiveParty(BasicServer, PassiveParty):
         self.received_clients = selected_clients
         return self.unpack(packages_received_from_clients)
 
-    def communicate_with(self, client_id, package={}, mtype=0):
+    def communicate_with(self, client_id, package={}):
         """
         Pack the information that is needed for client_id to improve the global model
         :param
             client_id: the id of the client to communicate with
             package: the package to be sended to the client
-            mtype: the type of the message that is used to decide the action of the client
         :return
             client_package: the reply from the client and will be 'None' if losing connection
         """
         # listen for the client's response
-        return self.gv.communicator.request(self.id-1, client_id-1, package, mtype)
+        return self.gv.communicator.request(self.id-1, client_id-1, package)
 
     def run(self):
         """

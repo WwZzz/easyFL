@@ -12,12 +12,30 @@ class BasicParty:
         self.actions = {}
         self.id = None
 
-    def register_action_to_mtype(self, action_name, mtype):
+    def register_action_to_mtype(self, action_name: str, mtype):
+        """
+        Register an existing instance method as the action to the message type.
+        :param
+            action_name: the name of the instance method
+            mtype: the message type
+        """
         if action_name not in self.__dict__.keys():
             raise NotImplementedError("There is no method named `{}` in the class instance.".format(action_name))
         self.actions[mtype] = self.__dict__[action_name]
 
-    def message_handler(self, package, mtype):
+    def message_handler(self, package):
+        """
+        Handling the received message by excuting the corresponding action.
+        :param
+            package: the package received from other parties (i.e. the content of the message)
+            mtype: the message type
+        :return
+            action_reult
+        """
+        try:
+            mtype = package['__mtype__']
+        except:
+            raise KeyError("__mtype__ must be a key of the package")
         if mtype not in self.actions.keys():
             raise NotImplementedError("There is no action corresponding to message type {}.".format(mtype))
         return self.actions[mtype](package)
@@ -119,7 +137,7 @@ class BasicServer(BasicParty):
         The standard iteration of each federated round that contains three
         necessary procedure in FL: client selection, communication and model aggregation.
         :param
-            t: the number of current round
+        :return
         """
         # sample clients: MD sampling as default
         self.selected_clients = self.sample()
