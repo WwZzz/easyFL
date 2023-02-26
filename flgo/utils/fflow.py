@@ -1,4 +1,5 @@
 import copy
+import time
 try:
     from collections import Iterable
 except ImportError:
@@ -25,6 +26,7 @@ import importlib
 import random
 import os
 import yaml
+import queue
 
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
@@ -331,9 +333,17 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, scene):
         algorithm = importlib.import_module(algorithm_name)
     except:
         algorithm = algorithm_name
-    runner = flgo.init(task, algorithm, model=model, option=opt, Logger=Logger, scene=scene)
-    runner.run()
-    return runner.gv.logger.output
+    try:
+        runner = flgo.init(task, algorithm, model=model, option=opt, Logger=Logger, scene=scene)
+        runner.run()
+        return runner.gv.logger.output
+    except RuntimeError as e:
+        print(e)
+        return (opt, e)
+
+def get_available_device(device_ids):
+    # dev_handlers = [pynvml.nvmlDeviceGetHandleByIndex(dev_id) for dev_id in device_ids]
+    return random.choice([0,1,2,3])
 
 def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, scene='horizontal'):
     # generate combinations of hyper-parameters
@@ -352,7 +362,8 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     for op in options:
         op['gpu'] = [device_ids[crt_dev_idx]]
         crt_dev_idx = (crt_dev_idx+1)%len(device_ids)
-
+        op['log_file'] = True
+        op['no_log_console'] = True
     try:
         # init multiprocess
         torch.multiprocessing.set_start_method('spawn', force=True)
@@ -370,15 +381,49 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     mp = torch.multiprocessing.Pool(6)
     x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, scene)) for opt in options]
     mp.close()
-    mp.join()
-    outputs = [xi.get() for xi in x]
+    outputs = [None for _ in x]
+    option_to_be_run = queue.Queue(len(options))
+    while True:
+        res = []
+        for xi in x:
+            try: res.append(xi.successful())
+            except: res.append(False)
+        for i in range(len(res)):
+            if res[i]:
+                tmp = x[i].get()
+                if isinstance(tmp, tuple):
+                    option_to_be_run.put((i, option[i]))
+                    res[i] = False
+                else:
+                    outputs[i] = tmp
+        if not option_to_be_run.empty():
+            i, opt = option_to_be_run.get()
+            available_device = get_available_device(device_ids)
+            if available_device is not None:
+                opt['gpu'] = available_device
+                x[i] = mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, scene))
+                res[i] = False
+            else:
+                option_to_be_run.put((i,opt))
+                res[i] = False
+        # print('-------------------------------------------------')
+        # for i in range(len(res)):
+        #     if res[i]:
+        #         print(str(options[i])+' is finished')
+        #     else:
+        #         print(str(options[i])+' is running')
+        if option_to_be_run.empty() and all(res):
+            break
+        time.sleep(1)
+
+    # outputs = [xi.get() for xi in x]
     optimal_idx = int(np.argmin([min(output['valid_loss']) for output in outputs]))
     optimal_para = options[optimal_idx]
     print("The optimal combination of hyper-parameters is:")
     print('-----------------------------------------------')
     for k,v in optimal_para.items():
         if k=='gpu': continue
-        print("{}\t\t\t|{}".format(k,v))
+        print("{}\t|{}".format(k,v))
     print('-----------------------------------------------')
     op_round = np.argmin(outputs[optimal_idx]['valid_loss'])
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
