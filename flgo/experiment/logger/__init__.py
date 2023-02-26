@@ -2288,6 +2288,7 @@ class BasicLogger(Logger):
         # Early stopping when there is no improvement on the validation loss for more than self.option['early_stop'] rounds
         if self.option['early_stop']<0 or (self._es_key not in self.output): return False
         score = -self.output[self._es_key][-1]
+        if np.isnan(score): return True
         if self._es_best_score is None:
             self._es_best_score = score
             self._es_best_round = self.coordinator.current_round-1
