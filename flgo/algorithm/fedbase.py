@@ -167,11 +167,13 @@ class BasicServer(BasicParty):
         try:
             for cid in communicate_clients:
                 self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
+                self.sending_package_buffer[cid]['__mtype__'] = mtype
         except Exception as e:
             if str(self.device) != 'cpu':
                 self.model.to(torch.device('cpu'))
                 for cid in communicate_clients:
                     self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
+                    self.sending_package_buffer[cid]['__mtype__'] = mtype
                 self.model.to(self.device)
             else:
                 raise e
@@ -179,14 +181,14 @@ class BasicServer(BasicParty):
         if self.num_parallels <= 1:
             # computing iteratively
             for client_id in communicate_clients:
-                response_from_client_id = self.communicate_with(client_id, package=self.sending_package_buffer[cid], mtype=mtype)
+                response_from_client_id = self.communicate_with(client_id, package=self.sending_package_buffer[cid])
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel with torch.multiprocessing
             pool = mp.Pool(self.num_parallels)
             for client_id in communicate_clients:
                 self.clients[client_id].update_device(self.gv.apply_for_device())
-                args = (int(client_id), self.sending_package_buffer[cid], mtype)
+                args = (int(client_id), self.sending_package_buffer[cid])
                 packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
             pool.close()
             pool.join()
@@ -196,7 +198,7 @@ class BasicServer(BasicParty):
         self.received_clients = selected_clients
         return self.unpack(packages_received_from_clients)
 
-    def communicate_with(self, client_id, package={}, mtype=0):
+    def communicate_with(self, client_id, package={}):
         """
         Pack the information that is needed for client_id to improve the global model
         :param
@@ -207,7 +209,7 @@ class BasicServer(BasicParty):
             client_package: the reply from the client and will be 'None' if losing connection
         """
         # listen for the client's response
-        return self.gv.communicator.request(self.id, client_id, package, mtype)
+        return self.gv.communicator.request(self.id, client_id, package)
 
     def pack(self, client_id, mtype=0, *args, **kwargs):
         """

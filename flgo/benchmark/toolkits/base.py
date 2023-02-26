@@ -116,8 +116,9 @@ class BasicTaskGenerator(AbstractTaskGenerator):
         return
 
     def get_task_name(self):
-        if not hasattr(self, 'num_parties') and hasattr(self, 'num_clients'): self.num_parties = self.num_clients
-        else: self.num_parties = 'unknown'
+        if not hasattr(self.partitioner, 'num_parties') and hasattr(self.partitioner, 'num_clients'):
+            self.partitioner.num_parties = self.partitioner.num_clients
+        else: self.partitioner.num_parties = 'unknown'
         return '_'.join(['B-' + self.benchmark, 'P-' + str(self.partitioner), 'N-' + str(self.partitioner.num_parties)])
 
 class BasicTaskPipe(AbstractTaskPipe):
