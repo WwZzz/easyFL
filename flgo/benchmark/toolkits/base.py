@@ -172,7 +172,7 @@ class BasicTaskPipe(AbstractTaskPipe):
     def save_info(self, generator):
         info = {'benchmark': generator.benchmark}
         info['scene'] = generator.scene if hasattr(generator, 'scene') else 'unknown'
-        info['num_clients'] = generator.num_parties if hasattr(generator, 'num_clients') else 'unknown'
+        info['num_clients'] = generator.num_clients if hasattr(generator, 'num_clients') else (generator.num_parties if hasattr(self, 'num_parties') else 'unknown')
         with open(os.path.join(self.task_path, 'info'), 'w') as outf:
             json.dump(info, outf)
 

@@ -234,7 +234,7 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: BasicLogge
 
     # init task info
     if not os.path.exists(task):
-        raise FileExistsError("Fedtask '{}' doesn't exist. Please generate the specified task by flgo.create_task().")
+        raise FileExistsError("Fedtask '{}' doesn't exist. Please generate the specified task by flgo.gen_task().")
     with open(os.path.join(task, 'info'), 'r') as inf:
         task_info = json.load(inf)
     benchmark = task_info['benchmark']

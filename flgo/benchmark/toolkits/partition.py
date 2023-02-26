@@ -280,7 +280,7 @@ class VerticalSplittedPartitioner(BasicPartitioner):
         local_datas = []
         feature = data[0][0]
         shape = feature.shape
-        if self.dim==-1: self.dim = np.argmax(shape)
+        if self.dim==-1: self.dim = int(np.argmax(shape))
         self.num_parties = min(shape[self.dim], self.num_parties)
         feature_sizes = self.gen_feature_size(shape[self.dim], self.num_parties, self.imbalance)
         for pid in range(self.num_parties):
