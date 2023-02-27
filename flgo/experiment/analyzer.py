@@ -234,11 +234,11 @@ class Painter:
         args = fig_config['args']
         obj_options = self.generate_obj_option(fig_config['obj_option']) if 'obj_option' in fig_config.keys() else [{} for _ in self.records]
         objects = [object_class(rec, args, obj_option) for rec, obj_option in zip(self.records, obj_options)]
-        if 'no_legend' in fig_config['fig_option'].keys():
-            for obj in objects: obj.with_legend = False
         for ob,axi in zip(objects, axs):
             ob.draw(axi)
         if 'fig_option' in fig_config.keys():
+            if 'no_legend' in fig_config['fig_option'].keys():
+                for obj in objects: obj.with_legend = False
             for option_name in fig_config['fig_option']:
                 if option_name=='no_legend': continue
                 if 'split' in fig_config.keys():
