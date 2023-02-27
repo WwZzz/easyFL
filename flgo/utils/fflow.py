@@ -354,7 +354,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     else:
         device_ids = [-1]
     keys = list(option.keys())
-    for k in keys: option[k] = [option[k]] if not isinstance(option[k], Iterable) else option[k]
+    for k in keys: option[k] = [option[k]] if (not isinstance(option[k], Iterable) or isinstance(option[k], str)) else option[k]
     para_combs = [para_comb for para_comb in itertools.product(*(option[k] for k in keys))]
     options = [{k:v for k,v in zip(keys, paras)} for paras in para_combs]
     # allocate gpu to different configurations
@@ -363,7 +363,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
         op['gpu'] = [device_ids[crt_dev_idx]]
         crt_dev_idx = (crt_dev_idx+1)%len(device_ids)
         op['log_file'] = True
-        op['no_log_console'] = True
+        # op['no_log_console'] = True
     outputs = run_in_parallel(task, algorithm, options,model, Logger=Logger, scene=scene, devices=device_ids)
     optimal_idx = int(np.argmin([min(output['valid_loss']) for output in outputs]))
     optimal_para = options[optimal_idx]
