@@ -318,6 +318,7 @@ class Table:
         self.save_text = save_text
         self.tb = pt.PrettyTable()
         self.tb.add_column('Record', [r.data['label'] for r in self.records])
+        self.sort_key = None
 
     def set_title(self, title):
         self.tb.title = title
@@ -329,9 +330,10 @@ class Table:
         if 'name' in col_option.keys():
             fieldname = col_option['name']
         else:
-            fieldname = '-'.join([str(v) for v in col_option.values()])
+            fieldname = '-'.join([str(v) for k,v in col_option.items() if k!='sort'])
             fieldname = funcname + '-' + fieldname
         self.tb.add_column(fieldname=fieldname, column=column)
+        if 'sort' in col_option.keys(): self.tb.sortby = fieldname
 
     def run(self, group=False):
         for funcname in self.config:
