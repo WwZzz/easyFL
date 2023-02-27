@@ -521,7 +521,7 @@ class BasicClient(BasicParty):
         :return
             True if the client is active according to the active_rate else False
         """
-        return self.gv.state_updater.client_states[self.id]=='idle'
+        return self.gv.simulator.client_states[self.id]=='idle'
 
     def is_dropped(self):
         """
@@ -530,10 +530,10 @@ class BasicClient(BasicParty):
         :return
             True if the client was being dropped
         """
-        return self.gv.state_updater.client_states[self.id]=='dropped'
+        return self.gv.simulator.client_states[self.id]=='dropped'
 
     def is_working(self):
-        return self.gv.state_updater.client_states[self.id]=='working'
+        return self.gv.simulator.client_states[self.id]=='working'
 
     def train_loss(self, model):
         """

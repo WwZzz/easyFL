@@ -195,7 +195,7 @@ def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
     except:
         pass
 
-def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator: BasicSimulator=flgo.system_simulator.default_simulator.BasicSimulator, scene='horizontal'):
+def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
     r"""
     Initialize a runner in FLGo, which is to optimize a model on a specific task (i.e. IID-mnist-of-100-clients) by the selected federated algorithm.
     :param
@@ -307,8 +307,8 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     gv.logger.info('Use `{}` as the system simulator'.format(str(Simulator)))
     flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
     gv.clock = flgo.system_simulator.base.ElemClock()
-    gv.state_updater = Simulator(objects, option)
-    gv.clock.register_state_updater(state_updater=gv.state_updater)
+    gv.simulator = Simulator(objects, option)
+    gv.clock.register_simulator(simulator=gv.simulator)
 
     gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene)
     gv.logger.initialize()
@@ -317,12 +317,12 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     # register global variables for objects
     for ob in objects:
         ob.gv = gv
-    gv.state_updater.gv = gv
+    gv.simulator.gv = gv
     gv.clock.gv = gv
     gv.logger.gv = gv
     return objects[0]
 
-def _call_by_process(task, algorithm_name,  opt, model_name, Logger, scene):
+def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, scene):
     if model_name is None: model = None
     else:
         try:
@@ -334,10 +334,10 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, scene):
     except:
         algorithm = algorithm_name
     try:
-        runner = flgo.init(task, algorithm, model=model, option=opt, Logger=Logger, scene=scene)
+        runner = flgo.init(task, algorithm, model=model, option=opt, Logger=Logger, Simulator=Simulator, scene=scene)
         runner.run()
         return runner.gv.logger.output
-    except RuntimeError as e:
+    except Exception as e:
         print(e)
         return (opt, e)
 
@@ -345,7 +345,7 @@ def get_available_device(device_ids):
     # dev_handlers = [pynvml.nvmlDeviceGetHandleByIndex(dev_id) for dev_id in device_ids]
     return random.choice(device_ids)
 
-def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, scene='horizontal'):
+def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
     # generate combinations of hyper-parameters
     if 'gpu' in option.keys():
         device_ids = option['gpu']
@@ -364,7 +364,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
         crt_dev_idx = (crt_dev_idx+1)%len(device_ids)
         op['log_file'] = True
         # op['no_log_console'] = True
-    outputs = run_in_parallel(task, algorithm, options,model, Logger=Logger, scene=scene, devices=device_ids)
+    outputs = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene)
     optimal_idx = int(np.argmin([min(output['valid_loss']) for output in outputs]))
     optimal_para = options[optimal_idx]
     print("The optimal combination of hyper-parameters is:")
@@ -377,7 +377,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
     print('The minimal validation loss occurs at the round {}'.format(op_round))
 
-def run_in_parallel(task: str, algorithm, options:list = [], model=None, Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, scene='horizontal', devices = []):
+def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
     try:
         # init multiprocess
         torch.multiprocessing.set_start_method('spawn', force=True)
@@ -393,9 +393,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, Logger:
             model_name = model
     algorithm_name = algorithm.__name__ if hasattr(algorithm, '__name__') else algorithm
     mp = torch.multiprocessing.Pool(len(options))
-    x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, scene)) for opt in
-         options]
-    mp.close()
+    x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene)) for opt in options]
     outputs = [None for _ in x]
     option_to_be_run = queue.Queue(len(options))
     while True:
@@ -418,7 +416,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, Logger:
             available_device = get_available_device(devices)
             if available_device is not None:
                 opt['gpu'] = available_device
-                x[i] = mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, scene))
+                x[i] = mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene))
                 res[i] = False
             else:
                 option_to_be_run.put((i, opt))
