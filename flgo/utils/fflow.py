@@ -343,7 +343,7 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, scene):
 
 def get_available_device(device_ids):
     # dev_handlers = [pynvml.nvmlDeviceGetHandleByIndex(dev_id) for dev_id in device_ids]
-    return random.choice([0,1,2,3])
+    return random.choice(device_ids)
 
 def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, scene='horizontal'):
     # generate combinations of hyper-parameters
