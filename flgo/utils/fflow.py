@@ -346,6 +346,17 @@ def get_available_device(device_ids):
     return random.choice(device_ids)
 
 def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
+    """
+        Tune hyper-parameters for one task and one algorithm in parallel.
+        :param
+            task (str): the dictionary of the federated task
+            algorithm (module || class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
+            option (dict): the dict whose values should be of type list to construct the combinations
+            model (module || class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
+            Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
+            Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
+            scene (str): 'horizontal' or 'vertical' in current version of FLGo
+        """
     # generate combinations of hyper-parameters
     if 'gpu' in option.keys():
         device_ids = option['gpu']
@@ -378,6 +389,20 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     print('The minimal validation loss occurs at the round {}'.format(op_round))
 
 def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
+    """
+    Run different groups of hyper-parameters for one task and one algorithm in parallel.
+    :param
+        task (str): the dictionary of the federated task
+        algorithm (module || class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
+        options (list): the configurations of different groups of hyper-parameters
+        model (module || class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
+        devices (list): the list of IDs of devices
+        Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
+        Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
+        scene (str): 'horizontal' or 'vertical' in current version of FLGo
+    :return
+        the returns of _call_by_process
+    """
     try:
         # init multiprocess
         torch.multiprocessing.set_start_method('spawn', force=True)
