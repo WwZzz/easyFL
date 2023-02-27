@@ -364,6 +364,20 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
         crt_dev_idx = (crt_dev_idx+1)%len(device_ids)
         op['log_file'] = True
         op['no_log_console'] = True
+    outputs = run_in_parallel(task, algorithm, options,model, Logger=Logger, scene=scene, devices=device_ids)
+    optimal_idx = int(np.argmin([min(output['valid_loss']) for output in outputs]))
+    optimal_para = options[optimal_idx]
+    print("The optimal combination of hyper-parameters is:")
+    print('-----------------------------------------------')
+    for k,v in optimal_para.items():
+        if k=='gpu': continue
+        print("{}\t|{}".format(k,v))
+    print('-----------------------------------------------')
+    op_round = np.argmin(outputs[optimal_idx]['valid_loss'])
+    if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
+    print('The minimal validation loss occurs at the round {}'.format(op_round))
+
+def run_in_parallel(task: str, algorithm, options:list = [], model=None, Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, scene='horizontal', devices = []):
     try:
         # init multiprocess
         torch.multiprocessing.set_start_method('spawn', force=True)
@@ -379,32 +393,35 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
             model_name = model
     algorithm_name = algorithm.__name__ if hasattr(algorithm, '__name__') else algorithm
     mp = torch.multiprocessing.Pool(len(options))
-    x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, scene)) for opt in options]
+    x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, scene)) for opt in
+         options]
     mp.close()
     outputs = [None for _ in x]
     option_to_be_run = queue.Queue(len(options))
     while True:
         res = []
         for xi in x:
-            try: res.append(xi.successful())
-            except: res.append(False)
+            try:
+                res.append(xi.successful())
+            except:
+                res.append(False)
         for i in range(len(res)):
             if res[i]:
                 tmp = x[i].get()
                 if isinstance(tmp, tuple):
-                    option_to_be_run.put((i, option[i]))
+                    option_to_be_run.put((i, options[i]))
                     res[i] = False
                 else:
                     outputs[i] = tmp
         if not option_to_be_run.empty():
             i, opt = option_to_be_run.get()
-            available_device = get_available_device(device_ids)
+            available_device = get_available_device(devices)
             if available_device is not None:
                 opt['gpu'] = available_device
                 x[i] = mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, scene))
                 res[i] = False
             else:
-                option_to_be_run.put((i,opt))
+                option_to_be_run.put((i, opt))
                 res[i] = False
         # print('-------------------------------------------------')
         # for i in range(len(res)):
@@ -415,16 +432,4 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
         if option_to_be_run.empty() and all(res):
             break
         time.sleep(1)
-
-    # outputs = [xi.get() for xi in x]
-    optimal_idx = int(np.argmin([min(output['valid_loss']) for output in outputs]))
-    optimal_para = options[optimal_idx]
-    print("The optimal combination of hyper-parameters is:")
-    print('-----------------------------------------------')
-    for k,v in optimal_para.items():
-        if k=='gpu': continue
-        print("{}\t|{}".format(k,v))
-    print('-----------------------------------------------')
-    op_round = np.argmin(outputs[optimal_idx]['valid_loss'])
-    if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
-    print('The minimal validation loss occurs at the round {}'.format(op_round))
+    return outputs
