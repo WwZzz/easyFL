@@ -13,6 +13,7 @@ try:
     import ujson as json
 except:
     import json
+from flgo.utils.fflow import load_configuration
 
 class Record:
     def __init__(self, task, name):
@@ -359,8 +360,9 @@ def read_option():
     return option
 
 def show(config, save_figure=False, save_text=False, seed=0):
-    with open(config) as f:
-        option = yaml.load(f, Loader=yaml.FullLoader)
+    option = load_configuration(config)
+    # with open(config) as f:
+    #     option = yaml.load(f, Loader=yaml.FullLoader)
     record_selector = Selector(option['Selector'])
     if 'Painter' in option.keys():
         for task in record_selector.records:
