@@ -9,10 +9,7 @@ import collections
 import copy
 import matplotlib as mpl
 import prettytable as pt
-try:
-    import ujson as json
-except:
-    import json
+import json
 from flgo.utils.fflow import load_configuration
 
 class Record:
@@ -155,13 +152,14 @@ class PaintObject:
         self.obj_option = obj_option
         self.draw_func = draw_func
         self.para = (rec.data[v] for v in args.values())
+        self.with_legend = True
 
     def draw(self, ax):
         if 'label' in self.obj_option.keys() or 'label' not in self.rec.data.keys():
             eval('ax.'+str(self.draw_func)+'(*self.para, **self.obj_option)')
         else:
             eval('ax.' + str(self.draw_func) + '(*self.para, **self.obj_option, label=self.rec.data["label"])')
-        eval('ax.legend()')
+        if self.with_legend: eval('ax.legend()')
         return
 
 class Curve(PaintObject):
@@ -236,10 +234,13 @@ class Painter:
         args = fig_config['args']
         obj_options = self.generate_obj_option(fig_config['obj_option']) if 'obj_option' in fig_config.keys() else [{} for _ in self.records]
         objects = [object_class(rec, args, obj_option) for rec, obj_option in zip(self.records, obj_options)]
+        if 'no_legend' in fig_config['fig_option'].keys():
+            for obj in objects: obj.with_legend = False
         for ob,axi in zip(objects, axs):
             ob.draw(axi)
         if 'fig_option' in fig_config.keys():
             for option_name in fig_config['fig_option']:
+                if option_name=='no_legend': continue
                 if 'split' in fig_config.keys():
                     if type(fig_config['fig_option'][option_name]) is str:
                         for ax in axs:
