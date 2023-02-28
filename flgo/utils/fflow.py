@@ -260,7 +260,7 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     gv.logger = Logger(task=task, option=option, name=str(id(gv))+str(Logger), level=option['log_level'])
 
     # init device
-    gv.dev_list = [torch.device('cpu')] if option['gpu'] is None else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
+    gv.dev_list = [torch.device('cpu')] if (option['gpu'] is None or len(option['gpu'])==0) else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
     gv.logger.info('Initializing devices: '+','.join([str(dev) for dev in gv.dev_list])+' will be used for this running.')
     # init task
     core_module = '.'.join(['flgo', 'benchmark', benchmark, 'core'])
