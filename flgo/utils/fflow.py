@@ -140,7 +140,7 @@ def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
 
     Example:
         >>> import flgo
-        >>> config = {'benchmark':{'name':'mnist_classification'}, 'partitioner':{'name':'IIDParitioner', 'para':{'num_clients':100}}}
+        >>> config = {'benchmark':{'name':'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDParitioner', 'para':{'num_clients':100}}}
         >>> flgo.gen_task(config, './my_mnist_iid')
         >>> # The task will be stored as `my_mnist_iid` in the currently working dictionary
     """
@@ -155,7 +155,7 @@ def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
         gen_option['benchmark']['para'].update(gen_option['partitioner']['para'])
     # init generator
     if rawdata_path!='': gen_option['benchmark']['para']['rawdata_path']=rawdata_path
-    task_generator = getattr(importlib.import_module('.'.join(['flgo','benchmark', gen_option['benchmark']['name'], 'core'])), 'TaskGenerator')(**gen_option['benchmark']['para'])
+    task_generator = getattr(importlib.import_module('.'.join([gen_option['benchmark']['name'], 'core'])), 'TaskGenerator')(**gen_option['benchmark']['para'])
     # create partitioner for generator if specified
     if 'partitioner' in gen_option.keys():
         partitioner = getattr(importlib.import_module('.'.join(['flgo','benchmark', 'toolkits', 'partition'])), gen_option['partitioner']['name'])(**gen_option['partitioner']['para'])
@@ -168,7 +168,7 @@ def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
     # save the generated federated benchmark
     # initialize task pipe
     if task_path=='': task_path = os.path.join('.', task_generator.task_name)
-    task_pipe = getattr(importlib.import_module('.'.join(['flgo','benchmark', gen_option['benchmark']['name'], 'core'])), 'TaskPipe')(task_path)
+    task_pipe = getattr(importlib.import_module('.'.join([gen_option['benchmark']['name'], 'core'])), 'TaskPipe')(task_path)
     # check if task already exists
     if task_pipe.task_exists():
         raise FileExistsError('Task {} already exists.'.format(task_path))
@@ -186,7 +186,7 @@ def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
         print("Failed to saving splited dataset.")
     # save visualization
     try:
-        visualize_func = getattr(importlib.import_module('.'.join(['flgo','benchmark', gen_option['benchmark']['name']])),'visualize')
+        visualize_func = getattr(importlib.import_module(gen_option['benchmark']['name']),'visualize')
         visualize_func(task_generator, partitioner)
         task_pipe.save_figure()
     except:
@@ -244,7 +244,7 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     with open(os.path.join(task, 'info'), 'r') as inf:
         task_info = json.load(inf)
     benchmark = task_info['benchmark']
-    if model== None: model = getattr(importlib.import_module('.'.join(['flgo', 'benchmark', benchmark])), 'default_model')
+    if model== None: model = getattr(importlib.import_module(benchmark), 'default_model')
     option['model'] = (model.__name__).split('.')[-1]
 
     try:
@@ -263,7 +263,7 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     gv.dev_list = [torch.device('cpu')] if (option['gpu'] is None or len(option['gpu'])==0) else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
     gv.logger.info('Initializing devices: '+','.join([str(dev) for dev in gv.dev_list])+' will be used for this running.')
     # init task
-    core_module = '.'.join(['flgo', 'benchmark', benchmark, 'core'])
+    core_module = '.'.join([benchmark, 'core'])
     gv.TaskPipe = getattr(importlib.import_module(core_module), 'TaskPipe')
     task_pipe = gv.TaskPipe(task)
     gv.TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')

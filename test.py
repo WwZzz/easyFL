@@ -4,7 +4,7 @@ import os
 
 task = './my_task'
 gen_config = {
-    'benchmark':{'name':'mnist_classification'},
+    'benchmark':{'name':'flgo.benchmark.mnist_classification'},
     'partitioner':{'name':'IIDPartitioner', 'para':{'num_clients':100}}
 }
 analysis_plan = {
