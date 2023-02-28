@@ -2,10 +2,9 @@
 This is a non-official implementation of 'Fast Federated Learning in the
 Presence of Arbitrary Device Unavailability' (http://arxiv.org/abs/2106.04159)
 """
-from .fedbase import BasicServer, BasicClient
-from .fedavg import Client
-from utils import fmodule
-import utils.fflow as flw
+from flgo.algorithm.fedbase import BasicServer, BasicClient
+from flgo.algorithm.fedavg import Client
+from flgo.utils import fmodule
 
 class Server(BasicServer):
     def initialize(self, *args, **kwargs):
@@ -20,7 +19,7 @@ class Server(BasicServer):
         s = len([u for u in self.update_table if u])
         # c==0 infers that updating starts immediately
         if s < self.c*self.num_clients: return False
-        flw.logger.info("G_i Initialized For {}/{} The Clients.".format(s,self.num_clients))
+        self.gv.logger.info("G_i Initialized For {}/{} The Clients.".format(s,self.num_clients))
         self.initflag = True
         return True
 
