@@ -8,7 +8,7 @@ import collections
 import re
 import os
 import os.path
-import ujson
+import json
 import flgo.benchmark
 import os.path
 def download_from_url(url= None, filepath = '.'):
@@ -43,7 +43,7 @@ class SHAKESPEARE(Dataset):
         if not os.path.exists(os.path.join(self.root, 'raw_data', file)):
             self.download()
         with open(os.path.join(self.root, 'raw_data', file), 'r') as f:
-            data = ujson.load(f)
+            data = json.load(f)
             if self.train:
                 self.id = data['id']
             self.x = data['x']
@@ -77,11 +77,11 @@ class SHAKESPEARE(Dataset):
                     'sound_bites': all_examples[user],
                 }
             with open(os.path.join(self.root, 'raw_data', 'all_data.json'), 'w') as f:
-                ujson.dump(all_data, f)
+                json.dump(all_data, f)
             os.remove(tar_paths[0])
         else:
             with open(os.path.join(self.root, 'raw_data', 'all_data.json'), 'r') as f:
-                all_data = ujson.load(f)
+                all_data = json.load(f)
         print('Processing...')
         self.process(all_data)
 
@@ -117,7 +117,7 @@ class SHAKESPEARE(Dataset):
             'id': train_sample_ids
         }
         with open(os.path.join(self.root, 'raw_data', 'train_data.json'), 'w') as f:
-            ujson.dump(train_data, f)
+            json.dump(train_data, f)
         for uid in test_users.indices:
             user = list(all_data.keys())[uid]
             examples = all_data[user]['sound_bites']
@@ -131,7 +131,7 @@ class SHAKESPEARE(Dataset):
             'y': testYs
         }
         with open(os.path.join(self.root, 'raw_data', 'test_data.json'), 'w') as f:
-            ujson.dump(test_data, f)
+            json.dump(test_data, f)
 
     def _split_into_plays(self, shakespeare_full):
         """Splits the full data by play."""
@@ -282,7 +282,7 @@ class TaskPipe(BasicTaskPipe):
                    'rawdata_path': generator.rawdata_path}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
-            ujson.dump(feddata, outf)
+            json.dump(feddata, outf)
         return
 
     def load_data(self, running_time_option) -> dict:

@@ -6,10 +6,7 @@ import os.path
 from torch.utils.data import Dataset
 import flgo
 import random
-try:
-    import ujson as json
-except:
-    import json
+import json
 
 class TaskGenerator(BuiltinClassGenerator):
     def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'MNIST')):

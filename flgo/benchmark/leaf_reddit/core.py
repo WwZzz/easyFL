@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torchvision.datasets import utils
 
-import ujson
+import json
 from torch.utils.data import Dataset
 
 from flgo.benchmark.toolkits import BasicTaskGenerator
@@ -41,7 +41,7 @@ class REDDIT(Dataset):
         if not os.path.exists(os.path.join(self.processed_folder, file)):
             self.download()
         with open(os.path.join(self.processed_folder, file), 'r') as f:
-            data = ujson.load(f)
+            data = json.load(f)
         if self.train:
             self.id = data['id']
         self.x = data['x']
@@ -64,11 +64,11 @@ class REDDIT(Dataset):
         # process and save as torch files
         print('Processing...')
         with open(os.path.join(self.raw_folder, 'new_small_data', 'train_data.json'), 'r') as f:
-            train_data = ujson.load(f)
+            train_data = json.load(f)
         with open(os.path.join(self.raw_folder, 'new_small_data', 'val_data.json'), 'r') as f:
-            val_data = ujson.load(f)
+            val_data = json.load(f)
         with open(os.path.join(self.raw_folder, 'new_small_data', 'test_data.json'), 'r') as f:
-            test_data = ujson.load(f)
+            test_data = json.load(f)
         users = train_data['users']
         for user in users:
             train_data['user_data'][user]['x'].extend(val_data['user_data'][user]['x'])
@@ -94,7 +94,7 @@ class REDDIT(Dataset):
             'id': train_idx
         }
         with open(os.path.join(self.processed_folder, 'train_data.json'), 'w') as f:
-            ujson.dump(train_data, f)
+            json.dump(train_data, f)
 
         testXs = []
         testYs = []
@@ -110,7 +110,7 @@ class REDDIT(Dataset):
             'seq_mask': test_seq_masks,
         }
         with open(os.path.join(self.processed_folder, 'test_data.json'), 'w') as f:
-            ujson.dump(test_data, f)
+            json.dump(test_data, f)
 
     def load_vocab(self, data):
         counter = self.build_counter(data)
@@ -176,7 +176,7 @@ class TaskPipe(BasicTaskPipe):
                    'rawdata_path': generator.rawdata_path}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
-            ujson.dump(feddata, outf)
+            json.dump(feddata, outf)
         return
 
     def load_data(self, running_time_option) -> dict:

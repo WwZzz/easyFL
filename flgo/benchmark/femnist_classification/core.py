@@ -5,7 +5,7 @@ import random
 import zipfile
 import flgo.benchmark
 import os.path
-import ujson
+import json
 import numpy as np
 from sklearn.model_selection import train_test_split
 from torchvision.datasets import MNIST, utils
@@ -83,17 +83,17 @@ class FEMNIST(MNIST):
             }
             for i in range(1, len(tar_paths)):
                 with open(tar_paths[i], 'r') as f:
-                    raw_data = ujson.load(f)
+                    raw_data = json.load(f)
                     all_data['users'].extend(raw_data['users'])
                     all_data['num_samples'].extend(raw_data['num_samples'])
                     all_data['user_data'].update(raw_data['user_data'])
             with open(os.path.join(self.raw_folder, 'all_data.json'), 'w') as f:
-                ujson.dump(all_data, f)
+                json.dump(all_data, f)
             os.remove(src_path)
             shutil.rmtree(tar_paths[0])
         else:
             with open(os.path.join(self.raw_folder, 'all_data.json'), 'r') as f:
-                all_data = ujson.load(f)
+                all_data = json.load(f)
         """Process Data"""
         Xs = []
         Ys = []

@@ -7,10 +7,7 @@ import numpy as np
 import os
 import torch
 from torch.utils.data import Dataset
-try:
-    import ujson as json
-except:
-    import json
+import json
 
 class AbstractTaskGenerator(metaclass=ABCMeta):
     @abstractmethod

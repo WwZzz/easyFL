@@ -11,7 +11,7 @@ import collections
 import re
 import os
 import os.path
-import ujson
+import json
 import csv
 import numpy as np
 
@@ -38,7 +38,7 @@ class SENTIMENT140(Dataset):
         if not os.path.exists(os.path.join(self.root, 'raw_data', 'embs.json')):
             self.load_emb()
         with open(os.path.join(self.root, 'raw_data', 'embs.json'), 'r') as inf:
-            embs = ujson.load(inf)
+            embs = json.load(inf)
         self.id2word = embs['vocab']
         self.word2id = {v: k for k, v in enumerate(self.id2word)}
 
@@ -46,7 +46,7 @@ class SENTIMENT140(Dataset):
         if not os.path.exists(os.path.join(self.root, 'raw_data', file)):
             self.download()
         with open(os.path.join(self.root, 'raw_data', file), 'r') as f:
-            data = ujson.load(f)
+            data = json.load(f)
             if self.train:
                 self.id = data['id']
             self.x = data['x']
@@ -77,7 +77,7 @@ class SENTIMENT140(Dataset):
         emb_floats.append([0.0 for _ in range(300)])  # for unknown word
         js = {'vocab': vocab, 'emba': emb_floats}
         with open(os.path.join(raw_path, 'embs.json'), 'w') as ouf:
-            ujson.dump(js, ouf)
+            json.dump(js, ouf)
 
     def download(self):
         raw_path = os.path.join(self.root, 'raw_data')
@@ -117,7 +117,7 @@ class SENTIMENT140(Dataset):
             'y': testYs,
         }
         with open(os.path.join(self.root, 'raw_data', 'test_data.json'), 'w') as f:
-            ujson.dump(test_data, f)
+            json.dump(test_data, f)
 
         train_user_data = {}
         for i in range(len(train)):
@@ -147,7 +147,7 @@ class SENTIMENT140(Dataset):
             'id': train_sample_ids
         }
         with open(os.path.join(self.root, 'raw_data', 'train_data.json'), 'w') as f:
-            ujson.dump(train_data, f)
+            json.dump(train_data, f)
         os.remove(tar_paths[0])
         os.remove(tar_paths[1])
 
@@ -203,7 +203,7 @@ class TaskPipe(BasicTaskPipe):
                    'rawdata_path': generator.rawdata_path}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
-            ujson.dump(feddata, outf)
+            json.dump(feddata, outf)
         return
 
     def load_data(self, running_time_option) -> dict:

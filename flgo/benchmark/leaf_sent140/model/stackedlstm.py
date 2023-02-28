@@ -2,7 +2,7 @@ import os
 
 import torch
 import torch.nn as nn
-import ujson
+import json
 
 from flgo.utils.fmodule import FModule
 
@@ -11,7 +11,7 @@ class Model(FModule):
     def __init__(self, embedding_dim=300, vocab_size=400001, hidden_size=256, output_dim=2):
         super(Model, self).__init__()
         with open(os.path.join('./benchmark/RAW_DATA/SENTIMENT140', 'raw_data', 'embs.json'), 'r') as inf:
-            embs = ujson.load(inf)
+            embs = json.load(inf)
         self.embeddings = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim, padding_idx=0)
         self.embeddings.weight.data.copy_(torch.Tensor(embs['emba']))
         self.embeddings.weight.requires_grad = False

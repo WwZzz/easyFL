@@ -1,6 +1,6 @@
 import random
 import torch.utils.data
-import ujson
+import json
 from flgo.benchmark.toolkits.base import *
 
 class BuiltinClassGenerator(BasicTaskGenerator):
@@ -45,7 +45,7 @@ class BuiltinClassPipe(BasicTaskPipe):
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
         if hasattr(generator.partitioner, 'local_perturbation'): feddata['local_perturbation'] = generator.partitioner.local_perturbation
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
-            ujson.dump(feddata, outf)
+            json.dump(feddata, outf)
         return
 
     def load_data(self, running_time_option) -> dict:

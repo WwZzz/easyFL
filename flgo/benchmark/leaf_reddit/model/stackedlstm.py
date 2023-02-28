@@ -1,8 +1,6 @@
 import os
-
 import torch
 import torch.nn as nn
-import ujson
 
 from flgo.utils.fmodule import FModule
 

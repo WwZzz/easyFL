@@ -26,10 +26,8 @@ import torch.multiprocessing
 import sys, os, time, io, traceback, warnings, weakref, collections.abc
 import time
 import os
-try:
-    import ujson as json
-except:
-    import json
+
+import json
 from string import Template
 
 __all__ = ['BASIC_FORMAT', 'BufferingFormatter', 'CRITICAL', 'DEBUG', 'ERROR',
@@ -2114,10 +2112,8 @@ import collections
 import time
 import numpy as np
 import os
-try:
-    import ujson as json
-except:
-    import json
+
+import json
 
 class BasicLogger(Logger):
 

@@ -7,10 +7,7 @@ except ImportError:
 import numpy as np
 import torch
 import os.path
-try:
-    import ujson as json
-except:
-    import json
+import json
 import flgo.system_simulator
 import flgo.system_simulator.default_simulator
 import flgo.system_simulator.base

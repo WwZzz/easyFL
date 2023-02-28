@@ -74,7 +74,7 @@ class NodeClassificationTaskPipe(BasicTaskPipe):
                    'all_val_nodes': generator.all_val_nodes.tolist()}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_nodes[cid]}
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
-            ujson.dump(feddata, outf)
+            json.dump(feddata, outf)
         return
 
     def load_data(self, running_time_option) -> dict:
