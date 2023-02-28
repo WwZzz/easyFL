@@ -77,6 +77,9 @@ class BasicServer(BasicParty):
         self.task = option['task']
         self.eval_interval = option['eval_interval']
         self.num_parallels= option['num_parallels']
+        self.test_data=None
+        self.valid_data = None
+        self.train_data = None
         # server calculator
         self.device = self.gv.apply_for_device() if not option['server_with_cpu'] else torch.device('cpu')
         self.calculator = self.gv.TaskCalculator(self.device, optimizer_name = option['optimizer'])
@@ -272,13 +275,13 @@ class BasicServer(BasicParty):
         # sample clients
         elif 'uniform' in self.sample_option:
             # original sample proposed by fedavg
-            selected_clients = list(np.random.choice(all_clients, min(self.clients_per_round, len(all_clients)), replace=False))
+            selected_clients = list(np.random.choice(all_clients, min(self.clients_per_round, len(all_clients)), replace=False)) if len(all_clients)>0 else []
         elif 'md' in self.sample_option:
             # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local data sizes
             local_data_vols = [self.clients[cid].datavol for cid in all_clients]
             total_data_vol = sum(local_data_vols)
             p = np.array(local_data_vols)/total_data_vol
-            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=p))
+            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=p)) if len(all_clients)>0 else []
         return selected_clients
 
     def aggregate(self, models: list, *args, **kwargs):
@@ -409,6 +412,9 @@ class BasicClient(BasicParty):
         self.id = None
         # create local dataset
         self.data_loader = None
+        self.test_data=None
+        self.valid_data = None
+        self.train_data = None
         # local calculator
         self.device = self.gv.apply_for_device()
         self.calculator = self.gv.TaskCalculator(self.device, option['optimizer'])
