@@ -412,11 +412,11 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
     if model is None:
         model_name = None
     else:
-        if hasattr(model, '__name__'):
+        if not hasattr(model, '__module__') and hasattr(model, '__name__'):
             model_name = model.__name__
         else:
             model_name = model
-    algorithm_name = algorithm.__name__ if hasattr(algorithm, '__name__') else algorithm
+    algorithm_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
     mp = torch.multiprocessing.Pool(len(options))
     x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene)) for opt in options]
     outputs = [None for _ in x]
