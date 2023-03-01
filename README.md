@@ -12,8 +12,12 @@ Our FLGo is a strong and reusable experimental platform for research on federate
 - [References](#References)
 
 ## QuickStart
-
-
+* install pytorch
+* install flgo
+    ```sh
+    pip install -i https://test.pypi.org/simple/ test-flgo-wwwzz
+    ```
+* run test.py
 ```sh
 python test.py
 ```
