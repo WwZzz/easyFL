@@ -80,6 +80,7 @@ class BasicServer(BasicParty):
         self.test_data=None
         self.valid_data = None
         self.train_data = None
+        self.model = None
         # server calculator
         self.device = self.gv.apply_for_device() if not option['server_with_cpu'] else torch.device('cpu')
         self.calculator = self.gv.TaskCalculator(self.device, optimizer_name = option['optimizer'])
@@ -415,6 +416,7 @@ class BasicClient(BasicParty):
         self.test_data=None
         self.valid_data = None
         self.train_data = None
+        self.model = None
         # local calculator
         self.device = self.gv.apply_for_device()
         self.calculator = self.gv.TaskCalculator(self.device, option['optimizer'])
