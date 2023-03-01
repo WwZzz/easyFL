@@ -285,15 +285,12 @@ def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
         C = getattr(algorithm, c)
         delattr(C, 'gv')
     # init model
-    for object in objects:
-        try:
+    if hasattr(model, 'init_local_module'):
+        for object in objects:
             model.init_local_module(object)
-        except:
-            continue
-        try:
+    if hasattr(model, 'init_global_module'):
+        for object in objects:
             model.init_global_module(object)
-        except:
-            continue
 
     # init communicator
     gv.communicator = flgo.VirtualCommunicator(objects)
