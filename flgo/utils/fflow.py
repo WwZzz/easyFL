@@ -426,7 +426,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                     completed[i] = False
                     option_in_queue[i] = True
                     option_to_be_run.put((i, options[i]))
-                elif outputs[i] is None:
+                elif outputs[i] is None or type(outputs[i]) is tuple:
                     outputs[i] = tmp
             except:
                 continue
