@@ -415,38 +415,38 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
     x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene)) for opt in options]
     outputs = [None for _ in x]
     option_to_be_run = queue.Queue(len(options))
+    completed = [False for _ in options]
+    option_in_queue = [False for _ in options]
     while True:
-        res = []
-        for xi in x:
+        for i,xi in enumerate(x):
             try:
-                res.append(xi.successful())
-            except:
-                res.append(False)
-        for i in range(len(res)):
-            if res[i]:
-                tmp = x[i].get()
-                if isinstance(tmp, tuple):
+                completed[i] = xi.successful()
+                tmp = xi.get()
+                if not option_in_queue[i] and isinstance(tmp, tuple):
+                    completed[i] = False
+                    option_in_queue[i] = True
                     option_to_be_run.put((i, options[i]))
-                    res[i] = False
-                else:
+                elif outputs[i] is None:
                     outputs[i] = tmp
-        if not option_to_be_run.empty():
-            i, opt = option_to_be_run.get()
+            except:
+                continue
+        if any(completed) and not option_to_be_run.empty():
             available_device = get_available_device(devices)
             if available_device is not None:
+                i, opt = option_to_be_run.get()
                 opt['gpu'] = available_device
+                completed[i] = False
+                option_in_queue[i] = False
                 x[i] = mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene))
-                res[i] = False
-            else:
-                option_to_be_run.put((i, opt))
-                res[i] = False
         # print('-------------------------------------------------')
         # for i in range(len(res)):
         #     if res[i]:
         #         print(str(options[i])+' is finished')
         #     else:
         #         print(str(options[i])+' is running')
-        if option_to_be_run.empty() and all(res):
+        if option_to_be_run.empty() and all(completed):
             break
         time.sleep(1)
+    mp.close()
+    mp.join()
     return outputs
