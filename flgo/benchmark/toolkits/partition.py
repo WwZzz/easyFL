@@ -14,13 +14,19 @@ class AbstractPartitioner(metaclass=ABCMeta):
 
 
 class BasicPartitioner(AbstractPartitioner):
+    """This is the basic class of data partitioner. The partitioner will be directly called by the
+    task generator of different benchmarks. By overwriting __call__ method, different partitioners
+    can be realized. The input of __call__ is usually a dataset.
+    """
     def __call__(self, *args, **kwargs):
         return
 
     def register_generator(self, generator):
+        """Register the generator as an attribute that is accessible"""
         self.generator = generator
 
     def data_imbalance_generator(self, num_clients, datasize, imbalance=0):
+        """Split a data size into several parts"""
         if imbalance == 0:
             samples_per_client = [int(datasize / num_clients) for _ in range(num_clients)]
             for _ in range(datasize % num_clients): samples_per_client[_] += 1

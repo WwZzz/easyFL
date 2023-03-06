@@ -16,6 +16,7 @@ import flgo.experiment.logger.simple_logger
 import flgo.experiment.logger.tune_logger
 import flgo.experiment.logger
 from flgo.system_simulator.base import BasicSimulator
+import flgo.benchmark.toolkits.partition
 import flgo.algorithm
 import itertools
 import argparse
@@ -128,7 +129,71 @@ def load_configuration(config={}):
     elif type(config) is dict:
         return config
 
-def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
+def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dict={}, task_path: str='', rawdata_path:str='', seed:int=0):
+    r"""
+    Generate a federated task according to the parameters of this function. The formats and meanings of the inputs are listed as below:
+    :param
+        benchmark (python package || str): the benchmark package or the module path of it
+        bmk_para (dict): the customized parameter dict of the method TaskGenerator.__init__() of the benchmark
+        Partitioner (class || str): the class of the Partitioner or the name of the Partitioner that was realized in flgo.benchmark.toolkits.partition
+        par_para (dict): the customized parameter dict of the method Partitioner.__init__()
+        task_path (str): the path to store the generated task
+        rawdata_path (str): where the raw data will be downloaded\stored
+        seed (int): the random seed used to generate the task
+    :return
+
+    Example:
+        >>> import flgo
+        >>> import flgo.benchmark.mnist_classification as mnist
+        >>> from flgo.benchmark.toolkits.partition import IIDPartitioner
+        >>> # GENERATE TASK BY PASSING THE MODULE OF BENCHMARK AND THE CLASS OF THE PARTITIOENR
+        >>> flgo.gen_task_by_para(benchmark=mnist, Partitioner = IIDPartitioner, par_para={'num_clients':100}, task_path='./mnist_gen_by_para1')
+        >>> # GENERATE THE SAME TASK BY PASSING THE STRING
+        >>> flgo.gen_task_by_para(benchmark='flgo.benchmark.mnist_classification', Partitioner='IIDPartitioner', par_para={'num_clients':100}, task_path='./mnist_gen_by_para2')
+    """
+    if type(benchmark) is str: benchmark = importlib.import_module(benchmark)
+    if not hasattr(benchmark, '__path__'): raise RuntimeError("benchmark should be a package or the path of a package")
+    if Partitioner is not None:
+        if type(Partitioner) is str:
+            if Partitioner in globals().keys(): Partitioner = eval(Partitioner)
+            else: Partitioner = getattr(flgo.benchmark.toolkits.partition, Partitioner)
+        partitioner = Partitioner(**par_para)
+    else: partitioner = None
+    if rawdata_path!='': bmk_para['rawdata_path']=rawdata_path
+    bmk_core = benchmark.core
+    task_generator = getattr(bmk_core, 'TaskGenerator')(**bmk_para)
+    if partitioner is not None:
+        task_generator.register_partitioner(partitioner)
+        partitioner.register_generator(task_generator)
+    task_generator.generate()
+    # save the generated federated benchmark
+    # initialize task pipe
+    if task_path=='': task_path = os.path.join('.', task_generator.task_name)
+    task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
+    # check if task already exists
+    if task_pipe.task_exists():
+        raise FileExistsError('Task {} already exists.'.format(task_path))
+    try:
+        # create task architecture
+        task_pipe.create_task_architecture()
+        # save meta infomation
+        task_pipe.save_info(task_generator)
+        # save task
+        task_pipe.save_task(task_generator)
+        print('Task {} has been successfully generated.'.format(task_generator.task_name))
+    except Exception as e:
+        print(e)
+        task_pipe.remove_task()
+        print("Failed to saving splited dataset.")
+    # save visualization
+    try:
+        visualize_func = getattr(benchmark,'visualize')
+        visualize_func(task_generator, partitioner)
+        task_pipe.save_figure()
+    except:
+        pass
+
+def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
     r"""
     Generate a federated task that is specified by the benchmark information and the partition information, where the generated task will be stored in the task_path and the raw data will be downloaded into the rawdata_path.
     :param
@@ -142,23 +207,38 @@ def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
         >>> import flgo
         >>> config = {'benchmark':{'name':'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDParitioner', 'para':{'num_clients':100}}}
         >>> flgo.gen_task(config, './my_mnist_iid')
-        >>> # The task will be stored as `my_mnist_iid` in the currently working dictionary
+        >>> # The task will be stored as `my_mnist_iid` in the current working dictionary
     """
+    # setup random seed
     random.seed(3 + seed)
     np.random.seed(97 + seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     # load configuration
     gen_option = load_configuration(config)
     if 'para' not in gen_option['benchmark'].keys(): gen_option['benchmark']['para'] = {}
-    if 'partitioner' in gen_option.keys() and 'para' not in gen_option['partitioner'].keys(): gen_option['partitioner']['para'] = {}
-    if 'partitioner' in gen_option.keys() and 'name' not in gen_option['partitioner'].keys() and 'para' in gen_option['partitioner'].keys():
-        gen_option['benchmark']['para'].update(gen_option['partitioner']['para'])
+    if 'partitioner' in gen_option.keys():
+        # update parameters of partitioner
+        if 'para' not in gen_option['partitioner'].keys():
+            gen_option['partitioner']['para'] = {}
+        else:
+            if 'name' not in gen_option['partitioner'].keys():
+                gen_option['benchmark']['para'].update(gen_option['partitioner']['para'])
     # init generator
     if rawdata_path!='': gen_option['benchmark']['para']['rawdata_path']=rawdata_path
-    task_generator = getattr(importlib.import_module('.'.join([gen_option['benchmark']['name'], 'core'])), 'TaskGenerator')(**gen_option['benchmark']['para'])
+    if type(gen_option['benchmark']['name']) is str:
+        bmk_core = importlib.import_module('.'.join([gen_option['benchmark']['name'], 'core']))
+    elif hasattr(gen_option['benchmark']['name'], '__path__'):
+        bmk_core = gen_option['benchmark']['name'].core
+    else:
+        raise RuntimeError("The value of parameter config['benchmark']['name'] should be either a string or a python package.")
+    task_generator = getattr(bmk_core, 'TaskGenerator')(**gen_option['benchmark']['para'])
     # create partitioner for generator if specified
-    if 'partitioner' in gen_option.keys():
-        partitioner = getattr(importlib.import_module('.'.join(['flgo','benchmark', 'toolkits', 'partition'])), gen_option['partitioner']['name'])(**gen_option['partitioner']['para'])
+    if 'partitioner' in gen_option.keys() and 'name' in gen_option['partitioner'].keys():
+        Partitioner = gen_option['partitioner']['name']
+        if type(Partitioner) is str:
+            if Partitioner in globals().keys(): Partitioner = eval(Partitioner)
+            else: Partitioner = getattr(flgo.benchmark.toolkits.partition, Partitioner)
+        partitioner = Partitioner(**gen_option['partitioner']['para'])
         task_generator.register_partitioner(partitioner)
         partitioner.register_generator(task_generator)
     else:
@@ -168,7 +248,7 @@ def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
     # save the generated federated benchmark
     # initialize task pipe
     if task_path=='': task_path = os.path.join('.', task_generator.task_name)
-    task_pipe = getattr(importlib.import_module('.'.join([gen_option['benchmark']['name'], 'core'])), 'TaskPipe')(task_path)
+    task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
     # check if task already exists
     if task_pipe.task_exists():
         raise FileExistsError('Task {} already exists.'.format(task_path))
@@ -192,13 +272,13 @@ def gen_task(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
     except:
         pass
 
-def init(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
+def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
     r"""
     Initialize a runner in FLGo, which is to optimize a model on a specific task (i.e. IID-mnist-of-100-clients) by the selected federated algorithm.
     :param
         task (str): the dictionary of the federated task
         algorithm (module || class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
-        option (dict): the configurations of training, environment, algorithm, logger and simulator
+        option (dict || str): the configurations of training, environment, algorithm, logger and simulator
         model (module || class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
         Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
         Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator

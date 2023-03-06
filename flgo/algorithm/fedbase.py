@@ -509,7 +509,7 @@ class BasicClient(BasicParty):
         cpkg = self.pack(model)
         return cpkg
 
-    def pack(self, model):
+    def pack(self, model, *args, **kwargs):
         """
         Packing the package to be send to the server. The operations of compression
         of encryption of the package should be done here.
