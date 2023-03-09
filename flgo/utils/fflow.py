@@ -1,4 +1,6 @@
 import copy
+import multiprocessing
+import signal
 import time
 try:
     from collections import Iterable
@@ -15,6 +17,7 @@ import flgo.utils.fmodule
 import flgo.experiment.logger.simple_logger
 import flgo.experiment.logger.tune_logger
 import flgo.experiment.logger
+import flgo.experiment.device_scheduler
 from flgo.system_simulator.base import BasicSimulator
 import flgo.benchmark.toolkits.partition
 import flgo.algorithm
@@ -396,7 +399,8 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     gv.logger.gv = gv
     return objects[0]
 
-def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, scene):
+def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, scene, send_end):
+    pid = os.getpid()
     if model_name is None: model = None
     else:
         try:
@@ -410,16 +414,18 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
     try:
         runner = flgo.init(task, algorithm, model=model, option=opt, Logger=Logger, Simulator=Simulator, scene=scene)
         runner.run()
-        return runner.gv.logger.output
+        res = (runner.gv.logger.output, pid)
+        send_end.send(res)
     except Exception as e:
         print(e)
-        return (opt, e)
+        res = (opt, e, pid)
+        send_end.send(res)
 
 def get_available_device(device_ids):
     # dev_handlers = [pynvml.nvmlDeviceGetHandleByIndex(dev_id) for dev_id in device_ids]
     return random.choice(device_ids)
 
-def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
+def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal', scheduler=None):
     """
         Tune hyper-parameters for one task and one algorithm in parallel.
         :param
@@ -442,14 +448,10 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     for k in keys: option[k] = [option[k]] if (not isinstance(option[k], Iterable) or isinstance(option[k], str)) else option[k]
     para_combs = [para_comb for para_comb in itertools.product(*(option[k] for k in keys))]
     options = [{k:v for k,v in zip(keys, paras)} for paras in para_combs]
-    # allocate gpu to different configurations
-    crt_dev_idx = 0
-    for op in options:
-        op['gpu'] = [device_ids[crt_dev_idx]]
-        crt_dev_idx = (crt_dev_idx+1)%len(device_ids)
-        op['log_file'] = True
-        # op['no_log_console'] = True
-    outputs = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene)
+    for op in options:op['log_file'] = True
+    if scheduler is None:
+        scheduler = flgo.experiment.device_scheduler.BasicScheduler(device_ids)
+    outputs = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
     optimal_idx = int(np.argmin([min(output['valid_loss']) for output in outputs]))
     optimal_para = options[optimal_idx]
     print("The optimal combination of hyper-parameters is:")
@@ -462,7 +464,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
     print('The minimal validation loss occurs at the round {}'.format(op_round))
 
-def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
+def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.system_simulator.DefaultSimulator, scene='horizontal', scheduler = None):
     """
     Run different groups of hyper-parameters for one task and one algorithm in parallel.
     :param
@@ -491,42 +493,32 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         else:
             model_name = model
     algorithm_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
-    mp = torch.multiprocessing.Pool(len(options))
-    x = [mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene)) for opt in options]
-    outputs = [None for _ in x]
-    option_to_be_run = queue.Queue(len(options))
-    completed = [False for _ in options]
-    option_in_queue = [False for _ in options]
+    option_state = {oid:{'p':None, 'completed':False, 'output':None, 'option_in_queue':False, 'recv':None, } for oid in range(len(options))}
+    if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
     while True:
-        for i,xi in enumerate(x):
-            try:
-                completed[i] = xi.successful()
-                tmp = xi.get()
-                if not option_in_queue[i] and isinstance(tmp, tuple):
-                    completed[i] = False
-                    option_in_queue[i] = True
-                    option_to_be_run.put((i, options[i]))
-                elif outputs[i] is None or type(outputs[i]) is tuple:
-                    outputs[i] = tmp
-            except:
-                continue
-        if any(completed) and not option_to_be_run.empty():
-            available_device = get_available_device(devices)
-            if available_device is not None:
-                i, opt = option_to_be_run.get()
-                opt['gpu'] = available_device
-                completed[i] = False
-                option_in_queue[i] = False
-                x[i] = mp.apply_async(_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene))
-        # print('-------------------------------------------------')
-        # for i in range(len(res)):
-        #     if res[i]:
-        #         print(str(options[i])+' is finished')
-        #     else:
-        #         print(str(options[i])+' is running')
-        if option_to_be_run.empty() and all(completed):
-            break
+        for oid in range(len(options)):
+            opt = options[oid]
+            if option_state[oid]['p'] is None and not option_state[oid]['completed']:
+                available_device = scheduler.get_available_device(opt)
+                if available_device is None: continue
+                else:
+                    opt['gpu'] = available_device
+                    recv_end, send_end = multiprocessing.Pipe(False)
+                    option_state[oid]['p'] = multiprocessing.Process(target=_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene, send_end))
+                    option_state[oid]['recv'] = recv_end
+                    option_state[oid]['p'].start()
+            else:
+                if option_state[oid]['p'].exitcode is not None:
+                    tmp = option_state[oid]['recv'].recv()
+                    try:
+                        option_state[oid]['p'].terminate()
+                    except:
+                        pass
+                    option_state[oid]['p'] = None
+                    if len(tmp)==2:
+                        option_state[oid]['completed'] = True
+                        option_state[oid]['output'] = tmp[0]
+        if all([v['completed'] for v in option_state.values()]):break
         time.sleep(1)
-    mp.close()
-    mp.join()
-    return outputs
+
+    return
