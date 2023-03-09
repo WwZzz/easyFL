@@ -65,22 +65,14 @@ class BasicParty:
 class BasicServer(BasicParty):
     def __init__(self, option={}):
         super().__init__()
-        # # initialize the global model
-        # self.model = self.gv.Model()
-        # if not option['server_with_cpu']:
-        #     self.model = self.model.to(self.gv.dev_list[0])
-        # self.device = self.model.get_device()
-        # if option['pretrain'] != '':
-        #     self.model.load_state_dict(torch.load(option['pretrain'])['model'])
-        #     self.gv.logger.info('The pretrained model parameters in {} will be loaded.'.format(option['pretrain']))
-        # basic configuration
-        self.task = option['task']
-        self.eval_interval = option['eval_interval']
-        self.num_parallels= option['num_parallels']
         self.test_data=None
         self.valid_data = None
         self.train_data = None
         self.model = None
+        # basic configuration
+        self.task = option['task']
+        self.eval_interval = option['eval_interval']
+        self.num_parallels= option['num_parallels']
         # server calculator
         self.device = self.gv.apply_for_device() if not option['server_with_cpu'] else torch.device('cpu')
         self.calculator = self.gv.TaskCalculator(self.device, optimizer_name = option['optimizer'])
