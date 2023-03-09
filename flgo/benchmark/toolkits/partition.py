@@ -1,17 +1,31 @@
+r"""
+This file contains preset partitioners for the benchmarks.
+All the Partitioner should implement the method `__call__(self, data)`
+where `data` is the dataset to be partitioned and the return is a list of the partitioned result.
+
+For example, The IIDPartitioner.__call__ receives a indexable object (i.e. instance of torchvision.datasets.mnsit.MNSIT)
+and I.I.D. selects samples' indices in the original dataset as each client's local data.
+The list of list of sample indices are finally returnerd (e.g. [[0,1,2,...,1008], ...,[25,23,98,...,997]]).
+
+To use the partitioner, you can specify Partitioner in the configuration dict for `flgo.gen_task`.
+ Example 1: passing the parameter of __init__ of the Partitioner through the dict `para`
+>>>import flgo
+>>>config = {'benchmark':{'name':'flgo.benchmark.mnist_classification'},
+...            'partitioner':{'name':'IIDPartitioner', 'para':{'num_clients':20, 'alpha':1.0}}}
+>>>flgo.gen_task(config, './test_partition')
+"""
+
 from abc import abstractmethod, ABCMeta
 import random
-
 import numpy as np
 import collections
 
 import torch
 
-
 class AbstractPartitioner(metaclass=ABCMeta):
     @abstractmethod
     def __call__(self, *args, **kwargs):
         pass
-
 
 class BasicPartitioner(AbstractPartitioner):
     """This is the basic class of data partitioner. The partitioner will be directly called by the
@@ -74,8 +88,13 @@ class BasicPartitioner(AbstractPartitioner):
                 crt_data_size = sum(samples_per_client)
         return samples_per_client
 
-
 class IIDPartitioner(BasicPartitioner):
+    """`Partition the indices of samples in the original dataset indentically and independently.
+
+    Args:
+        num_clients (int, optional): the number of clients
+        imbalance (float, optional): the degree of imbalance of the amounts of different local data (0<=imbalance<=1)
+    """
     def __init__(self, num_clients=100, imbalance=0):
         self.num_clients = num_clients
         self.imbalance = imbalance
@@ -92,8 +111,17 @@ class IIDPartitioner(BasicPartitioner):
         local_datas = [di.tolist() for di in local_datas]
         return local_datas
 
-
 class DirichletPartitioner(BasicPartitioner):
+    """`Partition the indices of samples in the original dataset according to Dirichlet distribution of the
+    particular attribute. This way of partition is widely used by existing works in federated learning.
+
+    Args:
+        num_clients (int, optional): the number of clients
+        alpha (float, optional): `alpha`(i.e. alpha>=0) in Dir(alpha*p) where p is the global distribution. The smaller alpha is, the higher heterogeneity the data is.
+        imbalance (float, optional): the degree of imbalance of the amounts of different local data (0<=imbalance<=1)
+        error_bar (float, optional): the allowed error when the generated distribution mismatches the distirbution that is actually wanted, since there may be no solution for particular imbalance and alpha.
+        flag_index (int, optional): the index of the distribution-dependent (i.e. label) attribute in each sample.
+    """
     def __init__(self, num_clients=100, alpha=1.0, error_bar=1e-6, imbalance=0, flag_index=-1):
         self.num_clients = num_clients
         self.alpha = alpha
@@ -174,8 +202,16 @@ class DirichletPartitioner(BasicPartitioner):
         self.local_datas = local_datas
         return local_datas
 
-
 class DiversityPartitioner(BasicPartitioner):
+    """`Partition the indices of samples in the original dataset according to numbers of types of a particular
+    attribute (e.g. label) . This way of partition is widely used by existing works in federated learning.
+
+    Args:
+        num_clients (int, optional): the number of clients
+        diversity (float, optional): the ratio of locally owned types of the attributes (i.e. the actual number=diversity * total_num_of_types)
+        imbalance (float, optional): the degree of imbalance of the amounts of different local data (0<=imbalance<=1)
+        flag_index (int, optional): the index of the distribution-dependent (i.e. label) attribute in each sample.
+    """
     def __init__(self, num_clients=100, diversity=1.0, flag_index=-1):
         self.num_clients = num_clients
         self.diversity = diversity
@@ -224,8 +260,17 @@ class DiversityPartitioner(BasicPartitioner):
                         ids += 1
         return local_datas
 
-
 class GaussianPerturbationPartitioner(BasicPartitioner):
+    """`Partition the indices of samples I.I.D. and bind additional and static gaussian noise to each sample, which is
+    a setting of feature skew in federated learning.
+
+    Args:
+        num_clients (int, optional): the number of clients
+        imbalance (float, optional): the degree of imbalance of the amounts of different local data (0<=imbalance<=1)
+        sigma (float, optional): the degree of feature skew
+        scale (float, optional): the standard deviation of noise
+        feature_index (int, optional): the index of the feature to be processed for each sample.
+    """
     def __init__(self, num_clients=100, imbalance=0.0, sigma=0.1, scale=0.1, feature_index=0):
         self.num_clients = num_clients
         self.imbalance = imbalance
@@ -245,7 +290,7 @@ class GaussianPerturbationPartitioner(BasicPartitioner):
         local_datas = np.split(d_idxs, np.cumsum(samples_per_client))[:-1]
         local_datas = [di.tolist() for di in local_datas]
         local_perturbation_means = [np.random.normal(0, self.sigma, shape) for _ in range(self.num_clients)]
-        local_perturbation_stds = [0.1 * np.ones(shape) for _ in range(self.num_clients)]
+        local_perturbation_stds = [self.scale * np.ones(shape) for _ in range(self.num_clients)]
         local_perturbation = []
         for cid in range(self.num_clients):
             c_perturbation = [np.random.normal(local_perturbation_means[cid], local_perturbation_stds[cid]).tolist() for
@@ -254,9 +299,15 @@ class GaussianPerturbationPartitioner(BasicPartitioner):
         self.local_perturbation = local_perturbation
         return local_datas
 
-
 class IDPartitioner(BasicPartitioner):
-    def __init__(self, num_clients=-1, priority='max'):
+    """`Partition the indices of samples I.I.D. according to the ID of each sample, which requires the passed parameter
+    `data` has attribution `id`.
+
+    Args:
+        num_clients (int, optional): the number of clients
+        priority (str, optional): The value should be in set ('random', 'max', 'min'). If the number of clients is smaller than the total number of all the clients, this term will decide the selected clients according to their local data sizes.
+    """
+    def __init__(self, num_clients=-1, priority='random'):
         self.num_clients = int(num_clients)
         self.priorty = priority
         return
@@ -277,13 +328,21 @@ class IDPartitioner(BasicPartitioner):
             local_datas = sorted(local_datas, key=lambda x: len('x'), reverse=True)[:self.num_clients]
         elif self.priorty == 'min':
             local_datas = sorted(local_datas, key=lambda x: len('x'))[:self.num_clients]
-        elif self.priorty == 'none':
+        elif self.priorty == 'random':
             random.shuffle(local_datas)
             local_datas = local_datas[:self.num_clients]
         return local_datas
 
-
 class VerticalSplittedPartitioner(BasicPartitioner):
+    """`Partition the indices and shapes of samples in the original dataset for vertical federated learning. Different
+    to the above partitioners, the partitioner.__call__ returns more flexible partition information instead of the indices that
+    can be used to rebuild the partitioned data.
+
+    Args:
+        num_parties (int, optional): the number of parties
+        imbalance (float, optional): the degree of imbalance of the number of features
+        dim (int, optional): the dim of features to be partitioned
+    """
     def __init__(self, num_parties=-1, imbalance=0, dim=-1):
         self.num_parties = int(num_parties)
         self.imbalance = imbalance
