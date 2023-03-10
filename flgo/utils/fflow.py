@@ -498,15 +498,16 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
     while True:
         for oid in range(len(options)):
             opt = options[oid]
-            if option_state[oid]['p'] is None and not option_state[oid]['completed']:
-                available_device = scheduler.get_available_device(opt)
-                if available_device is None: continue
-                else:
-                    opt['gpu'] = available_device
-                    recv_end, send_end = multiprocessing.Pipe(False)
-                    option_state[oid]['p'] = multiprocessing.Process(target=_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene, send_end))
-                    option_state[oid]['recv'] = recv_end
-                    option_state[oid]['p'].start()
+            if option_state[oid]['p'] is None:
+                if not option_state[oid]['completed']:
+                    available_device = scheduler.get_available_device(opt)
+                    if available_device is None: continue
+                    else:
+                        opt['gpu'] = available_device
+                        recv_end, send_end = multiprocessing.Pipe(False)
+                        option_state[oid]['p'] = multiprocessing.Process(target=_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene, send_end))
+                        option_state[oid]['recv'] = recv_end
+                        option_state[oid]['p'].start()
             else:
                 if option_state[oid]['p'].exitcode is not None:
                     tmp = option_state[oid]['recv'].recv()
@@ -520,5 +521,4 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                         option_state[oid]['output'] = tmp[0]
         if all([v['completed'] for v in option_state.values()]):break
         time.sleep(1)
-
-    return
+    return [option_state[oid]['output'] for oid in range(len(options))]
