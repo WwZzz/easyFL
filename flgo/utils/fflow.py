@@ -436,6 +436,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
             Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
             Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
             scene (str): 'horizontal' or 'vertical' in current version of FLGo
+            scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
         """
     # generate combinations of hyper-parameters
     if 'gpu' in option.keys():
@@ -476,6 +477,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
         Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
         scene (str): 'horizontal' or 'vertical' in current version of FLGo
+        scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
     :return
         the returns of _call_by_process
     """
