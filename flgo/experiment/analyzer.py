@@ -1,3 +1,49 @@
+r"""
+This module is to analyze the training results saved by Logger. To use this module,
+a analysis plan must be designed as a dict that contains three parts:
+    Selector: select the records according to the task, algorithm and options of the task
+    Painter: draw graphic of the selected records
+    Table: output some statistic of the selected records on the console
+
+The basic usage is to build a plan dict and pass it to flgo.experiment.analyzer
+>>> # plan = {'Selector':..., 'Painter':..., 'Table':...,}
+>>> flgo.experiment.analyzer.show(plan)
+
+The following three examples show how to build a customized plan:
+
+Example 1: How to define a Selector?
+    {'Selector': {
+        'task': task_path,                # all the analysis will be conducted on a single task
+        'header': ['fedavg'],             # only the records where the names of algorithms are in `header` will be selected
+         'filter': {'LR':'<0.1'}          # only the records whose options satisfy the conditions in `filter` will be selected
+        'legend_with': ['LR', 'B', 'E']   # all the graphic will show the legends of records according to `legend_with`
+    }, ...}
+
+Example 2: How to define a Painter?
+        Each `Painter` is a dict of different types of graphic (e.g. Curve, Bar and Scatter). In each types of graphic,
+        the value is a list of figures, where each figure is defined by a dict like {'args':{...}, 'obj_option':{}, 'fig_option':{...}}
+    {...,
+    'Painter':{
+            'Curve':[
+                {'args':{'x':'communication_round', 'y':'valid_loss'}, },
+                {...}
+            ]
+        },
+    ...,
+    }
+
+Example 3: How to define a Table?
+    {...,
+    'Table':{
+            'min_value':[
+                {'x':'valid_loss'},
+                ...
+                ]
+        }
+    }
+
+A standard analysis plan usually consists of the above three parts, and `Painter` and `Table` are both optional
+"""
 import argparse
 import math
 import random

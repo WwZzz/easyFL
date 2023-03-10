@@ -1,26 +1,27 @@
-# Copyright 2001-2017 by Vinay Sajip. All Rights Reserved.
-#
-# Permission to use, copy, modify, and distribute this software and its
-# documentation for any purpose and without fee is hereby granted,
-# provided that the above copyright notice appear in all copies and that
-# both that copyright notice and this permission notice appear in
-# supporting documentation, and that the name of Vinay Sajip
-# not be used in advertising or publicity pertaining to distribution
-# of the software without specific, written prior permission.
-# VINAY SAJIP DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING
-# ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
-# VINAY SAJIP BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR
-# ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER
-# IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
-# OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+r"""
+This module is to help conduct experiments in federated learning by providing high-level APIs to
+records information during running-time. To customized the logger, anyone should overwrite the three
+methods:
+>>> import flgo.experiment.logger
+>>> class MyLogger(flgo.experiment.logger.BasicLogger):
+...     def initialize(self):
+...         # make necessary initialization here
+...         pass
+...
+...     def log_once(self):
+...         # this function will be called at the beginning of each communication round.
+...         # All the running-time variables should be added into self.output (i.e. a dict
+...         # that will be saved into .json after the training finishes).
+...         pass
+...
+...     def organize_output(self):
+...         # organize the variables in self.output here before saving it into .json file
+...         pass
+>>> runner = flgo.init(task, algorithm=fedavg, Logger=MyLogger)
+Then the customized Logger will be used to record running-time variables.
 
-"""
-Logging package for Python. Based on PEP 282 and comments thereto in
-comp.lang.python.
-
-Copyright (C) 2001-2017 Vinay Sajip. All Rights Reserved.
-
-To use, simply 'import logging' and log away!
+The Logger is also used to enable early stopping, where 'valid_loss' must be a key in self.output if
+early stopping is enabled. We also provide several preset loggers like BasicLogger, SimpleLogger, TuneLogger.
 """
 import torch.multiprocessing
 import sys, os, time, io, traceback, warnings, weakref, collections.abc
