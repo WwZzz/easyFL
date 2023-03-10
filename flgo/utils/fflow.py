@@ -32,6 +32,7 @@ import queue
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad']
+default_option_dict = {'pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': -1, 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'momentum': 0, 'weight_decay': 0, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'seed': 0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'num_workers': 0, 'test_batch_size': 512, 'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
 class GlobalVariable:
     """this class is to create a buffer space for sharing variables across different parties for each runner respectively in a single machine"""
@@ -303,7 +304,10 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
 
     # init option
     option = load_configuration(option)
-    default_option = read_option_from_command()
+    try:
+        default_option = read_option_from_command()
+    except:
+        default_option = default_option_dict
     for op_key in option:
         if op_key in default_option.keys():
             op_type = type(default_option[op_key])
