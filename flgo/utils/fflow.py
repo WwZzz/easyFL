@@ -116,8 +116,7 @@ def read_option_from_command():
     parser.add_argument('--no_log_console', help='bool controls whether log to screen and default value is True', action="store_true", default=False)
     parser.add_argument('--no_overwrite', help='bool controls whether to overwrite the old result', action="store_true", default=False)
     parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
-
-    try: option = vars(parser.parse_args())
+    try: option = vars(parser.parse_known_args()[0])
     except IOError as msg: parser.error(str(msg))
     for key in option.keys():
         if option[key] is None:
@@ -304,10 +303,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
 
     # init option
     option = load_configuration(option)
-    try:
-        default_option = read_option_from_command()
-    except:
-        default_option = default_option_dict
+    default_option = read_option_from_command()
     for op_key in option:
         if op_key in default_option.keys():
             op_type = type(default_option[op_key])
