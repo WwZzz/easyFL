@@ -151,6 +151,8 @@ class BasicServer(BasicParty):
         This part supports for simulating the client dropping out.
         :param
             selected_clients: the clients to communicate with
+            mtype: type of message
+            asynchronous: asynchronous communciation or synchronous communcation
         :return
             :the unpacked response from clients that is created ny self.unpack()
         """
@@ -437,7 +439,7 @@ class BasicClient(BasicParty):
 
     @ ss.with_completeness
     @fmodule.with_multi_gpus
-    def train(self, model):
+    def train(self, model, *args, **kwargs):
         """
         Standard local training procedure. Train the transmitted model with local training dataset.
         :param
