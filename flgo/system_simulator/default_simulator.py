@@ -39,7 +39,7 @@ def more_data_first_client_availability(simulator, beta=0.0001):
     Clients with more data will have a larger active rate at each round.
     e.g. ci=tanh(-|Di| ln(beta+epsilon)), pi=ci/cmax, beta ∈ [0,1)
     """
-    p = np.array(simulator.server.local_data_vols)
+    p = np.array([len(c.train_data) for c in simulator.server.clients])
     p = p ** beta
     maxp = np.max(p)
     probs = p/maxp
@@ -53,7 +53,7 @@ def less_data_first_client_availability(simulator, beta=0.5):
             ci=(1-beta)^(-|Di|), pi=ci/cmax, beta ∈ [0,1)
     """
     # alpha = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.1
-    prop = np.array(simulator.server.local_data_vols)
+    prop = np.array([len(c.train_data) for c in simulator.server.clients])
     prop = prop ** (-beta)
     maxp = np.max(prop)
     probs = prop/maxp
