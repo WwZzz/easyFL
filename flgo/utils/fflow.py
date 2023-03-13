@@ -364,9 +364,14 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
             continue
     objects = task_pipe.generate_objects(option, algorithm, scene=scene)
     task_pipe.distribute(task_data, objects)
+
     for c in tmp:
-        C = getattr(algorithm, c)
-        delattr(C, 'gv')
+        try:
+            C = getattr(algorithm, c)
+            delattr(C, 'gv')
+        except:
+            continue
+
     # init model
     if hasattr(model, 'init_local_module'):
         for object in objects:

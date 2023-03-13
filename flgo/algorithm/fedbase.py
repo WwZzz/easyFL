@@ -164,13 +164,13 @@ class BasicServer(BasicParty):
             received_package_buffer[cid] = None
         try:
             for cid in communicate_clients:
-                self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
+                self.sending_package_buffer[cid] = self.pack(cid, mtype)
                 self.sending_package_buffer[cid]['__mtype__'] = mtype
         except Exception as e:
             if str(self.device) != 'cpu':
                 self.model.to(torch.device('cpu'))
                 for cid in communicate_clients:
-                    self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
+                    self.sending_package_buffer[cid] = self.pack(cid, mtype)
                     self.sending_package_buffer[cid]['__mtype__'] = mtype
                 self.model.to(self.device)
             else:
