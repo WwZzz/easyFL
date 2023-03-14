@@ -90,19 +90,20 @@ class GeneralCalculator(BasicTaskCalculator):
         :param batch_size:
         :return: [mean_accuracy, mean_loss]
         """
-        model.eval()
-        if batch_size==-1:batch_size=len(dataset)
-        data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers)
-        total_loss = 0.0
-        num_correct = 0
-        for batch_id, batch_data in enumerate(data_loader):
-            batch_data = self.to_device(batch_data)
-            outputs = model(batch_data[0])
-            batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
-            y_pred = outputs.data.max(1, keepdim=True)[1]
-            correct = y_pred.eq(batch_data[-1].data.view_as(y_pred)).long().cpu().sum()
-            num_correct += correct.item()
-            total_loss += batch_mean_loss * len(batch_data[-1])
+        with torch.no_grad():
+            model.eval()
+            if batch_size==-1:batch_size=len(dataset)
+            data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers)
+            total_loss = 0.0
+            num_correct = 0
+            for batch_id, batch_data in enumerate(data_loader):
+                batch_data = self.to_device(batch_data)
+                outputs = model(batch_data[0])
+                batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
+                y_pred = outputs.data.max(1, keepdim=True)[1]
+                correct = y_pred.eq(batch_data[-1].data.view_as(y_pred)).long().cpu().sum()
+                num_correct += correct.item()
+                total_loss += batch_mean_loss * len(batch_data[-1])
         return {'accuracy': 1.0*num_correct/len(dataset), 'loss':total_loss/len(dataset)}
 
     def to_device(self, data):

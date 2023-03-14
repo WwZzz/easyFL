@@ -529,3 +529,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         if all([v['completed'] for v in option_state.values()]):break
         time.sleep(1)
     return [option_state[oid]['output'] for oid in range(len(options))]
+
+def multi_run(runner_configs, devices = [], scheduler=None):
+    if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
+

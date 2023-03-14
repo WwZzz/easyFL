@@ -78,6 +78,8 @@ class BasicServer(BasicParty):
         self.calculator = self.gv.TaskCalculator(self.device, optimizer_name = option['optimizer'])
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
+        self.num_steps = option['num_steps']
+        self.num_epochs = option['num_epochs']
         self.proportion = option['proportion']
         self.decay_rate = option['learning_rate_decay']
         self.lr_scheduler_type = option['lr_scheduler']
@@ -106,7 +108,9 @@ class BasicServer(BasicParty):
         while self.current_round <= self.num_rounds:
             self.gv.clock.step()
             # iterate
+            self.gv.logger.time_start('Iterate Time Cost')
             updated = self.iterate()
+            self.gv.logger.time_end('Iterate Time Cost')
             # using logger to evaluate the model if the model is updated
             if updated is True or updated is None:
                 self.gv.logger.info("--------------Round {}--------------".format(self.current_round))
@@ -179,7 +183,7 @@ class BasicServer(BasicParty):
         if self.num_parallels <= 1:
             # computing iteratively
             for client_id in communicate_clients:
-                response_from_client_id = self.communicate_with(client_id, package=self.sending_package_buffer[cid])
+                response_from_client_id = self.communicate_with(client_id, package=self.sending_package_buffer[client_id])
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel with torch.multiprocessing
@@ -437,9 +441,9 @@ class BasicClient(BasicParty):
     def initialize(self):
         return
 
-    @ ss.with_completeness
+    @ss.with_completeness
     @fmodule.with_multi_gpus
-    def train(self, model, *args, **kwargs):
+    def train(self, model):
         """
         Standard local training procedure. Train the transmitted model with local training dataset.
         :param
@@ -447,7 +451,7 @@ class BasicClient(BasicParty):
         :return
         """
         model.train()
-        optimizer = self.calculator.get_optimizer(model, lr = self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         for iter in range(self.num_steps):
             # get a batch of data
             batch_data = self.get_batch_data()
@@ -598,7 +602,7 @@ class BasicClient(BasicParty):
         """
         try:
             batch_data = next(self.data_loader)
-        except:
+        except Exception as e:
             self.data_loader = iter(self.calculator.get_dataloader(self.train_data, batch_size=self.batch_size, num_workers=self.loader_num_workers))
             batch_data = next(self.data_loader)
         # clear local DataLoader when finishing local training
