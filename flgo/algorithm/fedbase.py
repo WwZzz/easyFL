@@ -154,9 +154,9 @@ class BasicServer(BasicParty):
         The whole simulating communication procedure with the selected clients.
         This part supports for simulating the client dropping out.
         :param
-            selected_clients: the clients to communicate with
-            mtype: type of message
-            asynchronous: asynchronous communciation or synchronous communcation
+            selected_clients (list of int): the clients to communicate with
+            mtype (anytype): type of message
+            asynchronous (bool): asynchronous communciation or synchronous communcation
         :return
             :the unpacked response from clients that is created ny self.unpack()
         """
@@ -204,11 +204,11 @@ class BasicServer(BasicParty):
         """
         Pack the information that is needed for client_id to improve the global model
         :param
-            client_id: the id of the client to communicate with
-            package: the package to be sended to the client
-            mtype: the type of the message that is used to decide the action of the client
+            client_id (int): the id of the client to communicate with
+            package (dict): the package to be sended to the client
+            mtype (anytype): the type of the message that is used to decide the action of the client
         :return
-            client_package: the reply from the client and will be 'None' if losing connection
+            client_package (dict): the reply from the client and will be 'None' if losing connection
         """
         # listen for the client's response
         return self.gv.communicator.request(self.id, client_id, package)
@@ -218,7 +218,7 @@ class BasicServer(BasicParty):
         Pack the necessary information for the client's local training.
         Any operations of compression or encryption should be done here.
         :param
-            client_id: the id of the client to communicate with
+            client_id (int): the id of the client to communicate with
         :return
             a dict that only contains the global model as default.
         """
@@ -230,9 +230,9 @@ class BasicServer(BasicParty):
         """
         Unpack the information from the received packages. Return models and losses as default.
         :param
-            packages_received_from_clients:
+            packages_received_from_clients (list of dict):
         :return:
-            res: collections.defaultdict that contains several lists of the clients' reply
+            res (dict): collections.defaultdict that contains several lists of the clients' reply
         """
         if len(packages_received_from_clients)==0: return collections.defaultdict(list)
         res = {pname:[] for pname in packages_received_from_clients[0]}
@@ -245,7 +245,7 @@ class BasicServer(BasicParty):
         """
         Control the step size (i.e. learning rate) of local training
         :param
-            current_round: the current communication round
+            current_round (int): the current communication round
         """
         if self.lr_scheduler_type == -1:
             return
@@ -287,7 +287,7 @@ class BasicServer(BasicParty):
         """
         Aggregate the locally improved models.
         :param
-            models: a list of local models
+            models (list): a list of local models
         :return
             the averaged result
         pk = nk/n where n=self.data_vol
@@ -322,9 +322,9 @@ class BasicServer(BasicParty):
         """
         Validate accuracies and losses on clients' local datasets
         :param
-            dataflag: choose train data or valid data to evaluate
+            dataflag (str): choose train data or valid data to evaluate
         :return
-            metrics: a dict contains the lists of each metric_value of the clients
+            metrics (dict): a dict contains the lists of each metric_value of the clients
         """
         all_metrics = collections.defaultdict(list)
         for c in self.clients:
@@ -337,9 +337,9 @@ class BasicServer(BasicParty):
         """
         Evaluate the model on the test dataset owned by the server.
         :param
-            model: the model need to be evaluated
+            model (flgo.utils.fmodule.FModule): the model need to be evaluated
         :return:
-            metrics: specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
+            metrics (dict): specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
         if model is None: model=self.model
         data = self.test_data if flag=='test' else self.valid_data
@@ -351,7 +351,7 @@ class BasicServer(BasicParty):
         """
         Initialize the algorithm-dependent hyper-parameters for the server and all the clients.
         :param
-            algo_paras: the dict that defines the hyper-parameters (i.e. name, value and type) for the algorithm.
+            algo_paras (dict): the dict that defines the hyper-parameters (i.e. name, value and type) for the algorithm.
 
         Example 1:
             calling `self.init_algo_para({'u':0.1})` will set the attributions `server.u` and `c.u` as 0.1 with type float where `c` is an instance of `CLient`.
@@ -396,6 +396,12 @@ class BasicServer(BasicParty):
         return [cid for cid in range(self.num_clients) if self.clients[cid].is_idle()]
 
     def register_clients(self, clients):
+        """
+        register self.clients=clients
+        :param
+            clients (list of Client()): clients
+        :return: a list of indices of currently available clients
+        """
         self.clients = clients
         self.num_clients = len(clients)
         for cid, c in enumerate(self.clients):
@@ -439,6 +445,7 @@ class BasicClient(BasicParty):
         self.actions = {0: self.reply}
 
     def initialize(self):
+        # to be implemented for customized initializing operations
         return
 
     @ss.with_completeness
@@ -447,7 +454,7 @@ class BasicClient(BasicParty):
         """
         Standard local training procedure. Train the transmitted model with local training dataset.
         :param
-            model: the global model
+            model (FModule): the global model
         :return
         """
         model.train()
@@ -467,10 +474,10 @@ class BasicClient(BasicParty):
         """
         Evaluate the model with local data (e.g. training data or validating data).
         :param
-            model:
-            dataflag: choose the dataset to be evaluated on
+            model (FModule):
+            dataflag (str): choose the dataset to be evaluated on
         :return:
-            metric: specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
+            metric (dict): specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
         dataset = self.train_data if dataflag=='train' else self.valid_data
         if dataset is not None:
@@ -482,7 +489,7 @@ class BasicClient(BasicParty):
         """
         Unpack the package received from the server
         :param
-            received_pkg: a dict contains the global model as default
+            received_pkg (dict): a dict contains the global model as default
         :return:
             the unpacked information that can be rewritten
         """
@@ -498,9 +505,9 @@ class BasicClient(BasicParty):
         training the global model, and finally packing the updated
         model into client_package.
         :param
-            svr_pkg: the package received from the server
+            svr_pkg (dict): the package received from the server
         :return:
-            client_pkg: the package to be send to the server
+            client_pkg (dict): the package to be send to the server
         """
         model = self.unpack(svr_pkg)
         self.train(model)
@@ -614,7 +621,7 @@ class BasicClient(BasicParty):
         """
         Update running-time GPU device to the inputted dev, including change the client's device and the task_calculator's device
         :param
-            dev: target dev
+            dev (torch.device): target dev
         :return:
         """
         self.device = dev
