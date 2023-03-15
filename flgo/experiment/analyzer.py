@@ -173,7 +173,7 @@ class Selector:
                     record = Record(task, record_name)
                     record.set_legend(self.legend_with)
                     res[task].append(record)
-            return res
+        return res
 
     def group_records_by_seed(self):
         group_names = {task:[] for task in self.rec_names}
