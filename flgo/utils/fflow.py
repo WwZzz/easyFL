@@ -1,3 +1,4 @@
+import collections
 import copy
 import multiprocessing
 import signal
@@ -527,6 +528,135 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         time.sleep(1)
     return [option_state[oid]['output'] for oid in range(len(options))]
 
-def multi_run(runner_configs, devices = [], scheduler=None):
+def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
+    r"""
+    Create multiple runners and run in parallel
+    param:
+        runner_args (list): each element in runner_args should be either a dict or a tuple or parameters
+        devices (list): a list of gpu id
+        scheduler (class flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler
+    """
+    if len(runner_args)==0:return
+    args = []
+    if type(runner_args[0]) is dict:
+        for a in runner_args:
+            tmp = collections.defaultdict(lambda:None, a)
+            if tmp['task'] is None or tmp['algorithm'] is None:
+                raise RuntimeError("keyword 'task' or 'algorithm' is of NoneType")
+            if tmp['option'] is None:
+                tmp['option'] = default_option_dict
+            else:
+                option = tmp['option']
+                default_option = read_option_from_command()
+                for op_key in option:
+                    if op_key in default_option.keys():
+                        op_type = type(default_option[op_key])
+                        if op_type == type(option[op_key]):
+                            default_option[op_key] = option[op_key]
+                        else:
+                            if op_type is list:
+                                default_option[op_key] = list(option[op_key]) if hasattr(option[op_key],
+                                                                                         '__iter__') else [
+                                    option[op_key]]
+                            elif op_type is tuple:
+                                default_option[op_key] = tuple(option[op_key]) if hasattr(option[op_key],
+                                                                                          '__iter__') else (
+                                option[op_key])
+                            else:
+                                default_option[op_key] = op_type(option[op_key])
+                tmp['option'] = default_option
+            if tmp['model'] is None:
+                model_name = None
+            else:
+                if not hasattr(tmp['model'], '__module__') and hasattr(tmp['model'], '__name__'):
+                    model_name = tmp['model'].__name__
+                else:
+                    model_name = tmp['model']
+            tmp['model'] = model_name
+            if tmp['Logger'] is None:
+                tmp['Logger'] = flgo.experiment.logger.simple_logger.SimpleLogger
+            algorithm_name = tmp['algorithm'].__name__ if (not hasattr(tmp['algorithm'], '__module__') and hasattr(tmp['algorithm'], '__name__')) else tmp['algorithm']
+            if tmp['Simulator'] is None:
+                tmp['Simulator'] = flgo.system_simulator.DefaultSimulator
+            if tmp['scene'] is None:
+                tmp['scene'] = 'horizontal'
+            args.append((v for v in tmp.values()))
+    elif type(runner_args[0]) is tuple or type(runner_args[0]) is list:
+        for a in runner_args:
+            if len(a)<2: raise RuntimeError('the args of runner should at least contain task and algorithm.')
+            default_args = [None, None, default_option_dict, None, flgo.experiment.logger.simple_logger.SimpleLogger, flgo.system_simulator.DefaultSimulator, 'horizontal']
+            for aid in range(len(a)):
+                if aid==0:
+                    default_args[aid] = a[aid]
+                if aid==1:
+                    algorithm = a[aid]
+                    algorithm_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
+                    default_args[aid] = a[aid]
+                elif aid==2:
+                    option = a[aid]
+                    default_option = read_option_from_command()
+                    for op_key in option:
+                        if op_key in default_option.keys():
+                            op_type = type(default_option[op_key])
+                            if op_type == type(option[op_key]):
+                                default_option[op_key] = option[op_key]
+                            else:
+                                if op_type is list:
+                                    default_option[op_key] = list(option[op_key]) if hasattr(option[op_key],
+                                                                                             '__iter__') else [
+                                        option[op_key]]
+                                elif op_type is tuple:
+                                    default_option[op_key] = tuple(option[op_key]) if hasattr(option[op_key],
+                                                                                              '__iter__') else (
+                                        option[op_key])
+                                else:
+                                    default_option[op_key] = op_type(option[op_key])
+                    default_args[aid] = default_option
+                elif aid==3:
+                    model = a[aid]
+                    if model is None:
+                        model_name = None
+                    else:
+                        if not hasattr(model, '__module__') and hasattr(model, '__name__'):
+                            model_name = model.__name__
+                        else:
+                            model_name = model
+                    default_args[aid] = model_name
+                else:
+                    default_args[aid] = a[aid]
+
+    runner_state = {rid: {'p': None, 'completed': False, 'output': None, 'runner_in_queue': False, 'recv': None, } for
+                    rid in range(len(args))}
     if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
+    while True:
+        for rid in range(len(args)):
+            current_arg = args[rid]
+            if runner_state[rid]['p'] is None:
+                if not runner_state[rid]['completed']:
+                    available_device = scheduler.get_available_device(current_arg)
+                    if available_device is None:
+                        continue
+                    else:
+                        list_current_arg = list(current_arg)
+                        list_current_arg[2]['gpu'] = available_device
+                        recv_end, send_end = multiprocessing.Pipe(False)
+                        list_current_arg.append(send_end)
+                        runner_state[rid]['p'] = multiprocessing.Process(target=_call_by_process, args=tuple(list_current_arg))
+                        runner_state[rid]['recv'] = recv_end
+                        runner_state[rid]['p'].start()
+            else:
+                if runner_state[rid]['p'].exitcode is not None:
+                    tmp = runner_state[rid]['recv'].recv()
+                    try:
+                        runner_state[rid]['p'].terminate()
+                    except:
+                        pass
+                    runner_state[rid]['p'] = None
+                    if len(tmp) == 2:
+                        runner_state[rid]['completed'] = True
+                        runner_state[rid]['output'] = tmp[0]
+        if all([v['completed'] for v in runner_state.values()]): break
+        time.sleep(1)
+    return [runner_state[oid]['output'] for oid in range(len(args))]
+
 
