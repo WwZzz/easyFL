@@ -292,7 +292,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         >>> from flgo.algorithm import fedavg
         >>> from flgo.experiment.logger.simple_logger import SimpleLogger
         >>> # create task 'mnist_iid' by flgo.gen_task('gen_config.yml', 'mnist_iid') if there exists no such task
-        >>> if os.path.exists('mnist_iid'): flgo.gen_task('gen_config.yml', 'mnist_iid')
+        >>> if os.path.exists('mnist_iid'): flgo.gen_task({'benchmark':{'name':'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDPartitioner','para':{'num_clients':100}}}, 'mnist_iid')
         >>> # create runner
         >>> fedavg_runner = flgo.init('mnist_iid', algorithm=fedavg, option = {'num_rounds':20, 'gpu':[0], 'learning_rate':0.1})
         >>> fedavg_runner.run()
@@ -535,6 +535,15 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
         runner_args (list): each element in runner_args should be either a dict or a tuple or parameters
         devices (list): a list of gpu id
         scheduler (class flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler
+    return:
+        a list of output results of runners
+    Example:
+        >>> from flgo.algorithm import fedavg, fedprox, scaffold
+        >>> # create task 'mnist_iid' by flgo.gen_task if there exists no such task
+        >>> task='./mnist_iid'
+        >>> if os.path.exists(task): flgo.gen_task({'benchmark':{'name':'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDPartitioner','para':{'num_clients':100}}}, task)
+        >>> algos = [fedavg, fedprox, scaffold]
+        >>> flgo.multi_init_and_run([{'task':task, 'algorithm':algo} for algo in algos], devices=[0])
     """
     if len(runner_args)==0:return
     args = []
