@@ -67,7 +67,6 @@ def read_option_from_command():
     parser = argparse.ArgumentParser()
     """Training Options"""
     # basic settings
-    parser.add_argument('--pretrain', help='the path of the pretrained model parameter created by torch.save;', type=str, default='')
     # methods of server side for sampling and aggregating
     parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='md')
     parser.add_argument('--aggregate', help='methods for aggregating models', type=str, choices=agg_list, default='uniform')
@@ -102,7 +101,6 @@ def read_option_from_command():
 
     """Simulator Options"""
     # the simulating systemic configuration of clients and the server that helps constructing the heterogeity in the network condition & computing power
-    parser.add_argument('--simulator', help='name of system simulator', type=str, default='default_simulator')
     parser.add_argument('--availability', help="client availability mode", type=str, default = 'IDL')
     parser.add_argument('--connectivity', help="client connectivity mode", type=str, default = 'IDL')
     parser.add_argument('--completeness', help="client completeness mode", type=str, default = 'IDL')
@@ -110,7 +108,6 @@ def read_option_from_command():
 
     """Logger Options"""
     # logger setting
-    parser.add_argument('--logger', help='the Logger in utils.logger.logger_name will be loaded', type=str, default='basic_logger')
     parser.add_argument('--log_level', help='the level of logger', type=str, default='INFO')
     parser.add_argument('--log_file', help='bool controls whether log to file and default value is False', action="store_true", default=False)
     parser.add_argument('--no_log_console', help='bool controls whether log to screen and default value is True', action="store_true", default=False)
