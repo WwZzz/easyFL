@@ -190,7 +190,7 @@ class BasicServer(BasicParty):
             pool = mp.Pool(self.num_parallels)
             for client_id in communicate_clients:
                 self.clients[client_id].update_device(self.gv.apply_for_device())
-                args = (int(client_id), self.sending_package_buffer[cid])
+                args = (int(client_id), self.sending_package_buffer[client_id])
                 packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
             pool.close()
             pool.join()
