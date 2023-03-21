@@ -417,7 +417,7 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
     try:
         runner = flgo.init(task, algorithm, model=model, option=opt, Logger=Logger, Simulator=Simulator, scene=scene)
         runner.run()
-        res = (runner.gv.logger.output, pid)
+        res = (os.path.join(runner.gv.logger.get_output_path(), runner.gv.logger.get_output_name()), pid)
         send_end.send(res)
     except Exception as e:
         print(e)
@@ -526,7 +526,14 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                         option_state[oid]['output'] = tmp[0]
         if all([v['completed'] for v in option_state.values()]):break
         time.sleep(1)
-    return [option_state[oid]['output'] for oid in range(len(options))]
+    res = []
+    for oid in range(len(options)):
+        rec_path = option_state[oid]['output']
+        with open(rec_path, 'r') as inf:
+            s_inf = inf.read()
+            rec = json.loads(s_inf)
+        res.append(rec)
+    return res
 
 def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
     r"""
@@ -666,6 +673,13 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
                         runner_state[rid]['output'] = tmp[0]
         if all([v['completed'] for v in runner_state.values()]): break
         time.sleep(1)
-    return [runner_state[oid]['output'] for oid in range(len(args))]
+    res = []
+    for rid in range(len(runner_state)):
+        rec_path = runner_state[rid]['output']
+        with open(rec_path, 'r') as inf:
+            s_inf = inf.read()
+            rec = json.loads(s_inf)
+        res.append(rec)
+    return res
 
 
