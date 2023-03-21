@@ -390,7 +390,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     gv.simulator = Simulator(objects, option)
     gv.clock.register_simulator(simulator=gv.simulator)
 
-    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene)
+    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects)
     gv.logger.initialize()
     gv.logger.info('Ready to start.')
 
@@ -559,6 +559,8 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
             tmp = collections.defaultdict(lambda:None, a)
             if tmp['task'] is None or tmp['algorithm'] is None:
                 raise RuntimeError("keyword 'task' or 'algorithm' is of NoneType")
+            algorithm = tmp['algorithm']
+            tmp['algorithm'] = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
             if tmp['option'] is None:
                 tmp['option'] = default_option_dict
             else:
