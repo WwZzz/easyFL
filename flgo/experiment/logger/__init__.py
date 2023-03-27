@@ -2135,6 +2135,7 @@ class BasicLogger(Logger):
         self.option = option
         super(BasicLogger, self).__init__(*args, **kwargs)
         self.output = collections.defaultdict(list)
+        self.output['option'] = option
         self.current_round = -1
         self.temp = "{:<30s}{:.4f}"
         self.time_costs = []
@@ -2258,16 +2259,17 @@ class BasicLogger(Logger):
         else:
             output_name = output_name + ("K{}_".format(self.option['num_steps']))
 
-        output_name = output_name + "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_AVL{}_CN{}_CP{}_T{}".format(
-                          self.option['learning_rate'],
-                          self.option['proportion'],
-                          self.option['seed'],
-                          self.option['lr_scheduler'] + self.option['learning_rate_decay'],
-                          self.option['weight_decay'],
-                          self.option['availability'],
-                          self.option['connectivity'],
-                          self.option['completeness'],
-                          self.option['responsiveness'],
+        output_name = output_name + "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_AVL{}_CN{}_CP{}_RS{}_LG{}".format(
+                        self.option['learning_rate'],
+                        self.option['proportion'],
+                        self.option['seed'],
+                        self.option['lr_scheduler'] + self.option['learning_rate_decay'],
+                        self.option['weight_decay'],
+                        self.option['availability'],
+                        self.option['connectivity'],
+                        self.option['completeness'],
+                        self.option['responsiveness'],
+                        self.__class__.__name__,
         ) + suffix
         return output_name
 
@@ -2330,7 +2332,6 @@ class BasicLogger(Logger):
 
     def organize_output(self, *args, **kwargs):
         """This method will be called before saving self.output"""
-        self.output['option'] = self.option
         for key in self.output.keys():
             if '_dist' in key:
                 self.output[key] = self.output[key][-1]

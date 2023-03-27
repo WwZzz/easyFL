@@ -58,6 +58,24 @@ import prettytable as pt
 import json
 from flgo.utils.fflow import load_configuration
 
+def option2filter(option: dict):
+    valid_keys = {
+        'learning_rate': 'LR',
+        'batch_size': 'B',
+        'num_rounds': 'R',
+        'num_epochs': 'E',
+        'num_steps': 'K',
+        'proportion': 'P',
+        'model':'M',
+        'seed': 'S',
+        'learning_rate_decay':'LD',
+        'weight_decay': 'WD',
+        'availability': 'AVL',
+        'connectivity': 'CN',
+        'completeness': 'CP',
+        'responsiveness': 'RS',
+    }
+
 class Record:
     def __init__(self, task, name):
         self.task = task

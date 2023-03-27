@@ -598,7 +598,7 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
                 tmp['Simulator'] = flgo.system_simulator.DefaultSimulator
             if tmp['scene'] is None:
                 tmp['scene'] = 'horizontal'
-            args.append((v for v in tmp.values()))
+            args.append(list[tmp.values()])
     elif type(runner_args[0]) is tuple or type(runner_args[0]) is list:
         for a in runner_args:
             if len(a)<2: raise RuntimeError('the args of runner should at least contain task and algorithm.')
