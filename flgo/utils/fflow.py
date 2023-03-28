@@ -616,7 +616,7 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
                 if aid==1:
                     algorithm = a[aid]
                     algorithm_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
-                    default_args[aid] = a[aid]
+                    default_args[aid] = algorithm_name
                 elif aid==2:
                     option = a[aid]
                     default_option = read_option_from_command()
