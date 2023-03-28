@@ -29,6 +29,7 @@ import random
 import os
 import yaml
 import queue
+import sys
 
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available']
 agg_list=['uniform', 'weighted_scale', 'weighted_com']
@@ -404,6 +405,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
 
 def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, scene, send_end):
     pid = os.getpid()
+    sys.stdout = open(os.devnull, 'w')
     if model_name is None: model = None
     else:
         try:
@@ -420,8 +422,8 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
         res = (os.path.join(runner.gv.logger.get_output_path(), runner.gv.logger.get_output_name()), pid)
         send_end.send(res)
     except Exception as e:
-        print(e)
-        res = (opt, e, pid)
+        s = 'Process {} exits with error:" {}". '.format(pid, str(e))
+        res = (opt, s, pid)
         send_end.send(res)
 
 def get_available_device(device_ids):
@@ -513,9 +515,12 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                         option_state[oid]['p'] = multiprocessing.Process(target=_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene, send_end))
                         option_state[oid]['recv'] = recv_end
                         option_state[oid]['p'].start()
+                        scheduler.add_process(option_state[oid]['p'].pid)
+                        print('Process {} was created for args {}'.format(option_state[oid]['p'].pid,(task, algorithm_name, opt, model_name, Logger, Simulator, scene)))
             else:
                 if option_state[oid]['p'].exitcode is not None:
                     tmp = option_state[oid]['recv'].recv()
+                    scheduler.remove_process(tmp[-1])
                     try:
                         option_state[oid]['p'].terminate()
                     except:
@@ -524,6 +529,8 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                     if len(tmp)==2:
                         option_state[oid]['completed'] = True
                         option_state[oid]['output'] = tmp[0]
+                    else:
+                        print(tmp[1])
         if all([v['completed'] for v in option_state.values()]):break
         time.sleep(1)
     res = []
@@ -598,7 +605,7 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
                 tmp['Simulator'] = flgo.system_simulator.DefaultSimulator
             if tmp['scene'] is None:
                 tmp['scene'] = 'horizontal'
-            args.append(list[tmp.values()])
+            args.append(list(tmp.values()))
     elif type(runner_args[0]) is tuple or type(runner_args[0]) is list:
         for a in runner_args:
             if len(a)<2: raise RuntimeError('the args of runner should at least contain task and algorithm.')
@@ -655,16 +662,19 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
                     if available_device is None:
                         continue
                     else:
-                        list_current_arg = list(current_arg)
+                        list_current_arg = copy.deepcopy(current_arg)
                         list_current_arg[2]['gpu'] = available_device
                         recv_end, send_end = multiprocessing.Pipe(False)
                         list_current_arg.append(send_end)
                         runner_state[rid]['p'] = multiprocessing.Process(target=_call_by_process, args=tuple(list_current_arg))
                         runner_state[rid]['recv'] = recv_end
                         runner_state[rid]['p'].start()
+                        scheduler.add_process(runner_state[rid]['p'].pid)
+                        print('Process {} was created for args {}'.format(runner_state[rid]['p'].pid,current_arg))
             else:
                 if runner_state[rid]['p'].exitcode is not None:
                     tmp = runner_state[rid]['recv'].recv()
+                    scheduler.remove_process(tmp[-1])
                     try:
                         runner_state[rid]['p'].terminate()
                     except:
@@ -673,6 +683,8 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
                     if len(tmp) == 2:
                         runner_state[rid]['completed'] = True
                         runner_state[rid]['output'] = tmp[0]
+                    else:
+                        print(tmp[1])
         if all([v['completed'] for v in runner_state.values()]): break
         time.sleep(1)
     res = []

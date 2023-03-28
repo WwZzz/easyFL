@@ -14,6 +14,7 @@ class BasicScheduler(AbstractScheduler):
     def __init__(self, devices:list, *args, **kwargs):
         self.devices = devices if devices != [] else [-1]
         self.dev_index = 0
+        self.process_set = set()
 
     def get_available_device(self, *args, **kwargs):
         self.dev_index = (self.dev_index+1)%len(self.devices)
@@ -22,6 +23,14 @@ class BasicScheduler(AbstractScheduler):
     def set_devices(self, devices:list):
         self.devices=[-1] if devices==[] else devices
         self.dev_index = self.dev_index%len(self.devices)
+
+    def add_process(self, pid=None):
+        if pid is not None:
+            self.process_set.add(pid)
+
+    def remove_process(self, pid=None):
+        if pid is not None and pid in self.process_set:
+            self.process_set.remove(pid)
 
 class RandomScheduler(BasicScheduler):
     def get_available_device(self, *args, **kwargs):
@@ -57,7 +66,7 @@ class AutoScheduler(BasicScheduler):
         for dev in self.devices:
             dev_handle = self.dev_state[dev]['handle']
             ps = pynvml.nvmlDeviceGetComputeRunningProcesses(dev_handle)
-            mems = [p.usedGpuMemory for p in ps]
+            mems = [p.usedGpuMemory for p in ps if p.pid in self.process_set]
             all_mems.extend(mems)
         if self.dynamic_memory_occupated:
             if len(all_mems)>0:
