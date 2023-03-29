@@ -1,7 +1,5 @@
 # FLGo: A Lightning Framework for Federated Learning
 
-This repository is PyTorch implementation for the IJCAI-21 paper [Federated Learning with Fair Averaging](https://fanxlxmu.github.io/publication/ijcai2021/).
-
 Our FLGo is a strong and reusable experimental platform for research on federated learning (FL) algorithm, which has provided a few easy-to-use modules to hold out for those who want to do various federated learning experiments. 
 
 ## Table of Contents
@@ -15,7 +13,7 @@ Our FLGo is a strong and reusable experimental platform for research on federate
 * install pytorch
 * install flgo
     ```sh
-    pip install -i https://test.pypi.org/simple/ test-flgo-wwwzz
+    pip install flgo
     ```
 * run test.py
 ```sh
@@ -33,23 +31,6 @@ python test.py
 | FedBuff  |<a href='#refer-anchor-2'></a>||
 | TiFL     |<a href='#refer-anchor-2'></a>||
 
-### Dataset Partition
-To divide the dataset using different partitions, make the following changes to the contents of the gen_config.yml file:
-```
-# I.I.D.
-partitioner:
-  name: IIDPartitioner
-  para:
-    num_clients: 100
-    
-# Imbalace & dirichlet
-partitioner:
-  name: DirichletPartitioner
-  para:
-    num_clients: 100
-    imbalance: 0.1
-    alpha: 0.1
-```
 
 ### Options
 
@@ -152,12 +133,7 @@ We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`
 │  ├─ analyzer.py                  //the class for analyzing and printing experimental results
 │  ├─ res_config.yml                  //hyperparameter file of analyzer.py
 │  ├─ run_config.yml                  //hyperparameter file of runner.py
-|  └─ runner.py                    //the class for generating experimental commands based on hyperparameter combinations and processor scheduling for all experimental commands
-├─ fedtask
-│  ├─ B-mnist_classification_P-dir0.10_N-100_S-0 //a fedtask
-│  │  ├─ record							//the directionary of the running result
-│  |  └─ data.json						//the splitted federated dataset (fedtask)
-|  └─ ...
+|  └─ runner.py                    //the class for generating experimental commands based on hyperparameter combinations and processor scheduling for all experimental 
 ├─ system_simulator                     //system heterogeneity simulation module
 │  ├─ base.py							//the base class for simulate system heterogeneity
 │  ├─ default_simulator.py				//the default class for simulate system heterogeneity
@@ -165,10 +141,7 @@ We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`
 ├─ utils
 │  ├─ fflow.py							//option to read, initialize,...
 │  └─ fmodule.py						//model-level operators
-├─ generate_fedtask.py					//generate fedtask
-├─ gen_config.yml                       //hyperparameter file of generate_fedtask.py
-├─ requirements.txt
-└─ main.py                       //run this file to start easyFL system
+└─ requirements.txt 
 ```
 
 ### Benchmark
