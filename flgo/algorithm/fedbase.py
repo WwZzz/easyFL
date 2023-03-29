@@ -318,7 +318,7 @@ class BasicServer(BasicParty):
             p = [pk/sump for pk in p]
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
 
-    def global_test(self, dataflag='valid'):
+    def global_test(self, flag='valid'):
         """
         Validate accuracies and losses on clients' local datasets
         :param
@@ -328,7 +328,7 @@ class BasicServer(BasicParty):
         """
         all_metrics = collections.defaultdict(list)
         for c in self.clients:
-            client_metrics = c.test(self.model, dataflag)
+            client_metrics = c.test(self.model, flag)
             for met_name, met_val in client_metrics.items():
                 all_metrics[met_name].append(met_val)
         return all_metrics
@@ -345,7 +345,7 @@ class BasicServer(BasicParty):
         data = self.test_data if flag=='test' else self.valid_data
         if data is None: return {}
         else:
-            return self.calculator.test(model, self.test_data, batch_size = self.option['test_batch_size'])
+            return self.calculator.test(model, data, batch_size = self.option['test_batch_size'], num_workers = self.option['num_workers'], pin_memory = self.option['pin_memory'])
 
     def init_algo_para(self, algo_para: dict):
         """
@@ -442,6 +442,7 @@ class BasicClient(BasicParty):
         # server
         self.server = None
         # actions of different message type
+        self.option = option
         self.actions = {0: self.reply}
 
     def initialize(self):
@@ -481,7 +482,7 @@ class BasicClient(BasicParty):
         """
         dataset = self.train_data if dataflag=='train' else self.valid_data
         if dataset is not None:
-            return self.calculator.test(model, dataset, self.test_batch_size)
+            return self.calculator.test(model, dataset, self.test_batch_size, self.option['num_workers'])
         else:
             return {}
 
@@ -610,7 +611,7 @@ class BasicClient(BasicParty):
         try:
             batch_data = next(self.data_loader)
         except Exception as e:
-            self.data_loader = iter(self.calculator.get_dataloader(self.train_data, batch_size=self.batch_size, num_workers=self.loader_num_workers))
+            self.data_loader = iter(self.calculator.get_dataloader(self.train_data, batch_size=self.batch_size, num_workers=self.loader_num_workers, pin_memory=self.option['pin_memory']))
             batch_data = next(self.data_loader)
         # clear local DataLoader when finishing local training
         self.current_steps = (self.current_steps+1) % self.num_steps

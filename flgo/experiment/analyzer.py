@@ -101,8 +101,14 @@ class Record:
 
     def set_client_id(self):
         with open(os.path.join(self.task, 'info')) as inf:
-            num_clients = json.load(inf)['num_clients']
-        self.data['client_id'] = [cid for cid in range(int(num_clients))]
+            task_info = json.load(inf)
+            if 'num_clients' in task_info.keys():
+                N = int(task_info['num_clients'])
+            elif 'num_parties' in task_info.keys():
+                N = int(task_info['num_parties'])
+            else:
+                N = 0
+        self.data['client_id'] = [cid for cid in range(N)]
 
     def set_legend(self, legend_with = []):
         if len(legend_with)==0: self.data['label'] = []

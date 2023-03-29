@@ -47,7 +47,7 @@ class Server(BasicServer):
             res.append(max(p[i] + lmbd, 0))
         return res
 
-    def global_test(self, dataflag='valid'):
+    def global_test(self, flag='valid'):
         """
         Validate accuracies and losses on clients' local datasets
         :param
@@ -57,7 +57,7 @@ class Server(BasicServer):
         """
         all_metrics = collections.defaultdict(list)
         for c in self.clients:
-            client_metrics = c.test(self.result_model, dataflag)
+            client_metrics = c.test(self.result_model, flag)
             for met_name, met_val in client_metrics.items():
                 all_metrics[met_name].append(met_val)
         return all_metrics
