@@ -1,4 +1,4 @@
-from .fedbase import BasicServer, BasicParty
+from .fedbase import BasicParty, BasicServer
 import collections
 import torch
 import torch.multiprocessing as mp
@@ -57,7 +57,7 @@ class PassiveParty(BasicParty):
         self.activation = self.local_module(dataset.get_batch_by_id(batch_ids)[0].to(self.device))
         return {'activation': self.activation}
 
-class ActiveParty(BasicServer, PassiveParty):
+class ActiveParty(PassiveParty):
     def __init__(self, option):
         self.actions = {0: self.forward, 1: self.backward,2:self.forward_test}
         self.device = torch.device('cpu') if option['server_with_cpu'] else self.gv.apply_for_device()
@@ -83,7 +83,7 @@ class ActiveParty(BasicServer, PassiveParty):
         self.current_round = 1
         # all options
         self.option = option
-        self.id = -1
+        self.id = 0
 
     def communicate(self, selected_clients, mtype=0, asynchronous=False):
         """
@@ -100,31 +100,22 @@ class ActiveParty(BasicServer, PassiveParty):
         # prepare packages for clients
         for cid in communicate_clients:
             received_package_buffer[cid] = None
-        try:
-            for cid in communicate_clients:
-                self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
-                self.sending_package_buffer[cid]['__mtype__'] = mtype
-        except MemoryError as e:
-            if str(self.device) != 'cpu':
-                self.model.to(torch.device('cpu'))
-                for cid in communicate_clients:
-                    self.sending_package_buffer[cid] = self.pack(cid, mtype=mtype)
-                    self.sending_package_buffer[cid]['__mtype__'] = mtype
-                self.model.to(self.device)
-            else:
-                raise e
         # communicate with selected clients
         if self.num_parallels <= 1:
             # computing iteratively
             for client_id in communicate_clients:
-                response_from_client_id = self.communicate_with(client_id, package=self.sending_package_buffer[cid])
+                server_pkg = self.pack(client_id, mtype=mtype)
+                server_pkg['__mtype__'] = mtype
+                response_from_client_id = self.communicate_with(client_id, package=server_pkg)
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel with torch.multiprocessing
             pool = mp.Pool(self.num_parallels)
             for client_id in communicate_clients:
+                server_pkg = self.pack(client_id, mtype=mtype)
+                server_pkg['__mtype__'] = mtype
                 self.clients[client_id].update_device(self.gv.apply_for_device())
-                args = (int(client_id), self.sending_package_buffer[cid])
+                args = (int(client_id), server_pkg)
                 packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
             pool.close()
             pool.join()
@@ -134,17 +125,20 @@ class ActiveParty(BasicServer, PassiveParty):
         self.received_clients = selected_clients
         return self.unpack(packages_received_from_clients)
 
-    def communicate_with(self, client_id, package={}):
+    def unpack(self, packages_received_from_clients):
         """
-        Pack the information that is needed for client_id to improve the global model
+        Unpack the information from the received packages. Return models and losses as default.
         :param
-            client_id: the id of the client to communicate with
-            package: the package to be sended to the client
-        :return
-            client_package: the reply from the client and will be 'None' if losing connection
+            packages_received_from_clients (list of dict):
+        :return:
+            res (dict): collections.defaultdict that contains several lists of the clients' reply
         """
-        # listen for the client's response
-        return self.gv.communicator.request(self.id-1, client_id-1, package)
+        if len(packages_received_from_clients)==0: return collections.defaultdict(list)
+        res = {pname:[] for pname in packages_received_from_clients[0]}
+        for cpkg in packages_received_from_clients:
+            for pname, pval in cpkg.items():
+                res[pname].append(pval)
+        return res
 
     def run(self):
         """
