@@ -51,7 +51,7 @@ class Server(BasicServer):
         """
         Validate accuracies and losses on clients' local datasets
         :param
-            dataflag: choose train data or valid data to evaluate
+            flag: choose train data or valid data to evaluate
         :return
             metrics: a dict contains the lists of each metric_value of the clients
         """
