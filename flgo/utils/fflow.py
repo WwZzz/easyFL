@@ -17,6 +17,7 @@ import flgo.system_simulator.base
 import flgo.utils.fmodule
 import flgo.experiment.logger.simple_logger
 import flgo.experiment.logger.tune_logger
+import flgo.experiment.logger.vertical_logger
 import flgo.experiment.logger
 import flgo.experiment.device_scheduler
 from flgo.system_simulator.base import BasicSimulator
@@ -27,8 +28,11 @@ import argparse
 import importlib
 import random
 import os
-import yaml
-import queue
+import warnings
+try:
+    import yaml
+except ModuleNotFoundError:
+    warnings.warn("Module pyyaml is not installed. The configuration cannot be loaded by .yml file.")
 import sys
 
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available']
@@ -93,6 +97,7 @@ def read_option_from_command():
     # the ratio of the amount of the data used to train
     parser.add_argument('--train_holdout', help='the rate of holding out the validation dataset from all the local training datasets', type=float, default=0.1)
     parser.add_argument('--test_holdout', help='the rate of holding out the validation dataset from the training datasets', type=float, default=0.0)
+    parser.add_argument('--local_test', help='if this term is set True and train_holdout>0, (0.5*train_holdout) of data will be set as client.test_data.', action="store_true", default=False)
     # realistic machine config
     parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
     parser.add_argument('--gpu', nargs='*', help='GPU IDs and empty input is equal to using CPU', type=int)
@@ -154,6 +159,10 @@ def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dic
         >>> # GENERATE THE SAME TASK BY PASSING THE STRING
         >>> flgo.gen_task_by_para(benchmark='flgo.benchmark.mnist_classification', Partitioner='IIDPartitioner', par_para={'num_clients':100}, task_path='./mnist_gen_by_para2')
     """
+    random.seed(3 + seed)
+    np.random.seed(97 + seed)
+    torch.manual_seed(12+seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
     if type(benchmark) is str: benchmark = importlib.import_module(benchmark)
     if not hasattr(benchmark, '__path__'): raise RuntimeError("benchmark should be a package or the path of a package")
     if Partitioner is not None:
@@ -215,6 +224,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
     # setup random seed
     random.seed(3 + seed)
     np.random.seed(97 + seed)
+    torch.manual_seed(12+seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     # load configuration
     gen_option = load_configuration(config)
@@ -275,7 +285,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
     except:
         pass
 
-def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
+def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = None, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
     r"""
     Initialize a runner in FLGo, which is to optimize a model on a specific task (i.e. IID-mnist-of-100-clients) by the selected federated algorithm.
     :param
@@ -316,11 +326,13 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
                     default_option[op_key] = tuple(option[op_key]) if hasattr(option[op_key], '__iter__') else (option[op_key])
                 else:
                     default_option[op_key] = op_type(option[op_key])
+        else:
+            default_option[op_key] = option[op_key]
     option = default_option
     setup_seed(seed=option['seed'])
     option['task'] = task
     option['algorithm'] = (algorithm.__name__).split('.')[-1]
-
+    option['server_with_cpu'] = True if option['num_parallels']>1 else option['server_with_cpu']
     # init task info
     if not os.path.exists(task):
         raise FileExistsError("Fedtask '{}' doesn't exist. Please generate the specified task by flgo.gen_task().")
@@ -330,16 +342,14 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     if model== None: model = getattr(importlib.import_module(benchmark), 'default_model')
     option['model'] = (model.__name__).split('.')[-1]
 
-    try:
-        # init multiprocess
-        torch.multiprocessing.set_start_method('spawn')
-        torch.multiprocessing.set_sharing_strategy('file_system')
-    except:
-        pass
-
     # create global variable
     gv = GlobalVariable()
     # init logger
+    if Logger is None:
+        if scene=='horizontal':
+            Logger = flgo.experiment.logger.simple_logger.SimpleLogger
+        elif scene=='vertical':
+            Logger = flgo.experiment.logger.vertical_logger.VerticalLogger
     gv.logger = Logger(task=task, option=option, name=str(id(gv))+str(Logger), level=option['log_level'])
 
     # init device
@@ -385,6 +395,8 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
 
     for ob in objects: ob.initialize()
 
+    # if scene=='horizontal':
+    #     objects[0].__class__.communicate_with = flgo.system_simulator.base.with_latency(objects[0].__class__.communicate_with)
     # init virtual system environment
     gv.logger.info('Use `{}` as the system simulator'.format(str(Simulator)))
     flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
