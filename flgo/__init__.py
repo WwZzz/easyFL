@@ -5,8 +5,9 @@ communicator = None
 
 class VirtualCommunicator:
     def __init__(self, objects):
+        self.objects_map = {obj.id:obj for obj in objects}
         self.objects = objects
 
     def request(self, source, target, package):
         # send package to the target object with `package` and `mtype`, and then listen from it
-        return self.objects[target+1].message_handler(package)
+        return self.objects_map[target].message_handler(package)
