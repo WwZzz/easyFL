@@ -57,7 +57,20 @@ class BasicParty:
                     self.num_steps = self.num_epochs * math.ceil(self.datavol / self.batch_size)
 
     def register_parties(self, parties):
+        # set the accessible parties
         self.parties = parties
+
+    def communicate_with(self, target_id, package={}):
+        """
+        Pack the information that is needed for client_id to improve the global model
+        :param
+            client_id (int): the id of the client to communicate with
+            package (dict): the package to be sended to the client
+            mtype (anytype): the type of the message that is used to decide the action of the client
+        :return
+            client_package (dict): the reply from the client and will be 'None' if losing connection
+        """
+        return self.gv.communicator.request(self.id, target_id, package)
 
     def initialize(self, *args, **kwargs):
         return
@@ -88,7 +101,6 @@ class BasicServer(BasicParty):
         self.aggregation_option = option['aggregate']
         # systemic option
         self.tolerance_for_latency = 999999
-        self.sending_package_buffer = [None for _ in range(9999)]
         # algorithm-dependent parameters
         self.algo_para = {}
         self.current_round = 1
@@ -124,8 +136,6 @@ class BasicServer(BasicParty):
                 self.current_round += 1
             # decay learning rate
             self.global_lr_scheduler(self.current_round)
-            # clear package buffer
-            self.sending_package_buffer = [None for _ in self.clients]
         self.gv.logger.info("=================End==================")
         self.gv.logger.time_end('Total Time Cost')
         # save results as .json file
@@ -166,31 +176,35 @@ class BasicServer(BasicParty):
         # prepare packages for clients
         for cid in communicate_clients:
             received_package_buffer[cid] = None
-        try:
-            for cid in communicate_clients:
-                self.sending_package_buffer[cid] = self.pack(cid, mtype)
-                self.sending_package_buffer[cid]['__mtype__'] = mtype
-        except Exception as e:
-            if str(self.device) != 'cpu':
-                self.model.to(torch.device('cpu'))
-                for cid in communicate_clients:
-                    self.sending_package_buffer[cid] = self.pack(cid, mtype)
-                    self.sending_package_buffer[cid]['__mtype__'] = mtype
-                self.model.to(self.device)
-            else:
-                raise e
+        # try:
+        #     for cid in communicate_clients:
+        #         self.sending_package_buffer[cid] = self.pack(cid, mtype)
+        #         self.sending_package_buffer[cid]['__mtype__'] = mtype
+        # except Exception as e:
+        #     if str(self.device) != 'cpu':
+        #         self.model.to(torch.device('cpu'))
+        #         for cid in communicate_clients:
+        #             self.sending_package_buffer[cid] = self.pack(cid, mtype)
+        #             self.sending_package_buffer[cid]['__mtype__'] = mtype
+        #         self.model.to(self.device)
+        #     else:
+        #         raise e
         # communicate with selected clients
         if self.num_parallels <= 1:
             # computing iteratively
             for client_id in communicate_clients:
-                response_from_client_id = self.communicate_with(client_id, package=self.sending_package_buffer[client_id])
+                server_pkg = self.pack(cid, mtype)
+                server_pkg['__mtype__'] = mtype
+                response_from_client_id = self.communicate_with(client_id, package=server_pkg)
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel with torch.multiprocessing
             pool = mp.Pool(self.num_parallels)
             for client_id in communicate_clients:
+                server_pkg = self.pack(cid, mtype)
+                server_pkg['__mtype__'] = mtype
                 self.clients[client_id].update_device(self.gv.apply_for_device())
-                args = (int(client_id), self.sending_package_buffer[client_id])
+                args = (int(client_id), server_pkg)
                 packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
             pool.close()
             pool.join()
@@ -199,20 +213,12 @@ class BasicServer(BasicParty):
         packages_received_from_clients = [received_package_buffer[cid] for cid in selected_clients if received_package_buffer[cid]]
         self.received_clients = selected_clients
         return self.unpack(packages_received_from_clients)
-
-    def communicate_with(self, client_id, package={}):
-        """
-        Pack the information that is needed for client_id to improve the global model
-        :param
-            client_id (int): the id of the client to communicate with
-            package (dict): the package to be sended to the client
-            mtype (anytype): the type of the message that is used to decide the action of the client
-        :return
-            client_package (dict): the reply from the client and will be 'None' if losing connection
-        """
-        # listen for the client's response
-        return self.gv.communicator.request(self.id, client_id, package)
-
+    
+    @ss.with_latency
+    def communicate_with(self, target_id, package={}):
+        return super(BasicServer, self).communicate_with(target_id, package)
+    
+    
     def pack(self, client_id, mtype=0, *args, **kwargs):
         """
         Pack the necessary information for the client's local training.
@@ -342,10 +348,12 @@ class BasicServer(BasicParty):
             metrics (dict): specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
         if model is None: model=self.model
-        data = self.test_data if flag=='test' else self.valid_data
-        if data is None: return {}
+        if flag == 'valid': dataset = self.valid_data
+        elif flag == 'test': dataset = self.test_data
+        else: dataset = self.train_data
+        if dataset is None: return {}
         else:
-            return self.calculator.test(model, data, batch_size = self.option['test_batch_size'], num_workers = self.option['num_workers'], pin_memory = self.option['pin_memory'])
+            return self.calculator.test(model, dataset, batch_size = self.option['test_batch_size'], num_workers = self.option['num_workers'], pin_memory = self.option['pin_memory'])
 
     def init_algo_para(self, algo_para: dict):
         """
@@ -471,7 +479,7 @@ class BasicClient(BasicParty):
         return
 
     @ fmodule.with_multi_gpus
-    def test(self, model, dataflag='valid'):
+    def test(self, model, flag='valid'):
         """
         Evaluate the model with local data (e.g. training data or validating data).
         :param
@@ -480,7 +488,9 @@ class BasicClient(BasicParty):
         :return:
             metric (dict): specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
-        dataset = self.train_data if dataflag=='train' else self.valid_data
+        if flag == 'valid': dataset = self.valid_data
+        elif flag == 'test': dataset = self.test_data
+        else: dataset = self.train_data
         if dataset is not None:
             return self.calculator.test(model, dataset, self.test_batch_size, self.option['num_workers'])
         else:
