@@ -140,7 +140,7 @@ class Selector:
     def __init__(self, selector_config):
         self.config = selector_config
         self.tasks = [selector_config['task']] if type(selector_config['task']) is not list else selector_config['task']
-        self.headers = selector_config['header']
+        self.headers = selector_config['header'] if type(selector_config) is list else [selector_config['header']]
         self.filter = selector_config['filter'] if 'filter' in selector_config.keys() else {}
         self.legend_with = selector_config['legend_with'] if 'legend_with' in selector_config.keys() else []
         self.rec_names = self.scan()
