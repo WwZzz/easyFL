@@ -3,8 +3,11 @@ from abc import ABCMeta, abstractmethod
 import random
 import torch
 import time
-import pynvml
-
+import warnings
+try:
+    import pynvml
+except ModuleNotFoundError:
+    pass
 class AbstractScheduler(metaclass=ABCMeta):
     @abstractmethod
     def get_available_device(self, *args, **kwargs):
