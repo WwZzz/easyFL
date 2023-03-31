@@ -207,6 +207,7 @@ class BasicSimulator(AbstractSimulator):
 
     def set_variable(self, client_ids, varname, values):
         if type(client_ids) is not list: client_ids = [client_ids]
+        if type(values) is not list: values = [values]
         assert len(client_ids) == len(values)
         for cid, v in zip(client_ids, values):
             self.variables[cid][varname] = v
@@ -304,23 +305,39 @@ def with_dropout(communicate):
             return communicate(self, selected_clients, mtype, asynchronous)
     return communicate_with_dropout
 
-# # communicating phase
-# def with_latency(communicate_with):
-#     @functools.wraps(communicate_with)
-#     def delayed_communicate_with(self, client_id):
-#         res = communicate_with(self, client_id)
-#         # Record the size of the package that may influence the value of the latency
-#         self.gv.simulator.set_variable([client_id], '__package_size', [res.__sizeof__()])
-#         # Update the real-time latency of the client response
-#         self.gv.simulator.update_client_responsiveness([client_id])
-#         # Get the updated latency
-#         latency = self.gv.simulator.get_variable(client_id, 'latency')[0]
-#         self.clients[client_id]._latency = latency
-#         res['__cid'] = client_id
-#         # Compute the arrival time
-#         res['__t'] = self.gv.clock.current_time + latency
-#         return res
-#     return delayed_communicate_with
+# communicating phase
+def with_latency(communicate_with):
+    # if 'model' in pkgs[0].keys():
+    #     model_sizes = [pkg['model'].count_parameters(output=False) for pkg in pkgs]
+    # else:
+    #     model_sizes = [0 for _ in pkgs]
+    # self.gv.simulator.set_variable(selected_clients, '__model_size', model_sizes)
+    # self.gv.simulator.set_variable(selected_clients, '__upload_package_size', [size_of_package(pkg) for pkg in pkgs])
+    # self.gv.simulator.set_variable(selected_clients, '__download_package_size', [size_of_package(self.sending_package_buffer[cid]) for cid in selected_clients])
+    # self.gv.simulator.update_client_responsiveness(selected_clients)
+    @functools.wraps(communicate_with)
+    def delayed_communicate_with(self, target_id, package):
+        # Calculate latency for the target client
+        # Set local model size of clients for computation cost estimation
+        model_size = package['model'].count_parameters(output=False) if 'model' in package.keys() else 0
+        self.gv.simulator.set_variable(target_id, '__model_size', model_size)
+        # Set downloading package sizes for clients for downloading cost estimation
+        self.gv.simulator.set_variable(target_id, '__download_package_size',size_of_package(package))
+        res = communicate_with(self, target_id, package)
+        # Set uploading package sizes for clients for uploading cost estimation
+        self.gv.simulator.set_variable(target_id, '__upload_package_size', size_of_package(res))
+        # update latency of the target client according to the communication cost and computation cost
+        self.gv.simulator.update_client_responsiveness([target_id])
+        # Record the size of the package that may influence the value of the latency
+        # Update the real-time latency of the client response
+        # Get the updated latency
+        latency = self.gv.simulator.get_variable(target_id, 'latency')[0]
+        self.clients[target_id]._latency = latency
+        res['__cid'] = target_id
+        # Compute the arrival time
+        res['__t'] = self.gv.clock.current_time + latency
+        return res
+    return delayed_communicate_with
 
 # local training phase
 def with_completeness(train):
@@ -348,27 +365,8 @@ def with_clock(communicate):
         pkgs = [{key: vi[id] for key, vi in res.items()} for id in range(len(list(res.values())[0]))] if len(selected_clients)>0 else []
         # Put the packages from selected clients into clock only if when there are effective selected clients
         if len(selected_clients)>0:
-            # Calculate latency for selectedc clients
-            # Set local model size of clients
-            if 'model' in pkgs[0].keys():
-                model_sizes = [pkg['model'].count_parameters(output=False) for pkg in pkgs]
-            else:
-                model_sizes = [0 for _ in pkgs]
-            self.gv.simulator.set_variable(selected_clients, '__model_size', model_sizes)
-            # Set uploading package sizes for clients
-            self.gv.simulator.set_variable(selected_clients, '__upload_package_size', [size_of_package(pkg) for pkg in pkgs])
-            # Set downloading package sizes for clients
-            self.gv.simulator.set_variable(selected_clients, '__download_package_size', [size_of_package(self.sending_package_buffer[cid]) for cid in selected_clients])
-            self.gv.simulator.update_client_responsiveness(selected_clients)
-            # Update latency for clients
-            latency = self.gv.simulator.get_variable(selected_clients, 'latency')
             # Set selected clients' states as `working`
             self.gv.simulator.set_client_state(selected_clients, 'working')
-
-        # Compute the arrival time and put the packages into a queue according to their arrival time `__t`
-            for pkg, cid, lt in zip(pkgs, selected_clients, latency):
-                pkg['__cid'] = cid
-                pkg['__t'] = self.gv.clock.current_time + lt
             for pi in pkgs: self.gv.clock.put(pi, pi['__t'])
         # Receiving packages in asynchronous\synchronous way
         # Wait for client packages. If communicating in asynchronous way, the waiting time is 0.
