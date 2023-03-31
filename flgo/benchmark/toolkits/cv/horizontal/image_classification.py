@@ -61,7 +61,11 @@ class BuiltinClassPipe(BasicTaskPipe):
             cpert = None if  local_perturbation[cid] is None else [torch.tensor(t) for t in local_perturbation[cid]]
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert)
             cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
-            task_data[cname] = {'train':cdata_train, 'valid':cdata_valid}
+            if running_time_option['train_holdout']>0 and running_time_option['local_test']:
+                cdata_valid, cdata_test = self.split_dataset(cdata_valid, 0.5)
+            else:
+                cdata_test = None
+            task_data[cname] = {'train':cdata_train, 'valid':cdata_valid, 'test': cdata_test}
         return task_data
 
 class GeneralCalculator(BasicTaskCalculator):
