@@ -147,6 +147,7 @@ class BasicTaskPipe(AbstractTaskPipe):
             # init server
             server = algorithm.Server(running_time_option)
             server.name = 'server'
+            server.id = -1
             # bind clients and server
             server.register_clients(clients)
             for c in clients: c.register_server(server)
