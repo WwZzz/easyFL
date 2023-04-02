@@ -83,7 +83,7 @@ class BaseRotatingHandler(logging.FileHandler):
         it. If the attribute isn't callable (the default is None), the name
         is returned unchanged.
 
-        :param default_name: The default name for the log file.
+        Args: default_name: The default name for the log file.
         """
         if not callable(self.namer):
             result = default_name

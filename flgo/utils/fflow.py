@@ -140,7 +140,7 @@ def load_configuration(config={}):
 def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dict={}, task_path: str='', rawdata_path:str='', seed:int=0):
     r"""
     Generate a federated task according to the parameters of this function. The formats and meanings of the inputs are listed as below:
-    :param
+
         benchmark (python package || str): the benchmark package or the module path of it
         bmk_para (dict): the customized parameter dict of the method TaskGenerator.__init__() of the benchmark
         Partitioner (class || str): the class of the Partitioner or the name of the Partitioner that was realized in flgo.benchmark.toolkits.partition
@@ -148,7 +148,7 @@ def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dic
         task_path (str): the path to store the generated task
         rawdata_path (str): where the raw data will be downloaded\stored
         seed (int): the random seed used to generate the task
-    :return
+    Returns:
 
     Example:
         >>> import flgo
@@ -208,12 +208,12 @@ def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dic
 def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
     r"""
     Generate a federated task that is specified by the benchmark information and the partition information, where the generated task will be stored in the task_path and the raw data will be downloaded into the rawdata_path.
-    :param
+
         config (dict || str): configuration is either a dict contains parameters or a filename of a .yml file
         task_path (str): where the generated task will be stored
         rawdata_path (str): where the raw data will be downloaded\stored
         seed (int): the random seed used to generate the task
-    :return
+    Returns:
 
     Example:
         >>> import flgo
@@ -288,7 +288,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
 def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = None, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
     r"""
     Initialize a runner in FLGo, which is to optimize a model on a specific task (i.e. IID-mnist-of-100-clients) by the selected federated algorithm.
-    :param
+
         task (str): the dictionary of the federated task
         algorithm (module || class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
         option (dict || str): the configurations of training, environment, algorithm, logger and simulator
@@ -296,7 +296,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
         Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
         scene (str): 'horizontal' or 'vertical' in current version of FLGo
-    :return
+    Returns:
         runner: the object instance that has the method runner.run()
 
     Example:
@@ -446,7 +446,7 @@ def get_available_device(device_ids):
 def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal', scheduler=None):
     """
         Tune hyper-parameters for one task and one algorithm in parallel.
-        :param
+        Args:
             task (str): the dictionary of the federated task
             algorithm (module || class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
             option (dict): the dict whose values should be of type list to construct the combinations
@@ -486,7 +486,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
 def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.system_simulator.DefaultSimulator, scene='horizontal', scheduler = None):
     """
     Run different groups of hyper-parameters for one task and one algorithm in parallel.
-    :param
+    Args:
         task (str): the dictionary of the federated task
         algorithm (module || class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
         options (list): the configurations of different groups of hyper-parameters
@@ -496,7 +496,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
         scene (str): 'horizontal' or 'vertical' in current version of FLGo
         scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
-    :return
+    Returns:
         the returns of _call_by_process
     """
     try:

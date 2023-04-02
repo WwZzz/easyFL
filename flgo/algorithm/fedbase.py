@@ -15,7 +15,7 @@ class BasicParty:
     def register_action_to_mtype(self, action_name: str, mtype):
         """
         Register an existing instance method as the action to the message type.
-        :param
+        Args:
             action_name: the name of the instance method
             mtype: the message type
         """
@@ -26,10 +26,10 @@ class BasicParty:
     def message_handler(self, package):
         """
         Handling the received message by excuting the corresponding action.
-        :param
+        Args:
             package: the package received from other parties (i.e. the content of the message)
             mtype: the message type
-        :return
+        Returns:
             action_reult
         """
         try:
@@ -63,11 +63,11 @@ class BasicParty:
     def communicate_with(self, target_id, package={}):
         """
         Pack the information that is needed for client_id to improve the global model
-        :param
+        Args:
             client_id (int): the id of the client to communicate with
             package (dict): the package to be sended to the client
             mtype (anytype): the type of the message that is used to decide the action of the client
-        :return
+        Returns:
             client_package (dict): the reply from the client and will be 'None' if losing connection
         """
         return self.gv.communicator.request(self.id, target_id, package)
@@ -146,8 +146,8 @@ class BasicServer(BasicParty):
         """
         The standard iteration of each federated round that contains three
         necessary procedure in FL: client selection, communication and model aggregation.
-        :param
-        :return
+        Args:
+        Returns:
         """
         # sample clients: MD sampling as default
         self.selected_clients = self.sample()
@@ -163,11 +163,11 @@ class BasicServer(BasicParty):
         """
         The whole simulating communication procedure with the selected clients.
         This part supports for simulating the client dropping out.
-        :param
+        Args:
             selected_clients (list of int): the clients to communicate with
             mtype (anytype): type of message
             asynchronous (bool): asynchronous communciation or synchronous communcation
-        :return
+        Returns:
             :the unpacked response from clients that is created ny self.unpack()
         """
         packages_received_from_clients = []
@@ -223,9 +223,9 @@ class BasicServer(BasicParty):
         """
         Pack the necessary information for the client's local training.
         Any operations of compression or encryption should be done here.
-        :param
+        Args:
             client_id (int): the id of the client to communicate with
-        :return
+        Returns:
             a dict that only contains the global model as default.
         """
         return {
@@ -235,9 +235,9 @@ class BasicServer(BasicParty):
     def unpack(self, packages_received_from_clients):
         """
         Unpack the information from the received packages. Return models and losses as default.
-        :param
+        Args:
             packages_received_from_clients (list of dict):
-        :return:
+        Returns::
             res (dict): collections.defaultdict that contains several lists of the clients' reply
         """
         if len(packages_received_from_clients)==0: return collections.defaultdict(list)
@@ -250,7 +250,7 @@ class BasicServer(BasicParty):
     def global_lr_scheduler(self, current_round):
         """
         Control the step size (i.e. learning rate) of local training
-        :param
+        Args:
             current_round (int): the current communication round
         """
         if self.lr_scheduler_type == -1:
@@ -269,8 +269,8 @@ class BasicServer(BasicParty):
     @ss.with_availability
     def sample(self):
         """Sample the clients.
-        :param
-        :return
+        Args:
+        Returns:
             a list of the ids of the selected clients
         """
         all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in range(self.num_clients)]
@@ -292,9 +292,9 @@ class BasicServer(BasicParty):
     def aggregate(self, models: list, *args, **kwargs):
         """
         Aggregate the locally improved models.
-        :param
+        Args:
             models (list): a list of local models
-        :return
+        Returns:
             the averaged result
         pk = nk/n where n=self.data_vol
         K = |S_t|
@@ -327,9 +327,9 @@ class BasicServer(BasicParty):
     def global_test(self, flag='valid'):
         """
         Validate accuracies and losses on clients' local datasets
-        :param
+        Args:
             dataflag (str): choose train data or valid data to evaluate
-        :return
+        Returns:
             metrics (dict): a dict contains the lists of each metric_value of the clients
         """
         all_metrics = collections.defaultdict(list)
@@ -342,9 +342,9 @@ class BasicServer(BasicParty):
     def test(self, model=None, flag='test'):
         """
         Evaluate the model on the test dataset owned by the server.
-        :param
+        Args:
             model (flgo.utils.fmodule.FModule): the model need to be evaluated
-        :return:
+        Returns::
             metrics (dict): specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
         if model is None: model=self.model
@@ -358,7 +358,7 @@ class BasicServer(BasicParty):
     def init_algo_para(self, algo_para: dict):
         """
         Initialize the algorithm-dependent hyper-parameters for the server and all the clients.
-        :param
+        Args:
             algo_paras (dict): the dict that defines the hyper-parameters (i.e. name, value and type) for the algorithm.
 
         Example 1:
@@ -398,17 +398,17 @@ class BasicServer(BasicParty):
     def available_clients(self):
         """
         Return all the available clients at current round.
-        :param
-        :return: a list of indices of currently available clients
+        Args:
+        Returns:: a list of indices of currently available clients
         """
         return [cid for cid in range(self.num_clients) if self.clients[cid].is_idle()]
 
     def register_clients(self, clients):
         """
         register self.clients=clients
-        :param
+        Args:
             clients (list of Client()): clients
-        :return: a list of indices of currently available clients
+        Returns:: a list of indices of currently available clients
         """
         self.clients = clients
         self.num_clients = len(clients)
@@ -462,9 +462,9 @@ class BasicClient(BasicParty):
     def train(self, model):
         """
         Standard local training procedure. Train the transmitted model with local training dataset.
-        :param
+        Args:
             model (FModule): the global model
-        :return
+        Returns:
         """
         model.train()
         optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
@@ -482,10 +482,10 @@ class BasicClient(BasicParty):
     def test(self, model, flag='valid'):
         """
         Evaluate the model with local data (e.g. training data or validating data).
-        :param
+        Args:
             model (FModule):
             dataflag (str): choose the dataset to be evaluated on
-        :return:
+        Returns:
             metric (dict): specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
         """
         if flag == 'valid': dataset = self.valid_data
@@ -499,9 +499,9 @@ class BasicClient(BasicParty):
     def unpack(self, received_pkg):
         """
         Unpack the package received from the server
-        :param
+        Args:
             received_pkg (dict): a dict contains the global model as default
-        :return:
+        Returns:
             the unpacked information that can be rewritten
         """
         # unpack the received package
@@ -515,9 +515,9 @@ class BasicClient(BasicParty):
         unpacking the server_package to obtain the global model,
         training the global model, and finally packing the updated
         model into client_package.
-        :param
+        Args:
             svr_pkg (dict): the package received from the server
-        :return:
+        Returns:
             client_pkg (dict): the package to be send to the server
         """
         model = self.unpack(svr_pkg)
@@ -529,9 +529,9 @@ class BasicClient(BasicParty):
         """
         Packing the package to be send to the server. The operations of compression
         of encryption of the package should be done here.
-        :param
+        Args:
             model: the locally trained model
-        :return
+        Returns
             package: a dict that contains the necessary information for the server
         """
         return {
@@ -541,8 +541,8 @@ class BasicClient(BasicParty):
     def is_idle(self):
         """
         Check if the client is active to participate training.
-        :param
-        :return
+        Args:
+        Returns:
             True if the client is active according to the active_rate else False
         """
         return self.gv.simulator.client_states[self.id]=='idle'
@@ -550,8 +550,8 @@ class BasicClient(BasicParty):
     def is_dropped(self):
         """
         Check if the client drops out during communicating.
-        :param
-        :return
+        Args:
+        Returns:
             True if the client was being dropped
         """
         return self.gv.simulator.client_states[self.id]=='dropped'
@@ -562,24 +562,24 @@ class BasicClient(BasicParty):
     def train_loss(self, model):
         """
         Get the task specified loss of the model on local training data
-        :param model:
-        :return:
+        Args: model:
+        Returns:
         """
         return self.test(model,'train')['loss']
 
     def valid_loss(self, model):
         """
         Get the task specified loss of the model on local validating data
-        :param model:
-        :return:
+        Args: model:
+        Returns:
         """
         return self.test(model)['loss']
 
     def set_model(self, model):
         """
         set self.model
-        :param model:
-        :return:
+        Args: model:
+        Returns:
         """
         self.model = model
 
@@ -600,22 +600,22 @@ class BasicClient(BasicParty):
     def set_learning_rate(self, lr = None):
         """
         set the learning rate of local training
-        :param lr:
-        :return:
+        Args: lr:
+        Returns:
         """
         self.learning_rate = lr if lr else self.learning_rate
 
     def get_time_response(self):
         """
         Get the latency amount of the client
-        :return: self.latency_amount if client not dropping out
+        Returns: self.latency_amount if client not dropping out
         """
         return np.inf if self.dropped else self.time_response
 
     def get_batch_data(self):
         """
         Get the batch of data
-        :return:
+        Returns:
             a batch of data
         """
         try:
@@ -631,9 +631,9 @@ class BasicClient(BasicParty):
     def update_device(self, dev):
         """
         Update running-time GPU device to the inputted dev, including change the client's device and the task_calculator's device
-        :param
+        Args:
             dev (torch.device): target dev
-        :return:
+        Returns:
         """
         self.device = dev
         self.calculator = self.gv.TaskCalculator(dev, self.calculator.optimizer_name)

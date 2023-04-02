@@ -50,9 +50,9 @@ class Server(BasicServer):
     def global_test(self, flag='valid'):
         """
         Validate accuracies and losses on clients' local datasets
-        :param
+        Args:
             flag: choose train data or valid data to evaluate
-        :return
+        Returns:
             metrics: a dict contains the lists of each metric_value of the clients
         """
         all_metrics = collections.defaultdict(list)

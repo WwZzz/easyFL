@@ -20,19 +20,32 @@ class BuiltinClassGenerator(BasicTaskGenerator):
 
 class BuiltinClassPipe(BasicTaskPipe):
     class TaskDataset(torch.utils.data.Subset):
-        def __init__(self, dataset, indices, perturbation=None):
+        def __init__(self, dataset, indices, perturbation=None, pin_memory=False):
             super().__init__(dataset, indices)
             self.dataset = dataset
             self.indices = indices
             self.perturbation = {idx:p for idx, p in zip(indices, perturbation)} if perturbation is not None else None
+            self.pin_memory = pin_memory
+            if not self.pin_memory:
+                self.X = None
+                self.Y = None
+            else:
+                self.X = torch.stack([self.dataset[i][0] for i in self.indices])
+                self.Y = torch.LongTensor([self.dataset[i][1] for i in self.indices])
 
         def __getitem__(self, idx):
-            if self.perturbation is None:
-                if isinstance(idx, list):
-                    return self.dataset[[self.indices[i] for i in idx]]
-                return self.dataset[self.indices[idx]]
+            if self.X is not None:
+                if self.perturbation is None:
+                    return self.X[idx], self.Y[idx]
+                else:
+                    return self.X[idx]+self.perturbation[self.indices[idx]], self.Y[idx]
             else:
-                return self.dataset[self.indices[idx]][0] + self.perturbation[self.indices[idx]],  self.dataset[self.indices[idx]][1]
+                if self.perturbation is None:
+                    if isinstance(idx, list):
+                        return self.dataset[[self.indices[i] for i in idx]]
+                    return self.dataset[self.indices[idx]]
+                else:
+                    return self.dataset[self.indices[idx]][0] + self.perturbation[self.indices[idx]],  self.dataset[self.indices[idx]][1]
 
     def __init__(self, task_name, buildin_class, transform=None):
         super(BuiltinClassPipe, self).__init__(task_name)
@@ -52,6 +65,7 @@ class BuiltinClassPipe(BasicTaskPipe):
         # load the datasets
         train_data = self.builtin_class(root=self.feddata['rawdata_path'], download=True, train=True, transform=self.transform, **self.feddata['additional_option'])
         test_data = self.builtin_class(root=self.feddata['rawdata_path'], download=True, train=False, transform=self.transform, **self.feddata['additional_option'])
+        test_data = self.TaskDataset(test_data, list(range(len(test_data))), None, running_time_option['pin_memory'])
         # rearrange data for server
         server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
         task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}
@@ -59,7 +73,7 @@ class BuiltinClassPipe(BasicTaskPipe):
         local_perturbation = self.feddata['local_perturbation'] if 'local_perturbation' in self.feddata.keys() else [None for _ in self.feddata['client_names']]
         for cid, cname in enumerate(self.feddata['client_names']):
             cpert = None if  local_perturbation[cid] is None else [torch.tensor(t) for t in local_perturbation[cid]]
-            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert)
+            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert, running_time_option['pin_memory'])
             cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
             if running_time_option['train_holdout']>0 and running_time_option['local_test']:
                 cdata_valid, cdata_test = self.split_dataset(cdata_valid, 0.5)
@@ -76,9 +90,10 @@ class GeneralCalculator(BasicTaskCalculator):
 
     def compute_loss(self, model, data):
         """
-        :param model: the model to train
-        :param data: the training dataset
-        :return: dict of train-one-step's result, which should at least contains the key 'loss'
+        Args:
+            model: the model to train
+            data: the training dataset
+        Returns: dict of train-one-step's result, which should at least contains the key 'loss'
         """
         tdata = self.to_device(data)
         outputs = model(tdata[0])
@@ -89,10 +104,12 @@ class GeneralCalculator(BasicTaskCalculator):
     def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
         """
         Metric = [mean_accuracy, mean_loss]
-        :param model:
-        :param dataset:
-        :param batch_size:
-        :return: [mean_accuracy, mean_loss]
+
+        Args:
+            model:
+            dataset:
+            batch_size:
+        Returns: [mean_accuracy, mean_loss]
         """
         model.eval()
         if batch_size==-1:batch_size=len(dataset)

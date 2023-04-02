@@ -201,9 +201,10 @@ class TaskCalculator(BasicTaskCalculator):
 
     def compute_loss(self, model, data):
         """
-        :param model: the model to train
-        :param data: the training dataset
-        :return: dict of train-one-step's result, which should at least contains the key 'loss'
+        Args:
+            model: the model to train
+            data: the training dataset
+        Returns: dict of train-one-step's result, which should at least contains the key 'loss'
         """
         tdata = self.to_device(data)
         outputs = model(tdata[0])
@@ -214,10 +215,11 @@ class TaskCalculator(BasicTaskCalculator):
     def test(self, model, dataset, batch_size=64, num_workers=0):
         """
         Metric = [mean_accuracy, mean_loss]
-        :param model:
-        :param dataset:
-        :param batch_size:
-        :return: [mean_accuracy, mean_loss]
+        Args:
+            model:
+            dataset:
+            batch_size:
+        Returns: [mean_accuracy, mean_loss]
         """
         model.eval()
         if batch_size==-1:batch_size=len(dataset)

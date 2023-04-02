@@ -89,9 +89,9 @@ class ActiveParty(PassiveParty):
         """
         The whole simulating communication procedure with the selected clients.
         This part supports for simulating the client dropping out.
-        :param
+        Args:
             selected_clients: the clients to communicate with
-        :return
+        Returns:
             :the unpacked response from clients that is created ny self.unpack()
         """
         packages_received_from_clients = []
@@ -128,9 +128,9 @@ class ActiveParty(PassiveParty):
     def unpack(self, packages_received_from_clients):
         """
         Unpack the information from the received packages. Return models and losses as default.
-        :param
+        Args:
             packages_received_from_clients (list of dict):
-        :return:
+        Returns::
             res (dict): collections.defaultdict that contains several lists of the clients' reply
         """
         if len(packages_received_from_clients)==0: return collections.defaultdict(list)
@@ -186,7 +186,7 @@ class ActiveParty(PassiveParty):
     def get_batch_data(self):
         """
         Get the batch of data
-        :return:
+        Returns::
             a batch of data
         """
         try:

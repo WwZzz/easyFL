@@ -65,8 +65,9 @@ class AbstractTaskCalculator(metaclass=ABCMeta):
 class BasicTaskGenerator(AbstractTaskGenerator):
     def __init__(self, benchmark, rawdata_path):
         """
-        :param benchmark: the name of the ML task to be converted
-        :param rawdata_path: the dictionary of the original dataset
+        Args:
+            benchmark: the name of the ML task to be converted
+            rawdata_path: the dictionary of the original dataset
         """
         # basic attribution
         self.benchmark = benchmark
