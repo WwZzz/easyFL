@@ -1,4 +1,4 @@
-pytorch
+torch
 torchvision
 scipy
 matplotlib
