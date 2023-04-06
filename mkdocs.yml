@@ -2,7 +2,14 @@ site_name: "FLGo"
 
 nav:
   - "Get Started": getting_started.md
-  - "Overview": overview.md
+  - "Overview":
+    - Overview/index.md
+    - Architecture:
+      - Overview/Architecture/index.md
+      - Benchmark: Overview/Architecture/benchmark.md
+      - Algorithm: Overview/Architecture/algorithm.md
+      - Experiment: Overview/Architecture/experiment.md
+      - Simulator: Overview/Architecture/simulator.md
   - "Docs":
     - Docs/FLGo.md
     - flgo.algorithm: 

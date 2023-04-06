@@ -1,5 +1,3 @@
-## Architecture
-
 ## Algorithm Integration
 We have already implemented 10+ SOTA algorithms in recent years' top tiers conferences and tiers.
 
@@ -20,16 +18,48 @@ We have already implemented 10+ SOTA algorithms in recent years' top tiers confe
 
 
 ## Benchmark Gallary
-
-## Client-State Machine & Simulator
+| Benchmark   |Type| Scene    | Task                                     |
+|----------|---|----------------|------------------------------------------|
+| CIFAR100 | image| horizontal | classification || 
+| CIFAR10  | image| horizontal | classification || 
+| CiteSeer | graph | horizontal | classification || 
+| Cora  |  graph | horizontal | classification || 
+| PubMed  | graph | horizontal | classification || 
+| MNIST  | image| horizontal | classification || 
+| EMNIST  | image| horizontal | classification ||
+| FEMINIST | image| horizontal | classification ||  
+| FashionMINIST  | image| horizontal | classification || 
+| ENZYMES  | graph| horizontal | classification || 
+| Reddit  | text | horizontal | classification || 
+| Sentiment140  | text| horizontal | classification || 
+| MUTAG  | graph | horizontal | classification || 
+| Shakespeare  | text | horizontal | classification || 
+| Synthetic  | table| horizontal | classification || 
 
 ## Async/Sync Supported
+We set a virtual global clock and a client-state machine to simulate a real-world scenario for comparison on asynchronous
+ and synchronous strategies. Here we provide a comprehensive example to help understand the difference 
+between the two strategies in FLGo.
+
+![async_sync](../img/overview_flgo_async.png)
+For synchronous algorithms, the server would wait for the slowest clients. 
+In round 1,the server select a subset of idle clients (i.e. client i,u,v) 
+to join in training and the slowest client v dominates the duration of this 
+round (i.e. four time units). If there is anyone suffering from 
+training failure (i.e. being dropped out), the duration of the current round 
+should be the longest time that the server will wait for it (e.g. round 2 takes 
+the maximum waiting time of six units to wait for response from client v). 
+
+For asynchronous algorithms, the server usually periodically samples the idle 
+clients to update models, where the length of the period is set as two time 
+units in our example. After sampling the currently idle clients, the server will 
+immediately checks whether there are packages currently returned from clients 
+(e.g. the server selects client j and receives the package from client k at time 13). 
 
 ## Experimental Tools
+For experimental purposes 
 
 ## Automatical Tuning
-
-## Comprehensive Tutorials
 
 ## Multi-Scene (Horizontal and Vertical)
 
