@@ -5,6 +5,7 @@ import torch.multiprocessing as mp
 
 class PassiveParty(BasicParty):
     def __init__(self, option):
+        super().__init__()
         self.option = option
         self.actions = {0: self.forward, 1:self.backward, 2:self.forward_test}
         self.id = None
@@ -59,6 +60,7 @@ class PassiveParty(BasicParty):
 
 class ActiveParty(PassiveParty):
     def __init__(self, option):
+        super().__init__(option)
         self.actions = {0: self.forward, 1: self.backward,2:self.forward_test}
         self.device = torch.device('cpu') if option['server_with_cpu'] else self.gv.apply_for_device()
         self.calculator = self.gv.TaskCalculator(self.device, optimizer_name = option['optimizer'])

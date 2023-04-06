@@ -2,14 +2,20 @@ import importlib
 import shutil
 from abc import ABCMeta, abstractmethod
 import random
+import os
+try:
+    import ujson as json
+except:
+    import json
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import torch
 from torch.utils.data import Dataset
-import json
 
 class AbstractTaskGenerator(metaclass=ABCMeta):
+    r"""
+    Abstract Task Generator
+    """
     @abstractmethod
     def load_data(self, *args, **kwarg):
         """Load the original data into memory that can be partitioned"""
@@ -30,6 +36,9 @@ class AbstractTaskGenerator(metaclass=ABCMeta):
 
 
 class AbstractTaskPipe(metaclass=ABCMeta):
+    r"""
+    Abstract Task Pipe
+    """
     @abstractmethod
     def save_task(self, *args, **kwargs):
         """Save a federated task created by TaskGenerator as a static file on the disk"""
@@ -42,32 +51,44 @@ class AbstractTaskPipe(metaclass=ABCMeta):
 
 
 class AbstractTaskCalculator(metaclass=ABCMeta):
+    r"""
+    Abstract Task Calculator
+    """
     @abstractmethod
     def to_device(self, *args, **kwargs):
+        """Put the data into the gpu device"""
         pass
 
     @abstractmethod
     def get_dataloader(self, *args, **kwargs):
+        """Return a data loader that splits the input data into batches"""
         pass
 
     @abstractmethod
     def test(self, model, data, *args, **kwargs):
+        """Evaluate the model on the data"""
         pass
 
     @abstractmethod
     def compute_loss(self, model, data, *args, **kwargs):
+        """Compute the loss of the model on the data to complete the forward process"""
         pass
 
     @abstractmethod
     def get_optimizer(self, model, *args, **kwargs):
+        """Return the optimizer on the parameters of the model"""
         pass
 
 class BasicTaskGenerator(AbstractTaskGenerator):
-    def __init__(self, benchmark, rawdata_path):
+    r"""
+        Load the original dataset and partition the
+        original dataset into local data
+    """
+    def __init__(self, benchmark:str, rawdata_path:str):
         """
         Args:
-            benchmark: the name of the ML task to be converted
-            rawdata_path: the dictionary of the original dataset
+            benchmark (str): the name of the federated task
+            rawdata_path (str): the dictionary of the original dataset
         """
         # basic attribution
         self.benchmark = benchmark
@@ -78,6 +99,9 @@ class BasicTaskGenerator(AbstractTaskGenerator):
         self.test_data = None
         self.task_name = None
         self.para = {}
+        self.additional_option = {}
+        self.train_additional_option = {}
+        self.test_additional_option = {}
 
     def generate(self, *args, **kwarg):
         """The whole process to generate federated task. """
@@ -94,10 +118,11 @@ class BasicTaskGenerator(AbstractTaskGenerator):
         raise NotImplementedError
 
     def partition(self, *args, **kwargs):
-        """Partition the data"""
+        """Partition the data into different local datasets"""
         return
 
     def register_partitioner(self, partitioner=None):
+        """Register the partitioner as self's data partitioner"""
         self.partitioner = partitioner
 
     def init_para(self, para_list=None):
@@ -114,30 +139,54 @@ class BasicTaskGenerator(AbstractTaskGenerator):
         return
 
     def get_task_name(self):
+        r"""
+        Create the default name of the task
+        """
         if not hasattr(self.partitioner, 'num_parties') and hasattr(self.partitioner, 'num_clients'):
             self.partitioner.num_parties = self.partitioner.num_clients
         else: self.partitioner.num_parties = 'unknown'
         return '_'.join(['B-' + self.benchmark, 'P-' + str(self.partitioner), 'N-' + str(self.partitioner.num_parties)])
 
 class BasicTaskPipe(AbstractTaskPipe):
+    r"""
+    Store the partition information of TaskGenerator into the disk
+    when generating federated tasks.
+
+    Load the original dataset and the partition information to
+    create the federated scenario when optimizing models
+    """
     TaskDataset = None
 
     def __init__(self, task_path):
+        r"""
+        Args:
+            task_path (str): the path of the federated task
+        """
         self.task_path = task_path
         if os.path.exists(os.path.join(self.task_path, 'data.json')):
             with open(os.path.join(self.task_path, 'data.json'), 'r') as inf:
                 self.feddata = json.load(inf)
 
     def save_task(self, generator):
-        # Construct `feddata` and store it into the disk for recover the partitioned datasets again from it
+        """Construct `feddata` and store it into the disk for recovering
+        the partitioned datasets again from it"""
         raise NotImplementedError
 
     def load_data(self, running_time_option) -> dict:
-        # Load the data and process it to the format that can be distributed to different objects
+        """Load the data and process it to the format that can be distributed
+        to different objects"""
         raise NotImplementedError
 
     def generate_objects(self, running_time_option, algorithm, scene='horizontal') -> list:
-        # Generate the virtual objects (i.e. coordinators and participants) in the FL system
+        r"""
+        Generate the virtual objects (i.e. coordinators and participants)
+        in the FL system
+
+        Args:
+            running_time_option (dict): the option (i.e. configuration)
+            algorithm (module|class): algorithm
+            scene (str): horizontal or vertical
+        """
         if scene=='horizontal':
             # init clients
             Client = algorithm.Client
@@ -166,10 +215,13 @@ class BasicTaskPipe(AbstractTaskPipe):
                 obj.name = pname
                 objects.append(obj)
             for party in objects:
-                party.register_parties(objects)
+                party.register_objects(objects)
         return objects
 
     def save_info(self, generator):
+        r"""
+        Save the basic information of the generated task into the disk
+        """
         info = {'benchmark': '.'.join(generator.__module__.split('.')[:-1])}
         info['scene'] = generator.scene if hasattr(generator, 'scene') else 'unknown'
         info['num_clients'] = generator.num_clients if hasattr(generator, 'num_clients') else (generator.num_parties if hasattr(self, 'num_parties') else 'unknown')
@@ -177,29 +229,52 @@ class BasicTaskPipe(AbstractTaskPipe):
             json.dump(info, outf)
 
     def load_task(self, running_time_option, *args, **kwargs):
+        r"""
+        Load the generated task into disk and create objects in the federated
+        scenario.
+        """
         task_data = self.load_data(running_time_option)
         objects = self.generate_objects(running_time_option)
         self.distribute(task_data, objects)
         return objects
 
     def distribute(self, task_data: dict, objects: list):
+        r"""
+        Distribute the loaded local datasets to different objects in
+        the federated scenario
+        """
         for ob in objects:
             ob_data = task_data[ob.name]
             for data_name, data in ob_data.items():
                 ob.set_data(data, data_name)
 
     def split_dataset(self, dataset, p=0.0):
+        r"""
+        Split the dataset into two parts.
+
+        Args:
+            dataset (torch.utils.data.Dataset): the dataset to be splitted
+            p (float): the ratio of the splitting
+
+        Returns:
+            The two split parts
+        """
         if p == 0: return dataset, None
         s1 = int(len(dataset) * p)
         s2 = len(dataset) - s1
         return torch.utils.data.random_split(dataset, [s2, s1])
 
     def task_exists(self):
-        """Check whether the task already exists."""
+        r"""
+        Check whether the task already exists.
+
+        Returns:
+            True if the task already exists
+        """
         return os.path.exists(self.task_path)
 
     def remove_task(self):
-        "remove the task"
+        r"""Remove this task"""
         if self.task_exists():
             shutil.rmtree(self.task_path)
         return
@@ -213,15 +288,29 @@ class BasicTaskPipe(AbstractTaskPipe):
         else:
             raise FileExistsError("federated task {} already exists!".format(self.task_path))
 
-    def save_figure(self):
-        plt.savefig(os.path.join(self.task_path, 'res.png'))
-
     def gen_client_names(self, num_clients):
+        r"""
+        Generate the names of clients
+
+        Returns:
+            a list of strings
+        """
         return [('Client{:0>' + str(len(str(num_clients))) + 'd}').format(i) for i in range(num_clients)]
 
 
 class BasicTaskCalculator(AbstractTaskCalculator):
+    r"""
+    Support task-specific computation when optimizing models, such
+    as putting data into device, computing loss, evaluating models,
+    and creating the data loader
+    """
+
     def __init__(self, device, optimizer_name='sgd'):
+        r"""
+        Args:
+            device (torch.device): device
+            optimizer_name (str): the name of the optimizer
+        """
         self.device = device
         self.optimizer_name = optimizer_name
         self.criterion = None
@@ -240,6 +329,18 @@ class BasicTaskCalculator(AbstractTaskCalculator):
         return NotImplementedError
 
     def get_optimizer(self, model=None, lr=0.1, weight_decay=0, momentum=0):
+        r"""
+        Create optimizer of the model parameters
+
+        Args:
+            model (torch.nn.Module): model
+            lr (float): learning rate
+            weight_decay (float): the weight_decay coefficient
+            momentum (float): the momentum coefficient
+
+        Returns:
+            the optimizer
+        """
         OPTIM = getattr(importlib.import_module('torch.optim'), self.optimizer_name)
         filter_fn = filter(lambda p: p.requires_grad, model.parameters())
         if self.optimizer_name.lower() == 'sgd':

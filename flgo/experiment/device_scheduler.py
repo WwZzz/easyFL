@@ -1,3 +1,10 @@
+r"""
+This module is for scheduling GPU devices to different runners. There are
+three pre-defined Schedulers: BasicScheduler, AutoScheduler, and RandomScheduler.
+
+When the number of runners is large and GPU memory is limited, we recommend to use
+AutoScheduler. Otherwise, BasicScheduler and RandomScheduler are both good choices.
+"""
 import copy
 from abc import ABCMeta, abstractmethod
 import random
@@ -8,38 +15,87 @@ try:
     import pynvml
 except ModuleNotFoundError:
     pass
+
 class AbstractScheduler(metaclass=ABCMeta):
+    r"""Abstract Scheduler"""
     @abstractmethod
     def get_available_device(self, *args, **kwargs):
+        r"""Search for a currently available device and return it"""
         pass
 
 class BasicScheduler(AbstractScheduler):
+    r"""
+    Basic gpu scheduler. Each device will be always considered available
+    and will be returned in turn.
+    
+    Args:
+        devices (list): a list of the index numbers of GPUs
+    """
     def __init__(self, devices:list, *args, **kwargs):
         self.devices = devices if devices != [] else [-1]
         self.dev_index = 0
         self.process_set = set()
 
     def get_available_device(self, *args, **kwargs):
+        """Return the next device"""
         self.dev_index = (self.dev_index+1)%len(self.devices)
         return self.devices[self.dev_index]
 
     def set_devices(self, devices:list):
+        r"""
+        Reset all the devices
+
+        Args:
+            devices (list): a list of the index numbers of GPUs
+        """
         self.devices=[-1] if devices==[] else devices
         self.dev_index = self.dev_index%len(self.devices)
 
     def add_process(self, pid=None):
+        r"""
+        Record the running process that uses the gpu from the scheduler
+
+        Args:
+            pid (int): the process id
+        """
         if pid is not None:
             self.process_set.add(pid)
 
     def remove_process(self, pid=None):
+        r"""
+        Remove the running process that uses the gpu from the scheduler
+
+        Args:
+            pid (int): the process id
+        """
         if pid is not None and pid in self.process_set:
             self.process_set.remove(pid)
 
 class RandomScheduler(BasicScheduler):
+    """Random GPU Scheduler"""
     def get_available_device(self, *args, **kwargs):
+        """Return a random device"""
         return random.choice(self.devices)
 
 class AutoScheduler(BasicScheduler):
+    r"""
+    Automatically schedule GPUs by dynamically esimating the GPU memory occupation
+    for all the runners and checking availability according to real-time memory information.
+
+    Args:
+        devices (list): a list of the index numbers of GPUs
+        put_interval (int, optional): the minimal time interval (i.e. seconds) to allocate the same device
+        mean_memory_occupated (int, optional): the initial mean memory occupation (i.e. MB) for all the runners
+        available_interval (int, optional): a gpu will be returned only if it is kept available for a period longer than this term
+        dynamic_memory_occupated (bool, optional): whether to dynamically estimate the memory occupation
+        dynamic_condition (str): 'mean' or 'max'
+
+    Example::
+        >>> import flgo.experiment.device_scheduler
+        >>> sc = flgo.experiment.device_scheduler.AutoScheduler([0,1])
+        >>> import flgo
+        >>> flgo.multi_init_and_run(runner_args, scheduler=sc)
+    """
     def __init__(self, devices:list, put_interval = 5, mean_memory_occupated = 1000, available_interval=5, dynamic_memory_occupated=True, dynamic_condition='mean'):
         super(AutoScheduler, self).__init__(devices)
         pynvml.nvmlInit()

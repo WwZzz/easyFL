@@ -12,5 +12,5 @@ class TaskGenerator(BuiltinClassGenerator):
         super(TaskGenerator, self).__init__('mnist_classification', rawdata_path, builtin_class, transforms)
 
 class TaskPipe(BuiltinClassPipe):
-    def __init__(self, task_name):
-        super(TaskPipe, self).__init__(task_name, builtin_class, transforms)
+    def __init__(self, task_path):
+        super(TaskPipe, self).__init__(task_path, builtin_class, transforms)

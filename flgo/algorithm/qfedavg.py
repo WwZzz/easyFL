@@ -2,6 +2,7 @@ import flgo.algorithm.fedbase as fedbase
 import flgo.utils.fmodule as fmodule
 import copy
 
+
 class Server(fedbase.BasicServer):
     def initialize(self, *args, **kwargs):
         self.init_algo_para({'q': 1.0})
@@ -11,6 +12,7 @@ class Server(fedbase.BasicServer):
         res = self.communicate(self.selected_clients)
         self.model = self.model - fmodule._model_sum(res['dk']) / sum(res['hk'])
         return len(self.received_clients) > 0
+
 
 class Client(fedbase.BasicClient):
     def unpack(self, package):

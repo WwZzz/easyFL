@@ -11,5 +11,5 @@ class TaskGenerator(BuiltinClassGenerator):
         super(TaskGenerator, self).__init__('cifar10_classification', rawdata_path, torchvision.datasets.CIFAR10, transforms)
 
 class TaskPipe(BuiltinClassPipe):
-    def __init__(self, task_name):
-        super(TaskPipe, self).__init__(task_name, torchvision.datasets.CIFAR10, transforms)
+    def __init__(self, task_path):
+        super(TaskPipe, self).__init__(task_path, torchvision.datasets.CIFAR10, transforms)

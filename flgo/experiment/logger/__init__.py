@@ -2137,6 +2137,9 @@ class BasicLogger(Logger):
         self.output = collections.defaultdict(list)
         self.output['option'] = option
         self.current_round = -1
+        self.objects = []
+        self.coordinator = None
+        self.participants = []
         self.temp = "{:<30s}{:.4f}"
         self.time_costs = []
         self.time_buf = {}
@@ -2316,12 +2319,12 @@ class BasicLogger(Logger):
         # calculate weighted averaging of metrics on training datasets across participants
         local_data_vols = [c.datavol for c in self.participants]
         total_data_vol = sum(local_data_vols)
-        train_metrics = self.coordinator.global_test('train')
+        train_metrics = self.coordinator.global_test(flag='train')
         for met_name, met_val in train_metrics.items():
             self.output['train_' + met_name + '_dist'].append(met_val)
             self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(local_data_vols, met_val)]) / total_data_vol)
         # calculate weighted averaging and other statistics of metrics on validation datasets across clients
-        valid_metrics = self.coordinator.global_test('valid')
+        valid_metrics = self.coordinator.global_test(flag='valid')
         for met_name, met_val in valid_metrics.items():
             self.output['valid_'+met_name+'_dist'].append(met_val)
             self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(local_data_vols, met_val)]) / total_data_vol)

@@ -6,19 +6,24 @@ import torch
 import heapq
 
 class PriorityQueue:
+    r"""Priority Queue"""
     def __init__(self):
         self.queue = []
 
     def size(self):
+        r"""The size of the queue"""
         return len(self.queue)
 
     def empty(self):
+        r"""Return whether the queue is empty"""
         return len(self.queue)==0
 
     def put(self, item):
+        r"""Put item into the queue"""
         heapq.heappush(self.queue, item)
 
     def get(self):
+        r"""Get item from the queue"""
         return heapq.heappop(self.queue)
 
 class AbstractSimulator(metaclass=ABCMeta):
@@ -31,11 +36,21 @@ random_seed_gen = None
 random_module = None
 
 def seed_generator(seed=0):
+    """Return an integer as the seed"""
     while True:
         yield seed+1
         seed+=1
 
 def size_of_package(package):
+    r"""
+    Compute the size of the package
+
+    Args:
+        package (dict): the pacakge
+
+    Returns:
+        size (int): the size of the package
+    """
     size = 0
     for v in package.values():
         if type(v) is torch.Tensor:
@@ -45,7 +60,15 @@ def size_of_package(package):
     return size
 
 class ElemClock:
+    r"""Simulate the clock by the timestamp of each Element"""
     class Elem:
+        r"""
+        Element with a timestamp
+
+        Args:
+            x: element
+            time (int): the timestamp
+        """
         def __init__(self, x, time):
             self.x = x
             self.time = time
@@ -62,6 +85,12 @@ class ElemClock:
         self.simulator = None
 
     def step(self, delta_t=1):
+        r"""
+        Step delta_t units of the virtual time
+
+        Args:
+            delta_t (int): the delta of time
+        """
         if delta_t < 0: raise RuntimeError("Cannot inverse time of system_simulator.base.clock.")
         if self.simulator is not None:
             for t in range(delta_t):
@@ -69,17 +98,45 @@ class ElemClock:
         self.time += delta_t
 
     def set_time(self, t):
+        r"""
+        Set time
+
+        Args:
+            t (int): time
+        """
         if t < self.time: raise RuntimeError("Cannot inverse time of system_simulator.base.clock.")
         self.time = t
 
     def put(self, x, time):
+        r"""
+        Put an element into the time queue with timestamp
+
+        Args:
+            x: element
+            time (int): the timestamp
+        """
         self.q.put(self.Elem(x, time))
 
     def get(self):
+        r"""
+        Get an element from the queue
+
+        Returns:
+            the element in the nearest coming time
+        """
         if self.q.empty(): return None
         return self.q.get().x
 
     def get_until(self, t):
+        r"""
+        Get elements from the queue until time t
+
+        Args:
+            t (int): time
+
+        Returns:
+            a list of elements whose timestamps is no larger than t
+        """
         res = []
         while not self.empty():
             elem = self.q.get()
@@ -91,9 +148,21 @@ class ElemClock:
         return res
 
     def get_sofar(self):
+        r"""
+        Get elements from the queue until now
+
+        Returns:
+            a list of elements whose timestamps is no larger than the current time
+        """
         return self.get_until(self.current_time)
 
     def gets(self):
+        r"""
+        Get all the elements in the queue
+
+        Returns:
+            a list of elements in the queue
+        """
         if self.empty(): return []
         res = []
         while not self.empty(): res.append(self.q.get())
@@ -101,27 +170,45 @@ class ElemClock:
         return res
 
     def clear(self):
+        r"""
+        Clear the queue
+        """
         while not self.empty():
             self.get()
 
     def conditionally_clear(self, f):
+        r"""
+        Clear elements if f(element) is False
+
+        Args:
+            f (function): a function that receives element and returns bool variable
+        """
         buf = []
         while not self.empty(): buf.append(self.q.get())
         for elem in buf:
-            if not f(elem.x): self.q.put_no(elem)
+            if not f(elem.x): self.q.put(elem)
         return
 
     def empty(self):
+        r"""Return whether the queue is empty"""
         return self.q.empty()
 
     @ property
     def current_time(self):
+        r"""Return the current time"""
         return self.time
 
     def register_simulator(self, simulator):
+        r"""Set self.simulator=simulator"""
         self.simulator = simulator
 
 class BasicSimulator(AbstractSimulator):
+    r"""
+    Simulate the system heterogeneity with the client state machine.
+
+    Args:
+        object (list): a list of objects in the federated scenario
+    """
     _STATE = ['offline', 'idle', 'selected', 'working', 'dropped']
     _VAR_NAMES = ['prob_available', 'prob_unavailable', 'prob_drop', 'working_amount', 'latency']
     def __init__(self, objects, *args, **kwargs):
@@ -149,9 +236,28 @@ class BasicSimulator(AbstractSimulator):
         self.state_counter = [{'dropped_counter': 0, 'latency_counter': 0, } for _ in self.clients]
 
     def get_client_with_state(self, state='idle'):
+        r"""
+        Get clients according to their states.
+
+        Args:
+            state (str): the state in ['offline', 'idle', 'selected', 'working', 'dropped']
+
+        Returns:
+            a list of clients whose states are state
+        """
         return [cid for cid, cstate in enumerate(self.client_states) if cstate == state]
 
     def set_client_state(self, client_ids, state):
+        r"""
+        Set the states of clients in client_ids to the state
+
+        Args:
+            client_ids (list): a list of clients' ids
+            state (str): the state in ['offline', 'idle', 'selected', 'working', 'dropped']
+
+        Returns:
+            a list of clients whose states are state
+        """
         if state not in self._STATE: raise RuntimeError('{} not in the default state'.format(state))
         if type(client_ids) is not list: client_ids = [client_ids]
         for cid in client_ids: self.client_states[cid] = state
@@ -163,18 +269,21 @@ class BasicSimulator(AbstractSimulator):
             self.reset_client_counter(client_ids)
 
     def set_client_latency_counter(self, client_ids = []):
+        r"""Set the latency_counter"""
         if type(client_ids) is not list: client_ids = [client_ids]
         for cid in client_ids:
             self.state_counter[cid]['dropped_counter'] = 0
             self.state_counter[cid]['latency_counter'] = self.variables[cid]['latency']
 
     def set_client_dropped_counter(self, client_ids = []):
+        r"""Set the dropped_counter"""
         if type(client_ids) is not list: client_ids = [client_ids]
         for cid in client_ids:
             self.state_counter[cid]['latency_counter'] = 0
             self.state_counter[cid]['dropped_counter'] = self.server.get_tolerance_for_latency()
 
     def reset_client_counter(self, client_ids = []):
+        r"""Reset the clients' counter"""
         if type(client_ids) is not list: client_ids = [client_ids]
         for cid in client_ids:
             self.state_counter[cid]['dropped_counter'] = self.state_counter[cid]['latency_counter'] = 0
@@ -182,30 +291,53 @@ class BasicSimulator(AbstractSimulator):
 
     @property
     def idle_clients(self):
+        """Return ideal clients"""
         return self.get_client_with_state('idle')
 
     @property
     def working_clients(self):
+        """Return working clients"""
         return self.get_client_with_state('working')
 
     @property
     def offline_clients(self):
+        """Return offline clients"""
         return self.get_client_with_state('offline')
 
     @property
     def selected_clients(self):
+        """Return the selected clients"""
         return self.get_client_with_state('selected')
 
     @property
     def dropped_clients(self):
+        """Return the dropped clients"""
         return self.get_client_with_state('dropped')
 
     def get_variable(self, client_ids, varname):
+        r"""
+        Get the simulator-private variables of the clients in client_ids according to varname
+
+        Args:
+            client_ids (list): a list of clients' ids
+            varname (str): the name of the simulator-private variable
+
+        Returns:
+            the simulator-private variables of the clients in client_ids
+        """
         if len(self.variables) ==0: return None
         if type(client_ids) is not list: client_ids = [client_ids]
         return [self.variables[cid][varname] if varname in self.variables[cid].keys() else None for cid in client_ids]
 
     def set_variable(self, client_ids, varname, values):
+        r"""
+        Set the simulator-private variables of the clients in client_ids to values
+
+        Args:
+            client_ids (list): a list of clients' ids
+            varname (str): the name of the simulator-private variable
+            values (list): a list of things
+        """
         if type(client_ids) is not list: client_ids = [client_ids]
         if type(values) is not list: values = [values]
         assert len(client_ids) == len(values)
@@ -214,18 +346,23 @@ class BasicSimulator(AbstractSimulator):
             setattr(self.clients[cid], '_'+varname, v)
 
     def update_client_availability(self, *args, **kwargs):
+        """API to update client availability every time unit"""
         return
 
     def update_client_connectivity(self, client_ids, *args, **kwargs):
+        """API to update client connectivity every time unit"""
         return
 
     def update_client_completeness(self, client_ids, *args, **kwargs):
+        """API to update client completeness every time unit"""
         return
 
     def update_client_responsiveness(self, client_ids, *args, **kwargs):
+        """API to update client responsiveness every time unit"""
         return
 
     def flush(self):
+        """Flush the client state machine as time goes by"""
         # +++++++++++++++++++ availability +++++++++++++++++++++
         # change self.variables[cid]['prob_available'] and self.variables[cid]['prob_unavailable'] for each client `cid`
         self.update_client_availability()
@@ -271,6 +408,17 @@ class BasicSimulator(AbstractSimulator):
 
 # sampling phase
 def with_availability(sample):
+    r"""
+    The decorator for sampling with client availability
+
+    Example::
+        >>> import flgo.algorithm.fedbase
+        >>> import flgo.system_simulator.base as ss
+        >>> class Server(flgo.algorithm.fedbase.BasicServer):
+        ...     @ss.with_availability
+        ...     def sample(self):
+        ...         ...
+    """
     @functools.wraps(sample)
     def sample_with_availability(self):
         available_clients = self.gv.simulator.idle_clients
@@ -293,6 +441,17 @@ def with_availability(sample):
 
 # communicating phase
 def with_dropout(communicate):
+    r"""
+    The decorator for communicating to simulate the scene where clients may drop out
+
+    Example::
+        >>> import flgo.algorithm.fedbase
+        >>> import flgo.system_simulator.base as ss
+        >>> class Server(flgo.algorithm.fedbase.BasicServer):
+        ...     @ss.with_dropout
+        ...     def communicate(self,...):
+        ...         ...
+    """
     @functools.wraps(communicate)
     def communicate_with_dropout(self, selected_clients, mtype=0, asynchronous=False):
         if len(selected_clients) > 0:
@@ -307,14 +466,17 @@ def with_dropout(communicate):
 
 # communicating phase
 def with_latency(communicate_with):
-    # if 'model' in pkgs[0].keys():
-    #     model_sizes = [pkg['model'].count_parameters(output=False) for pkg in pkgs]
-    # else:
-    #     model_sizes = [0 for _ in pkgs]
-    # self.gv.simulator.set_variable(selected_clients, '__model_size', model_sizes)
-    # self.gv.simulator.set_variable(selected_clients, '__upload_package_size', [size_of_package(pkg) for pkg in pkgs])
-    # self.gv.simulator.set_variable(selected_clients, '__download_package_size', [size_of_package(self.sending_package_buffer[cid]) for cid in selected_clients])
-    # self.gv.simulator.update_client_responsiveness(selected_clients)
+    r"""
+    The decorator to simulate the scene where there are network latencies during communication
+
+    Example::
+        >>> import flgo.algorithm.fedbase
+        >>> import flgo.system_simulator.base as ss
+        >>> class Server(flgo.algorithm.fedbase.BasicServer):
+        ...     @ss.with_latency
+        ...     def communicate_with(self,...):
+        ...         ...
+    """
     @functools.wraps(communicate_with)
     def delayed_communicate_with(self, target_id, package):
         # Calculate latency for the target client
@@ -341,6 +503,17 @@ def with_latency(communicate_with):
 
 # local training phase
 def with_completeness(train):
+    r"""
+    The decorator to simulate the scene where the clients may upload incomplete model updates
+
+    Example::
+        >>> import flgo.algorithm.fedbase
+        >>> import flgo.system_simulator.base as ss
+        >>> class Client(flgo.algorithm.fedbase.BasicClient):
+        ...     @ss.with_completeness
+        ...     def train(self,...):
+        ...         ...
+    """
     @functools.wraps(train)
     def train_with_incomplete_update(self, model, *args, **kwargs):
         old_num_steps = self.num_steps
@@ -351,6 +524,17 @@ def with_completeness(train):
     return train_with_incomplete_update
 
 def with_clock(communicate):
+    r"""
+    The decorator to simulate the scene where there is a virtual global clock
+
+    Example::
+        >>> import flgo.algorithm.fedbase
+        >>> import flgo.system_simulator.base as ss
+        >>> class Server(flgo.algorithm.fedbase.BasicServer):
+        ...     @ss.with_clock
+        ...     def communicate(self,...):
+        ...         ...
+    """
     def communicate_with_clock(self, selected_clients, mtype=0, asynchronous=False):
         self.gv.simulator.update_client_completeness(selected_clients)
         res = communicate(self, selected_clients, mtype, asynchronous)

@@ -4,11 +4,22 @@ import json
 from flgo.benchmark.toolkits.base import *
 
 class BuiltinClassGenerator(BasicTaskGenerator):
+    r"""
+    Generator for the dataset in torchvision.datasets.
+
+    Args:
+        benchmark (str): the name of the benchmark
+        rawdata_path (str): the path storing the raw data
+        builtin_class (class): class in torchvision.datasets
+        transform (torchvision.transforms.*): the transform
+    """
     def __init__(self, benchmark, rawdata_path, builtin_class, transform=None):
         super(BuiltinClassGenerator, self).__init__(benchmark, rawdata_path)
         self.builtin_class = builtin_class
         self.transform = transform
         self.additional_option = {}
+        self.train_additional_option = {}
+        self.test_additional_option = {}
 
     def load_data(self):
         self.train_data = self.builtin_class(root=self.rawdata_path, download=True, train=True, transform=self.transform)
@@ -19,6 +30,14 @@ class BuiltinClassGenerator(BasicTaskGenerator):
         self.num_clients = len(self.local_datas)
 
 class BuiltinClassPipe(BasicTaskPipe):
+    r"""
+    TaskPipe for the dataset in torchvision.datasets.
+
+    Args:
+        task_path (str): the path of the task
+        builtin_class (class): class in torchvision.datasets
+        transform (torchvision.transforms.*): the transform
+    """
     class TaskDataset(torch.utils.data.Subset):
         def __init__(self, dataset, indices, perturbation=None, pin_memory=False):
             super().__init__(dataset, indices)
@@ -47,14 +66,14 @@ class BuiltinClassPipe(BasicTaskPipe):
                 else:
                     return self.dataset[self.indices[idx]][0] + self.perturbation[self.indices[idx]],  self.dataset[self.indices[idx]][1]
 
-    def __init__(self, task_name, buildin_class, transform=None):
-        super(BuiltinClassPipe, self).__init__(task_name)
+    def __init__(self, task_path, buildin_class, transform=None):
+        super(BuiltinClassPipe, self).__init__(task_path)
         self.builtin_class = buildin_class
         self.transform = transform
 
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
-        feddata = {'client_names': client_names, 'server_data': list(range(len(generator.test_data))),  'rawdata_path': generator.rawdata_path, 'additional_option': generator.additional_option}
+        feddata = {'client_names': client_names, 'server_data': list(range(len(generator.test_data))),  'rawdata_path': generator.rawdata_path, 'additional_option': generator.additional_option, 'train_additional_option':generator.train_additional_option, 'test_additional_option':generator.test_additional_option,}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
         if hasattr(generator.partitioner, 'local_perturbation'): feddata['local_perturbation'] = generator.partitioner.local_perturbation
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
@@ -63,8 +82,19 @@ class BuiltinClassPipe(BasicTaskPipe):
 
     def load_data(self, running_time_option) -> dict:
         # load the datasets
-        train_data = self.builtin_class(root=self.feddata['rawdata_path'], download=True, train=True, transform=self.transform, **self.feddata['additional_option'])
-        test_data = self.builtin_class(root=self.feddata['rawdata_path'], download=True, train=False, transform=self.transform, **self.feddata['additional_option'])
+        train_default_init_para = {'root': self.feddata['rawdata_path'], 'download':True, 'train':True, 'transform':self.transform}
+        test_default_init_para = {'root': self.feddata['rawdata_path'], 'download':True, 'train':False, 'transform':self.transform}
+        if 'additional_option' in self.feddata.keys():
+            train_default_init_para.update(self.feddata['additional_option'])
+            test_default_init_para.update(self.feddata['additional_option'])
+        if 'train_additional_option' in self.feddata.keys(): train_default_init_para.update(self.feddata['train_additional_option'])
+        if 'test_additional_option' in self.feddata.keys(): test_default_init_para.update(self.feddata['test_additional_option'])
+        train_pop_key = [k for k in train_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+        test_pop_key = [k for k in test_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+        for k in train_pop_key: train_default_init_para.pop(k)
+        for k in test_pop_key: test_default_init_para.pop(k)
+        train_data = self.builtin_class(**train_default_init_para)
+        test_data = self.builtin_class(**test_default_init_para)
         test_data = self.TaskDataset(test_data, list(range(len(test_data))), None, running_time_option['pin_memory'])
         # rearrange data for server
         server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
@@ -83,6 +113,13 @@ class BuiltinClassPipe(BasicTaskPipe):
         return task_data
 
 class GeneralCalculator(BasicTaskCalculator):
+    r"""
+    Calculator for the dataset in torchvision.datasets.
+
+    Args:
+        device (torch.device): device
+        optimizer_name (str): the name of the optimizer
+    """
     def __init__(self, device, optimizer_name='sgd'):
         super(GeneralCalculator, self).__init__(device, optimizer_name)
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -133,15 +170,3 @@ class GeneralCalculator(BasicTaskCalculator):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
         return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last)
-
-class GeneralGenerator(BasicTaskGenerator):
-    def __init__(self, benchmark, rawdata_path):
-        super(GeneralGenerator, self).__init__(benchmark, rawdata_path)
-        return
-
-    def load_data(self):
-        pass
-
-    def partition(self):
-        return self.partitioner(self.train_data)
-

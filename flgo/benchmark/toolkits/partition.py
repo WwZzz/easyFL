@@ -36,11 +36,21 @@ class BasicPartitioner(AbstractPartitioner):
         return
 
     def register_generator(self, generator):
-        """Register the generator as an attribute that is accessible"""
+        r"""Register the generator as an self's attribute"""
         self.generator = generator
 
     def data_imbalance_generator(self, num_clients, datasize, imbalance=0):
-        """Split a data size into several parts"""
+        r"""
+        Split the data size into several parts
+
+        Args:
+            num_clients (int): the number of clients
+            datasize (int): the total data size
+            imbalance (float): the degree of data imbalance across clients
+
+        Returns:
+            a list of integer numbers that represents local data sizes
+        """
         if imbalance == 0:
             samples_per_client = [int(datasize / num_clients) for _ in range(num_clients)]
             for _ in range(datasize % num_clients): samples_per_client[_] += 1

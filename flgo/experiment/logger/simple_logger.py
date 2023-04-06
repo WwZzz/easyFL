@@ -3,6 +3,7 @@ import numpy as np
 import flgo.system_simulator.base as ss
 
 class SimpleLogger(BasicLogger):
+    r"""Simple Logger. Only evaluating model performance on testing dataset and validation dataset."""
     def initialize(self):
         """This method is used to record the stastic variables that won't change across rounds (e.g. local data size)"""
         for c in self.participants:
@@ -15,7 +16,7 @@ class SimpleLogger(BasicLogger):
         test_metric = self.coordinator.test()
         for met_name, met_val in test_metric.items():
             self.output['test_' + met_name].append(met_val)
-        valid_metrics = self.coordinator.global_test('valid')
+        valid_metrics = self.coordinator.global_test(flag='valid')
         local_data_vols = [c.datavol for c in self.participants]
         total_data_vol = sum(local_data_vols)
         for met_name, met_val in valid_metrics.items():

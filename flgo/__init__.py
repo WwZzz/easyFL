@@ -4,6 +4,9 @@ gen_task = gen_task_by_config
 communicator = None
 
 class VirtualCommunicator:
+    """
+    Communicator that simulates the communication phase between any two objects
+    """
     def __init__(self, objects):
         self.objects_map = {obj.id:obj for obj in objects}
         self.objects = objects

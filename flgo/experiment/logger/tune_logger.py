@@ -3,13 +3,10 @@ from flgo.experiment.logger import BasicLogger
 import numpy as np
 
 class TuneLogger(BasicLogger):
-    def __init__(self,  task, option,*args, **kwargs):
-        super().__init__(task, option, *args, **kwargs)
-
     """This logger only records metrics on validation dataset"""
     def log_once(self, *args, **kwargs):
         if self.scene == 'horizontal':
-            valid_metrics = self.coordinator.global_test('valid')
+            valid_metrics = self.coordinator.global_test(flag='valid')
             local_data_vols = [c.datavol for c in self.participants]
             total_data_vol = sum(local_data_vols)
             for met_name, met_val in valid_metrics.items():

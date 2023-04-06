@@ -126,5 +126,5 @@ class TaskGenerator(BuiltinClassGenerator):
         super(TaskGenerator, self).__init__('femnist_classification', rawdata_path, FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
 
 class TaskPipe(BuiltinClassPipe):
-    def __init__(self, task_name):
-        super(TaskPipe, self).__init__(task_name, FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
+    def __init__(self, task_path):
+        super(TaskPipe, self).__init__(task_path, FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(), ]))

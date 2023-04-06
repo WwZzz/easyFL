@@ -1,3 +1,39 @@
+r"""
+This simulator supports for the following system heterogeneity:
+
+availability_modes = {
+    'IDL': ideal_client_availability,
+    'YMF': y_max_first_client_availability,
+    'MDF': more_data_first_client_availability,
+    'LDF': less_data_first_client_availability,
+    'YFF': y_fewer_first_client_availability,
+    'HOMO': homogeneous_client_availability,
+    'LN': lognormal_client_availability,
+    'SLN': sin_lognormal_client_availability,
+    'YC': y_cycle_client_availability,
+}
+
+connectivity_modes = {
+    'IDL': ideal_client_connectivity,
+    'HOMO': homogeneous_client_connectivity,
+}
+
+completeness_modes = {
+    'IDL': ideal_client_completeness,
+    'PDU': part_dynamic_uniform_client_completeness,
+    'FSU': full_static_unifrom_client_completeness,
+    'ADU': arbitrary_dynamic_unifrom_client_completeness,
+    'ASU': arbitrary_static_unifrom_client_completeness,
+}
+
+responsiveness_modes = {
+    'IDL': ideal_client_responsiveness,
+    'LN': lognormal_client_responsiveness,
+    'UNI': uniform_client_responsiveness,
+}
+
+"""
+
 from flgo.system_simulator.base import BasicSimulator
 import random
 import numpy as np

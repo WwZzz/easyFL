@@ -1,16 +1,31 @@
 import collections
+import sys
 import copy
 import multiprocessing
-import signal
 import time
+import itertools
+import argparse
+import importlib
+import random
+import os
+import os.path
+import warnings
+try:
+    import ujson as json
+except:
+    import json
 try:
     from collections import Iterable
 except ImportError:
     from collections.abc import Iterable
+
 import numpy as np
 import torch
-import os.path
-import json
+try:
+    import yaml
+except ModuleNotFoundError:
+    warnings.warn("Module pyyaml is not installed. The configuration cannot be loaded by .yml file.")
+
 import flgo.system_simulator
 import flgo.system_simulator.default_simulator
 import flgo.system_simulator.base
@@ -23,25 +38,17 @@ import flgo.experiment.device_scheduler
 from flgo.system_simulator.base import BasicSimulator
 import flgo.benchmark.toolkits.partition
 import flgo.algorithm
-import itertools
-import argparse
-import importlib
-import random
-import os
-import warnings
-try:
-    import yaml
-except ModuleNotFoundError:
-    warnings.warn("Module pyyaml is not installed. The configuration cannot be loaded by .yml file.")
-import sys
 
-sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available']
-agg_list=['uniform', 'weighted_scale', 'weighted_com']
-optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad']
-default_option_dict = {'pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': -1, 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'momentum': 0, 'weight_decay': 0, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'seed': 0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512, 'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
+
+sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available'] # sampling options for the default sampling method in flgo.algorihtm.fedbase
+agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for the default aggregating method in flgo.algorihtm.fedbase
+optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
+default_option_dict = {'pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': -1, 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'momentum': 0, 'weight_decay': 0, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False,'seed': 0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
 class GlobalVariable:
-    """this class is to create a buffer space for sharing variables across different parties for each runner respectively in a single machine"""
+    """This class is to create a shared space for sharing variables across
+    different parties for each runner"""
+
     def __init__(self):
         self.logger = None
         self.simulator = None
@@ -52,14 +59,24 @@ class GlobalVariable:
         self.crt_dev = 0
 
     def apply_for_device(self):
-        """apply for a new device from currently available ones (i.e. devices in self.dev_list)"""
+        r"""
+        Apply for a new device from currently available ones (i.e. devices in self.dev_list)
+
+        Returns:
+            GPU device (i.e. torch.device)
+        """
         if self.dev_list is None: return None
         dev = self.dev_list[self.crt_dev]
         self.crt_dev = (self.crt_dev + 1) % len(self.dev_list)
         return dev
 
 def setup_seed(seed):
-    """fix all the random seed used in numpy, torch and random module"""
+    r"""
+    Fix all the random seed used in numpy, torch and random module
+
+    Args:
+        seed (int): the random seed
+    """
     random.seed(1+seed)
     np.random.seed(21+seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -69,7 +86,13 @@ def setup_seed(seed):
     torch.backends.cudnn.deterministic = True
 
 def read_option_from_command():
-    """load configuration for flgo.init from command lines"""
+    r"""
+    Generate running-time configurations for flgo.init with default values from command lines
+
+    Returns:
+        a dict of option (i.e. configuration)
+    """
+
     parser = argparse.ArgumentParser()
     """Training Options"""
     # basic settings
@@ -129,28 +152,38 @@ def read_option_from_command():
     return option
 
 def load_configuration(config={}):
-    """load configuration for yml file or dict"""
+    r"""
+    Load configurations from .yml file or dict.
+
+    Args:
+        config (dict|str): the configurations
+
+    Returns:
+        a dict of option (i.e. configuration)
+    """
     if type(config) is str and config.endswith('.yml'):
         with open(config) as f:
             option = yaml.load(f, Loader=yaml.FullLoader)
         return option
     elif type(config) is dict:
         return config
+    else:
+        raise TypeError('The input config should be either a dict or a filename.')
 
 def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dict={}, task_path: str='', rawdata_path:str='', seed:int=0):
     r"""
     Generate a federated task according to the parameters of this function. The formats and meanings of the inputs are listed as below:
 
-        benchmark (python package || str): the benchmark package or the module path of it
+    Args:
+        benchmark (package|str): the benchmark package or the module path of it
         bmk_para (dict): the customized parameter dict of the method TaskGenerator.__init__() of the benchmark
-        Partitioner (class || str): the class of the Partitioner or the name of the Partitioner that was realized in flgo.benchmark.toolkits.partition
+        Partitioner (flgo.benchmark.toolkits.partition.BasicPartitioner|str): the class of the Partitioner or the name of the Partitioner that was realized in flgo.benchmark.toolkits.partition
         par_para (dict): the customized parameter dict of the method Partitioner.__init__()
         task_path (str): the path to store the generated task
         rawdata_path (str): where the raw data will be downloaded\stored
         seed (int): the random seed used to generate the task
-    Returns:
 
-    Example:
+    Example::
         >>> import flgo
         >>> import flgo.benchmark.mnist_classification as mnist
         >>> from flgo.benchmark.toolkits.partition import IIDPartitioner
@@ -200,8 +233,7 @@ def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dic
     # save visualization
     try:
         visualize_func = getattr(benchmark,'visualize')
-        visualize_func(task_generator, partitioner)
-        task_pipe.save_figure()
+        visualize_func(task_generator, partitioner, task_path)
     except:
         pass
 
@@ -213,9 +245,8 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
         task_path (str): where the generated task will be stored
         rawdata_path (str): where the raw data will be downloaded\stored
         seed (int): the random seed used to generate the task
-    Returns:
 
-    Example:
+    Example::
         >>> import flgo
         >>> config = {'benchmark':{'name':'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDParitioner', 'para':{'num_clients':100}}}
         >>> flgo.gen_task(config, './my_mnist_iid')
@@ -241,7 +272,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
     if type(gen_option['benchmark']['name']) is str:
         bmk_core = importlib.import_module('.'.join([gen_option['benchmark']['name'], 'core']))
     elif hasattr(gen_option['benchmark']['name'], '__path__'):
-        bmk_core = gen_option['benchmark']['name'].core
+        bmk_core = getattr(gen_option['benchmark']['name'],'core')
     else:
         raise RuntimeError("The value of parameter config['benchmark']['name'] should be either a string or a python package.")
     task_generator = getattr(bmk_core, 'TaskGenerator')(**gen_option['benchmark']['para'])
@@ -280,8 +311,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
     # save visualization
     try:
         visualize_func = getattr(importlib.import_module(gen_option['benchmark']['name']),'visualize')
-        visualize_func(task_generator, partitioner)
-        task_pipe.save_figure()
+        visualize_func(task_generator, partitioner, task_path)
     except:
         pass
 
@@ -289,17 +319,19 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     r"""
     Initialize a runner in FLGo, which is to optimize a model on a specific task (i.e. IID-mnist-of-100-clients) by the selected federated algorithm.
 
+    Args:
         task (str): the dictionary of the federated task
-        algorithm (module || class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
-        option (dict || str): the configurations of training, environment, algorithm, logger and simulator
-        model (module || class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
-        Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
-        Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
+        algorithm (module|class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
+        option (dict|str): the configurations of training, environment, algorithm, logger and simulator
+        model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
+        Logger (flgo.experiment.logger.BasicLogger): the class of the logger inherited from flgo.experiment.logger.BasicLogger
+        Simulator (flgo.system_simulator.base.BasicSimulator): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
         scene (str): 'horizontal' or 'vertical' in current version of FLGo
+
     Returns:
         runner: the object instance that has the method runner.run()
 
-    Example:
+    Example::
         >>> import flgo
         >>> from flgo.algorithm import fedavg
         >>> from flgo.experiment.logger.simple_logger import SimpleLogger
@@ -375,13 +407,6 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     objects = task_pipe.generate_objects(option, algorithm, scene=scene)
     task_pipe.distribute(task_data, objects)
 
-    for c in tmp:
-        try:
-            C = getattr(algorithm, c)
-            delattr(C, 'gv')
-        except:
-            continue
-
     # init model
     if hasattr(model, 'init_local_module'):
         for object in objects:
@@ -395,8 +420,6 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
 
     for ob in objects: ob.initialize()
 
-    # if scene=='horizontal':
-    #     objects[0].__class__.communicate_with = flgo.system_simulator.base.with_latency(objects[0].__class__.communicate_with)
     # init virtual system environment
     gv.logger.info('Use `{}` as the system simulator'.format(str(Simulator)))
     flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
@@ -409,6 +432,12 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     gv.logger.info('Ready to start.')
 
     # register global variables for objects
+    for c in tmp:
+        try:
+            C = getattr(algorithm, c)
+            delattr(C, 'gv')
+        except:
+            continue
     for ob in objects:
         ob.gv = gv
     gv.simulator.gv = gv
@@ -417,6 +446,20 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     return objects[0]
 
 def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, scene, send_end):
+    r"""
+    This function is used to create a seperate child process.
+
+    Args:
+        task (str): the path of the task
+        algorithm_name (str): the module name of algorithm
+        opt (dict): option
+        model_name (str): the module name of model
+        Logger (flgo.experiment.logger.BasicLogger): the class of the logger
+        Simulator (flgo.system_simulator.base.BasicSimulator): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
+        scene (str): horizontal or vertical
+        send_end (connection.Connection): the return of multiprocess.Pipe(...) that is used to pass data to the parent process
+    """
+
     pid = os.getpid()
     sys.stdout = open(os.devnull, 'w')
     if model_name is None: model = None
@@ -439,18 +482,15 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
         res = (opt, s, pid)
         send_end.send(res)
 
-def get_available_device(device_ids):
-    # dev_handlers = [pynvml.nvmlDeviceGetHandleByIndex(dev_id) for dev_id in device_ids]
-    return random.choice(device_ids)
 
 def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal', scheduler=None):
     """
-        Tune hyper-parameters for one task and one algorithm in parallel.
+        Tune hyper-parameters for the specific (task, algorithm, model) in parallel.
         Args:
             task (str): the dictionary of the federated task
-            algorithm (module || class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
+            algorithm (module|class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
             option (dict): the dict whose values should be of type list to construct the combinations
-            model (module || class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
+            model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
             Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
             Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
             scene (str): 'horizontal' or 'vertical' in current version of FLGo
@@ -486,16 +526,18 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
 def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.system_simulator.DefaultSimulator, scene='horizontal', scheduler = None):
     """
     Run different groups of hyper-parameters for one task and one algorithm in parallel.
+
     Args:
         task (str): the dictionary of the federated task
-        algorithm (module || class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
+        algorithm (module|class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
         options (list): the configurations of different groups of hyper-parameters
-        model (module || class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
+        model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
         devices (list): the list of IDs of devices
         Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
         Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
         scene (str): 'horizontal' or 'vertical' in current version of FLGo
         scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
+
     Returns:
         the returns of _call_by_process
     """
@@ -558,13 +600,16 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
 def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
     r"""
     Create multiple runners and run in parallel
-    param:
+
+    Args:
         runner_args (list): each element in runner_args should be either a dict or a tuple or parameters
         devices (list): a list of gpu id
-        scheduler (class flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler
-    return:
+        scheduler (flgo.experiment.device_scheduler.BasicScheduler(...)): GPU scheduler
+
+    Returns:
         a list of output results of runners
-    Example:
+
+    Example::
         >>> from flgo.algorithm import fedavg, fedprox, scaffold
         >>> # create task 'mnist_iid' by flgo.gen_task if there exists no such task
         >>> task='./mnist_iid'

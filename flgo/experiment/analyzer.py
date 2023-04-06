@@ -1,9 +1,9 @@
 r"""
 This module is to analyze the training results saved by Logger. To use this module,
-a analysis plan must be designed as a dict that contains three parts:
-    Selector: select the records according to the task, algorithm and options of the task
-    Painter: draw graphic of the selected records
-    Table: output some statistic of the selected records on the console
+a analysis plan should be designed (i.e. dict):
+    *Selector*: select the records according to the task, algorithm and options of the task
+    *Painter*: draw graphic of the selected records
+    *Table*: output some statistic of the selected records on the console
 
 The basic usage is to build a plan dict and pass it to flgo.experiment.analyzer
 >>> # plan = {'Selector':..., 'Painter':..., 'Table':...,}
@@ -50,6 +50,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import yaml
+import uuid
 import os
 import collections
 import copy
@@ -77,6 +78,14 @@ def option2filter(option: dict):
     }
 
 class Record:
+    r"""
+    Read the record that is stored by each runner into the memory according
+    to the task and the name.
+
+    Args:
+        task (str): the path of the task
+        name (str): the name of the saved record
+    """
     def __init__(self, task, name):
         self.task = task
         self.name = name
@@ -85,6 +94,7 @@ class Record:
             s_inf = inf.read()
             rec = json.loads(s_inf)
         self.data = rec
+        self.datas = [self.data]
         self.set_communication_round()
         self.set_client_id()
 
@@ -125,18 +135,46 @@ class Record:
         return self.name[value_start:value_end]
 
     @classmethod
-    def group_records(cls, rec_list: list):
+    def create_group(cls, rec_list: list):
+        r"""
+        Organize the records in rec_list into a group-level Record,
+        where there will be a new attribute named Record.datas. And
+        the values in Record.data will be replaced by the mean values
+        of that in Record.datas
+
+        Args:
+            rec_list (list): a list of Record(...)
+
+        Returns:
+            a new group-level Record
+        """
         if len(rec_list) == 0: return None
         r = copy.deepcopy(rec_list[0])
         r.datas = [rec.data for rec in rec_list]
         for key in r.data.keys():
             if key == 'option': continue
-            if type(r.data[key]) is list:
-                ave_data = np.array([np.array(rdata[key]) for rdata in r.datas])
-                r.data[key] = ave_data.mean(axis=0)
+            try:
+                if type(r.data[key]) is list:
+                    ave_data = np.array([np.array(rdata[key]) for rdata in r.datas])
+                    r.data[key] = ave_data.mean(axis=0)
+            except:
+                continue
         return r
 ############################## Selector ##############################
 class Selector:
+    r"""
+    Filter the records and read them into memory accoring to customized settings
+    
+    Args:
+        selector_config (dict): the dictionary that is used to filter records
+
+    Example::
+        >>> task='./my_task'
+        >>> selector = Selector({'task':task, 'header':['fedavg'], 'filter':{'lr':0.1}})
+        >>> selector.records[task]
+        >>> # selector.records is a dict where selector.records[task] is a list
+        >>> # of the records that pass the filter
+    """
     def __init__(self, selector_config):
         self.config = selector_config
         self.tasks = [selector_config['task']] if type(selector_config['task']) is not list else selector_config['task']
@@ -145,8 +183,11 @@ class Selector:
         self.legend_with = selector_config['legend_with'] if 'legend_with' in selector_config.keys() else []
         self.rec_names = self.scan()
         self.records = self.read_records(self.rec_names)
+        tmp = list(self.records.values())
+        self.all_records = []
+        for ti in tmp: self.all_records.extend(ti)
         try:
-            self.group_names, self.grouped_records = self.group_records_by_seed()
+            self.grouped_records, self.group_names, = self.group_records()
         except Exception() as e:
             print(e)
 
@@ -199,24 +240,45 @@ class Selector:
                     res[task].append(record)
         return res
 
-    def group_records_by_seed(self):
-        group_names = {task:[] for task in self.rec_names}
-        grouped_records = {task:[] for task in self.rec_names}
-        for task in self.rec_names:
-            groups = collections.defaultdict(list)
-            for rec in self.records[task]:
-                s = rec.name.find('_S')
-                g = rec.name[:s] + rec.name[rec.name.find('_', s+1):]
-                groups[g].append(rec)
-            for g in groups:
-                group_names[task].append(g)
-                grouped_records[task].append(Record.group_records(groups[g]))
-        # aggregate different records within the same group
-        return group_names, grouped_records
+    def group_records(self, key=['seed']):
+        if type(key) is not list: key=[key]
+        groups = collections.defaultdict(list)
+        for rec in self.all_records:
+            group_name = '.'.join([str(rec.data['option'][k]) for k in rec.data['option'].keys() if k not in key])
+            groups[group_name].append(rec)
+        res = []
+        for g in groups:
+            res.append(Record.create_group(groups[g]))
+        return res, list(groups.keys())
 
 ##############################  Painter ##############################
 class PaintObject:
-    def __init__(self, rec: dict, args: dict,  obj_option: dict, draw_func: str):
+    r"""
+    The basic PaintObject. Each PaintObject should inherent from this class.
+    And the method self.draw should be overwritten if necessary.
+
+    Args:
+        rec (Record): the record
+        args (dict): the painting arguments
+        obj_option (dict): the personal option for each object
+        draw_func (str): optional, the function name. All the subclass of this class won't claim this parameter.
+
+    Example::
+        >>> class GroupCurve(PaintObject):
+        ...     def __init__(self, rec, args,  obj_option):
+        ...         super(GroupCurve, self).__init__(rec, args, obj_option, '')
+        ...
+        ...     def draw(self, ax):
+        ...         x = self.rec.data[self.args['x']]
+        ...         ykey = self.args['y']
+        ...         mean_y = self.rec.data[ykey]
+        ...         min_y = np.min(np.array([d[ykey] for d in self.rec.datas]), axis=0)
+        ...         max_y = np.max(np.array([d[ykey] for d in self.rec.datas]), axis=0)
+        ...         ax.plot(x, mean_y, label=self.rec.data['label'])
+        ...         ax.fill_between(x, max_y, min_y, alpha=0.3)
+        ...         ax.legend()
+    """
+    def __init__(self, rec: Record, args: dict,  obj_option: dict, draw_func: str):
         self.rec = rec
         self.args = args
         self.obj_option = obj_option
@@ -233,18 +295,22 @@ class PaintObject:
         return
 
 class Curve(PaintObject):
+    """Curve Object"""
     def __init__(self, rec, args,  obj_option):
         super(Curve, self).__init__(rec, args, obj_option, 'plot')
 
 class Bar(PaintObject):
+    """Bar Object"""
     def __init__(self, rec, args,  obj_option):
         super(Bar, self).__init__(rec, args, obj_option, 'bar')
 
 class Scatter(PaintObject):
+    """Scatter Obejct"""
     def __init__(self, rec, args,  obj_option):
         super(Scatter, self).__init__(rec, args, obj_option, 'scatter')
 
 class Trace2D(PaintObject):
+    """Trace Object"""
     def __init__(self, rec, args,  obj_option):
         super(Trace2D, self).__init__(rec, args, obj_option, '')
 
@@ -252,6 +318,7 @@ class Trace2D(PaintObject):
         pass
 
 class GroupCurve(PaintObject):
+    """Group Curve Object"""
     def __init__(self, rec, args,  obj_option):
         super(GroupCurve, self).__init__(rec, args, obj_option, '')
 
@@ -269,21 +336,43 @@ class GroupBar(Bar):
     pass
 
 class Painter:
-    def __init__(self, painter_config: dict, records: list, save_figure=False):
-        self.config = painter_config
+    r"""
+    Draw the information in records into figures
+
+    Args:
+        records (list): a list of instances of Record(...)
+        save_text (bool): whether to store the figures into the disk
+        path (str): the storing path
+        format (str): the storing format
+    """
+    def __init__(self, records: list, save_figure=False, path:str='.', format='png'):
         self.records = records
         self.save_figure = save_figure
-
-    def generate_obj_option(self, raw_obj_option: dict):
-        for k in raw_obj_option:
-            if type(raw_obj_option[k]) is list:
-                assert len(raw_obj_option[k]) >= len(self.records)
-                raw_obj_option[k] = raw_obj_option[k][:len(self.records)]
-            else:
-                raw_obj_option[k] = [raw_obj_option[k] for _ in self.records]
-        return [{k:v[i] for k,v in raw_obj_option.items()} for i in range(len(self.records))]
+        self.path = path
+        self.format = format
 
     def create_figure(self, object_class, fig_config):
+        r"""
+        Create figure according to the PaintObject and figure configurations.
+        For each record k, a PaintObject(record, object_option) will be created
+        for later drawing. Then, a figure will be created by fig_option and all 
+        the PaintObject will be put onto the figure. 
+        The fig_config should be a dict like:
+            {
+                'args':{...}, # ploting arguments for each record
+                'obj_option':{...}, # assign each PaintObject with different attributes like color, label...
+                'fig_option':{...}, # the options of the figure such as title, xlabel, xlim, no_legend
+            }
+        
+        Args:
+            object_class (class|str): the types of the obejct to be drawed
+            fig_config (dict): the drawing configuration
+
+        Example::
+            >>> p=Painter(records)
+            >>> p.create_figure(Curve, {'args':{'x':'communication_round', 'y':'valid_loss'}})
+        """
+        object_class = eval(object_class) if type(object_class) is str else object_class
         if 'split' in  fig_config.keys():
             cols = fig_config['split']['cols'] if 'cols' in fig_config['split'] else 4
             rows = int(math.ceil(len(self.records)/cols))
@@ -302,7 +391,7 @@ class Painter:
             fig, ax = plt.subplots()
             axs = [ax for _ in self.records]
         args = fig_config['args']
-        obj_options = self.generate_obj_option(fig_config['obj_option']) if 'obj_option' in fig_config.keys() else [{} for _ in self.records]
+        obj_options = self._generate_obj_option(fig_config['obj_option']) if 'obj_option' in fig_config.keys() else [{} for _ in self.records]
         objects = [object_class(rec, args, obj_option) for rec, obj_option in zip(self.records, obj_options)]
         for ob,axi in zip(objects, axs):
             ob.draw(axi)
@@ -323,37 +412,124 @@ class Painter:
                         eval('plt.'+option_name+"('{}')".format(fig_config['fig_option'][option_name]))
                     else:
                         eval('plt.' + option_name + "({})".format(fig_config['fig_option'][option_name]))
+        filename = None
+        if self.save_figure:
+            filename = str(uuid.uuid4())+'.'+self.format
+            plt.savefig(os.path.join(self.path, filename))
         plt.show()
+        return filename
 
-    def run(self, group=False):
-        for object_class_string in self.config.keys():
-            object_class = eval(object_class_string)
-            con1 = object_class_string.startswith('Group') and group
-            con2 = not object_class_string.startswith('Group') and not group
-            if con1 or con2:
-                for fig_config in self.config[object_class_string]:
-                    self.create_figure(object_class, fig_config)
+    def _generate_obj_option(self, raw_obj_option: dict):
+        for k in raw_obj_option:
+            if type(raw_obj_option[k]) is list:
+                assert len(raw_obj_option[k]) >= len(self.records)
+                raw_obj_option[k] = raw_obj_option[k][:len(self.records)]
+            else:
+                raw_obj_option[k] = [raw_obj_option[k] for _ in self.records]
+        return [{k:v[i] for k,v in raw_obj_option.items()} for i in range(len(self.records))]
 
 ############################# Table ##############################
 def min_value(record,  col_option):
+    r"""
+    Get minimal value. The col_option should be like
+        {'x': key of record.data}
+
+    Args:
+        record (Record): the record
+        col_option (dict): column option
+
+    Returns:
+        the column value
+    """
     return np.min(record.data[col_option['x']])
 
 def max_value(record,  col_option):
+    r"""
+    Get maximal value.The col_option should be like
+        {'x': key of record.data}
+
+    Args:
+        record (Record): the record
+        col_option (dict): column option
+
+    Returns:
+        the column value
+    """
     return np.max(record.data[col_option['x']])
 
 def variance(record, col_option):
+    r"""
+    Get variance. The col_option should be like
+        {'x': key of record.data}
+
+    Args:
+        record (Record): the record
+        col_option (dict): column option
+
+    Returns:
+        the column value
+    """
     return np.var(record.data[col_option['x']])
 
 def std_value(record, col_option):
+    r"""
+    Get standard deviation. The col_option should be like
+        {'x': key of record.data}
+
+    Args:
+        record (Record): the record
+        col_option (dict): column option
+
+    Returns:
+        the column value
+    """
     return np.std(record.data[col_option['x']])
 
 def mean_value(record, col_option):
+    r"""
+    Get mean value. The col_option should be like
+        {'x': key of record.data}
+
+    Args:
+        record (Record): the record
+        col_option (dict): column option
+
+    Returns:
+        the column value
+    """
     return np.mean(record.data[col_option['x']])
 
 def final_value(record, col_option):
+    r"""
+    Get final value. The col_option should be like
+        {'x': key of record.data}
+
+    Args:
+        record (Record): the record
+        col_option (dict): column option
+
+    Returns:
+        the column value
+    """
     return record.data[col_option['x']][-1]
 
 def optimal_x_by_y(record, col_option):
+    r"""
+    Get the value of y where the value of x is the optimal.
+    The col_option should be like
+        {
+        'x': key of record.data,
+        'y': key of record.data,
+        'flag': 'min' or 'max'
+        }
+
+    Args:
+        record (Record): the record
+        col_option (dict): column option
+
+    Returns:
+        the column value
+    """
     if 'flag' not in col_option.keys(): col_option['flag'] = 'min'
     if col_option['flag']=='min': f = np.argmin
     else: f=np.argmax
@@ -361,6 +537,20 @@ def optimal_x_by_y(record, col_option):
     return record.data[col_option['x']][tmp]
 
 def group_optimal_value(record, col_option):
+    r"""
+    Get the grouped optimal value. The col_option should be like
+        {
+        'x': key of record.data,
+        'flag': 'min' or 'max'
+        }
+
+    Args:
+        record (Record): the record
+        col_option (dict): column option
+
+    Returns:
+        the column value
+    """
     if 'flag' not in col_option.keys(): col_option['flag'] = 'min'
     if col_option['flag']=='min': f = np.min
     else: f=np.max
@@ -370,6 +560,22 @@ def group_optimal_value(record, col_option):
     return "{:.4f} ± {:.4f}".format(mean_v, std_v)
 
 def group_optimal_x_by_y(record, col_option):
+    r"""
+    Get the grouped value of y where the grouped value of x is the optimal.
+    The col_option should be like
+        {
+        'x': key of record.data,
+        'y': key of record.data,
+        'flag': 'min' or 'max'
+        }
+
+    Args:
+        record (Record): the record
+        col_option (dict): column option
+
+    Returns:
+        the column value
+    """
     if 'flag' not in col_option.keys(): col_option['flag'] = 'min'
     if col_option['flag']=='min': f = np.argmin
     else: f=np.argmax
@@ -382,96 +588,111 @@ def group_optimal_x_by_y(record, col_option):
     return "{:.4f} ± {:.4f}".format(mean_v, std_v)
 
 class Table:
-    def __init__(self, table_config, records, save_text=False):
-        self.config = table_config
+    r"""
+    Organize the information in records into a table.
+    
+    Args:
+        records (list): a list of instances of Record(...)
+        save_text (bool): whether to store the table into the disk
+        path (str): the storing path
+    """
+    def __init__(self, records:list, save_text:bool=False, path:str='.'):
         self.records = records
         self.save_text = save_text
+        self.path = path
         self.tb = pt.PrettyTable()
+        self.tb.add_column('Task', [r.data['option']['task'] for r in self.records])
         self.tb.add_column('Record', [r.data['label'] for r in self.records])
+        self.tb.float_format = "3.4"
         self.sort_key = None
 
-    def set_title(self, title):
-        self.tb.title = title
+    def add_column(self, func, col_option):
+        r"""
+        Add a column to this table. For each record $Record_k$, its value $v_k$
+        in this column is v_k=func(Record_k, col_option), where func can be 
+        arbitrarily customized.
 
-    def create_column(self, funcname, col_option):
+        Args:
+            func (func|str): the name of the function or the function
+            col_option (dict|str): the option of the column to index data in each record
+
+        Example::
+            >>> tb = Table(records)
+            >>> tb.add_column(min_value, col_option={'x':'valid_loss'})
+            >>> tb.print()
+        """
+        func = eval(func) if type(func) is str else func
+        col_option = {'x': col_option} if type(col_option) is not dict else col_option
         column = []
         for rec in self.records:
-            column.append(eval(funcname+'(rec, col_option)'))
+            column.append(func(rec, col_option))
         if 'name' in col_option.keys():
             fieldname = col_option['name']
         else:
             fieldname = '-'.join([str(v) for k,v in col_option.items() if k!='sort'])
-            fieldname = funcname + '-' + fieldname
+            fieldname = func.__name__ + '-' + fieldname
         self.tb.add_column(fieldname=fieldname, column=column)
         if 'sort' in col_option.keys(): self.tb.sortby = fieldname
 
-    def run(self, group=False):
-        for funcname in self.config:
-            con1 = funcname.startswith('group') and group
-            con2 = not funcname.startswith('group') and not group
-            if con1 or con2:
-                col_options = self.config[funcname]
-                if type(col_options) is not list: col_options = [col_options]
-                for col in col_options:
-                    if type(col) is not dict: col_option = {'x': col_option}
-                    else: col_option = col
-                    self.create_column(funcname, col_option)
-        self.tb.float_format = "3.4"
-        print(self.tb)
+    def set_title(self, title):
+        self.tb.title = title
 
-#################################################################
-def read_option():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', help='the configuration of result analysis;', type=str, default='res_config.yml')
-    parser.add_argument('--save_figure', help='set True to save the plotted figures', action="store_true", default=False)
-    parser.add_argument('--save_text', help='set True to save the printed tables', type=float, default=0)
-    parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
-    try: option = vars(parser.parse_args())
-    except IOError as msg: parser.error(str(msg))
-    random.seed(option['seed'])
-    np.random.seed(option['seed'])
-    return option
+    def print(self):
+        r"""Print and store the table"""
+        if self.save_text:
+            with open(os.path.join(self.path, str(uuid.uuid4())+'.txt'), 'w') as outf:
+                outf.write(self.tb.__repr__())
+        print(self)
 
-def show(config, save_figure=False, save_text=False, seed=0):
+    def __repr__(self):
+        return self.tb.__repr__()
+
+def show(config, save_figure=False, save_text=False, path='.', seed=0):
+    r"""
+    Show the results according to analysis configuration.
+
+    Args:
+        config (dict|str): the analysis plan
+        save_figure (bool): whether to save figures
+        save_text (bool): whether to save table as .txt file
+        path (str): the path to store the results
+        seed (int): random seed
+
+    Example::
+        >>> import flgo.experiment.analyzer as al
+        >>> # only records of fedavg running on the task 'my_task' with learning rate lr<=0.01 will be selected
+        >>> selector_config = {'task':'./my_task', 'header':['fedavg'], 'filter':['LR':'<=0.1']}
+        >>> # draw the learning curve on the validation dataset
+        >>> painter_config = {'Curve':[{'args':{'x':'communication_round', 'y':'valid_loss'}}]}
+        >>> # show the minimal value of validation loss
+        >>> table_config = {'min_value':[{'x':'valid_loss'}]}
+        >>> # create analysis plan
+        >>> analysis_plan = {'Selector':selector_config, 'Painter':painter_config, 'Table':table_config}
+        >>> # call this function
+        >>> al.show(analysis_plan)
+    """
+    random.seed(seed)
+    np.random.seed(seed)
     option = load_configuration(config)
-    # with open(config) as f:
-    #     option = yaml.load(f, Loader=yaml.FullLoader)
     record_selector = Selector(option['Selector'])
     if 'Painter' in option.keys():
-        for task in record_selector.records:
-            p = Painter(option['Painter'], record_selector.records[task])
-            p.run()
-        for task in record_selector.grouped_records:
-            p = Painter(option['Painter'], record_selector.grouped_records[task])
-            p.run(group=True)
-    if 'Table' in option.keys():
-        for task in record_selector.records:
-            tb = Table(option['Table'], record_selector.records[task])
-            tb.set_title(task)
-            tb.run()
-        for task in record_selector.grouped_records:
-            tb = Table(option['Table'], record_selector.grouped_records[task])
-            tb.set_title(task)
-            tb.run(group=True)
+        painter = Painter(record_selector.all_records, save_figure=save_figure, path=path)
+        group_painter = Painter(record_selector.grouped_records, save_figure=save_figure, path=path)
+        for object_class_string in option['Painter'].keys():
+            figs = option['Painter'][object_class_string] if type(option['Painter'][object_class_string]) is list else [option['Painter'][object_class_string]]
+            grouped = ('Group' in object_class_string)
+            p = group_painter if grouped else painter
+            for fig_config in figs:
+                p.create_figure(object_class_string, fig_config)
 
-if __name__ == '__main__':
-    option = read_option()
-    with open(option['config']) as f:
-        cfg = yaml.load(f, Loader=yaml.FullLoader)
-    record_selector = Selector(cfg['Selector'])
-    if 'Painter' in cfg.keys():
-        for task in record_selector.records:
-            p = Painter(cfg['Painter'], record_selector.records[task])
-            p.run()
-        for task in record_selector.grouped_records:
-            p = Painter(cfg['Painter'], record_selector.grouped_records[task])
-            p.run(group=True)
-    if 'Table' in cfg.keys():
-        for task in record_selector.records:
-            tb = Table(cfg['Table'], record_selector.records[task])
-            tb.set_title(task)
-            tb.run()
-        for task in record_selector.grouped_records:
-            tb = Table(cfg['Table'], record_selector.grouped_records[task])
-            tb.set_title(task)
-            tb.run(group=True)
+    if 'Table' in option.keys():
+        tb = Table(record_selector.all_records, save_text=save_text, path=path)
+        group_tb = Table(record_selector.grouped_records, save_text=save_text, path=path)
+        for funcname in option['Table']:
+            columns = option['Table'][funcname] if type(option['Table'][funcname]) is list else [option['Table'][funcname]]
+            grouped = ('group' in funcname)
+            ctb = group_tb if grouped else tb
+            for col_option in columns:
+                ctb.add_column(funcname, col_option)
+        tb.print()
+        group_tb.print()

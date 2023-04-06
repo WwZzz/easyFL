@@ -1,0 +1,65 @@
+site_name: "FLGo"
+
+nav:
+  - "Get Started": getting_started.md
+  - "Overview": overview.md
+  - "Docs":
+    - Docs/index.md
+    - flgo.algorithm: 
+      - Docs/algorithm/index.md
+    - flgo.benchmark: 
+      - Docs/benchmark/index.md
+    - flgo.experiment: 
+      - Docs/experiment/index.md
+    - flgo.system_simulator:
+      - Docs/simulator/index.md
+    - flgo.utils:
+      - Docs/utils/index.md
+      - flgo.utils.fflow: Docs/utils/fflow.md
+
+  - "Tutorials": tutorials/index.md
+  - "About": about.md
+
+theme:
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+  font:
+    text: Roboto
+    code: Roboto Mono
+  name: "material"
+  direction: ltr
+  logo: img/f.png
+  favicon: img/flgo_icon.ico
+  language: en 
+  palette:
+    - scheme: default
+      primary: white
+      accent: indigo
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+
+    - scheme: slate
+      primary: black
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra:
+  alternate:
+    - name: English
+      link: /en/ 
+      lang: en
+    - name: 中文
+      link: /cn/
+      lang: cn
+
+plugins:
+- search
+- mkdocstrings:

@@ -11,6 +11,7 @@ import numpy as np
 import copy
 import collections
 
+
 class Server(BasicServer):
     def initialize(self, *args, **kwargs):
         self.init_algo_para({'learning_rate_lambda': 0.01})
@@ -64,10 +65,12 @@ class Server(BasicServer):
 
     def test(self, model=None, flag='test'):
         if model == None: model = self.result_model
-        data = self.test_data if flag=='test' else self.valid_data
-        if data is None: return {}
+        data = self.test_data if flag == 'test' else self.valid_data
+        if data is None:
+            return {}
         else:
-            return self.calculator.test(model, self.test_data, batch_size = self.option['test_batch_size'])
+            return self.calculator.test(model, self.test_data, batch_size=self.option['test_batch_size'])
+
 
 class Client(BasicClient):
     def reply(self, svr_pkg):

@@ -1,20 +1,26 @@
-import numpy as np
-from flgo.utils import fmodule
-import copy
-import flgo.system_simulator.base as ss
 import math
+import copy
 import collections
-import torch.multiprocessing as mp
-import torch
 
+import torch
+import torch.multiprocessing as mp
+import numpy as np
+
+from flgo.utils import fmodule
+import flgo.system_simulator.base as ss
+
+
+# The BasicParty
 class BasicParty:
     def __init__(self, *args, **kwargs):
-        self.actions = {}
-        self.id = None
+        self.actions = {}  # the message-action map that is used to customize the communication process
+        self.id = None  # the id for communicating
+        self._object_map = collections.defaultdict(lambda:None) # mapping objects according to their ids
 
     def register_action_to_mtype(self, action_name: str, mtype):
-        """
-        Register an existing instance method as the action to the message type.
+        r"""
+        Register an existing method as the action corresponding to the message type.
+
         Args:
             action_name: the name of the instance method
             mtype: the message type
@@ -24,11 +30,12 @@ class BasicParty:
         self.actions[mtype] = self.__dict__[action_name]
 
     def message_handler(self, package):
-        """
+        r"""
         Handling the received message by excuting the corresponding action.
+
         Args:
-            package: the package received from other parties (i.e. the content of the message)
-            mtype: the message type
+            package (dict): the package received from other parties (i.e. the content of the message)
+
         Returns:
             action_reult
         """
@@ -40,55 +47,113 @@ class BasicParty:
             raise NotImplementedError("There is no action corresponding to message type {}.".format(mtype))
         return self.actions[mtype](package)
 
-    def set_data(self, data, flag='train') -> None:
-        setattr(self, flag+'_data', data)
-        if flag=='train':
+    def set_data(self, data, flag:str='train') -> None:
+        r"""
+        Set self's attibute 'xxx_data' to be data where xxx is the flag. For example,
+        after calling self.set_data([1,2,3], 'test'), self.test_data will be [1,2,3].
+        Particularly, If the flag is 'train', the batchsize and the num_steps will be
+        reset.
+
+        Args:
+            data: anything
+            flag (str): the name of the data
+        """
+        setattr(self, flag + '_data', data)
+        if flag == 'train':
             self.datavol = len(data)
             if hasattr(self, 'batch_size'):
                 # reset batch_size
-                if self.batch_size<0: self.batch_size = len(self.train_data)
-                elif self.batch_size>=1: self.batch_size = int(self.batch_size)
-                else: self.batch_size = int(self.datavol * self.batch_size)
+                if self.batch_size < 0:
+                    self.batch_size = len(self.train_data)
+                elif self.batch_size >= 1:
+                    self.batch_size = int(self.batch_size)
+                else:
+                    self.batch_size = int(self.datavol * self.batch_size)
             # reset num_steps
             if hasattr(self, 'num_steps') and hasattr(self, 'num_epochs'):
                 if self.num_steps > 0:
-                    self.num_epochs = 1.0 * self.num_steps/(math.ceil(self.datavol / self.batch_size))
+                    self.num_epochs = 1.0 * self.num_steps / (math.ceil(self.datavol / self.batch_size))
                 else:
                     self.num_steps = self.num_epochs * math.ceil(self.datavol / self.batch_size)
 
-    def register_parties(self, parties):
-        # set the accessible parties
-        self.parties = parties
+    def set_model(self, model, model_name: str = 'model'):
+        r"""
+        Set self's attibute 'model_name' to be model. For example,
+        after calling self.set_model(my_model, 'model'), self.model will be my_model.
+        """
+        # set self.__dict__[model_name] = model
+        setattr(self, model_name, model)
+
+    def set_id(self, id=None):
+        r"""
+        Set self's attibute 'id' to be id where self.id = id
+        """
+        if id is not None:
+            self.id = id
+
+    def register_objects(self, parties:list, parties_name='parties'):
+        r"""
+        Set self's attribute party_names (e.g. parties as default) to be parties if
+        self has no attribute named party_names. Otherwise, parties will be extend to
+        the attribute party_names of self.
+        
+        Args:
+            parties (list): a list of objects
+            parties_name (str): the name of attribute to store parties
+
+        Example::
+            >>> a = BasicParty()
+            >>> b = BasicParty()
+            >>> c = BasicParty()
+            >>> a.register_objects([b, c], 'parties')
+            >>> a.parties # will be [b,c]
+            >>> d = BasicParty()
+            >>> a.register_objects([d], 'parties')
+            >>> a.parties # will be [b,c,d]
+        """
+        if type(parties) is not list:
+            raise TypeError("parties should be a list")
+        if not hasattr(self, parties_name):
+            setattr(self, parties_name, parties)
+        else:
+            tmp = getattr(self, parties_name)
+            if tmp is None: tmp = []
+            elif type(tmp) is not list: tmp = list(tmp)
+            tmp.extend(parties)
+            setattr(self, parties_name, tmp)
+        self._object_map.update({p.id:p for p in parties if p.id is not None})
 
     def communicate_with(self, target_id, package={}):
-        """
-        Pack the information that is needed for client_id to improve the global model
+        r"""
+        Send the package to target object according to its id, and receive the response from it
+
         Args:
-            client_id (int): the id of the client to communicate with
-            package (dict): the package to be sended to the client
-            mtype (anytype): the type of the message that is used to decide the action of the client
+            target_id (int): the id of the object to communicate with
+            package (dict): the package to be sended to the object
         Returns:
-            client_package (dict): the reply from the client and will be 'None' if losing connection
+            client_package (dict): the reply from the target object and will be 'None' if losing connection
         """
         return self.gv.communicator.request(self.id, target_id, package)
 
     def initialize(self, *args, **kwargs):
+        r"""API for customizing the initializing process of the object"""
         return
 
 class BasicServer(BasicParty):
     def __init__(self, option={}):
         super().__init__()
-        self.test_data=None
+        self.test_data = None
         self.valid_data = None
         self.train_data = None
         self.model = None
+        self.clients = []
         # basic configuration
         self.task = option['task']
         self.eval_interval = option['eval_interval']
-        self.num_parallels= option['num_parallels']
+        self.num_parallels = option['num_parallels']
         # server calculator
         self.device = self.gv.apply_for_device() if not option['server_with_cpu'] else torch.device('cpu')
-        self.calculator = self.gv.TaskCalculator(self.device, optimizer_name = option['optimizer'])
+        self.calculator = self.gv.TaskCalculator(self.device, optimizer_name=option['optimizer'])
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
         self.num_steps = option['num_steps']
@@ -110,7 +175,7 @@ class BasicServer(BasicParty):
 
     def run(self):
         """
-        Start the federated learning symtem where the global model is trained iteratively.
+        Running the FL symtem where the global model is trained and evaluated iteratively.
         """
         self.gv.logger.time_start('Total Time Cost')
         self.gv.logger.info("--------------Initial Evaluation--------------")
@@ -144,10 +209,11 @@ class BasicServer(BasicParty):
 
     def iterate(self):
         """
-        The standard iteration of each federated round that contains three
+        The standard iteration of each federated communication round that contains three
         necessary procedure in FL: client selection, communication and model aggregation.
-        Args:
+
         Returns:
+            False if the global model is not updated in this iteration
         """
         # sample clients: MD sampling as default
         self.selected_clients = self.sample()
@@ -155,7 +221,7 @@ class BasicServer(BasicParty):
         models = self.communicate(self.selected_clients)['model']
         # aggregate: pk = 1/K as default where K=len(selected_clients)
         self.model = self.aggregate(models)
-        return len(models)>0
+        return len(models) > 0
 
     @ss.with_dropout
     @ss.with_clock
@@ -163,10 +229,12 @@ class BasicServer(BasicParty):
         """
         The whole simulating communication procedure with the selected clients.
         This part supports for simulating the client dropping out.
+
         Args:
             selected_clients (list of int): the clients to communicate with
             mtype (anytype): type of message
             asynchronous (bool): asynchronous communciation or synchronous communcation
+
         Returns:
             :the unpacked response from clients that is created ny self.unpack()
         """
@@ -176,19 +244,6 @@ class BasicServer(BasicParty):
         # prepare packages for clients
         for cid in communicate_clients:
             received_package_buffer[cid] = None
-        # try:
-        #     for cid in communicate_clients:
-        #         self.sending_package_buffer[cid] = self.pack(cid, mtype)
-        #         self.sending_package_buffer[cid]['__mtype__'] = mtype
-        # except Exception as e:
-        #     if str(self.device) != 'cpu':
-        #         self.model.to(torch.device('cpu'))
-        #         for cid in communicate_clients:
-        #             self.sending_package_buffer[cid] = self.pack(cid, mtype)
-        #             self.sending_package_buffer[cid]['__mtype__'] = mtype
-        #         self.model.to(self.device)
-        #     else:
-        #         raise e
         # communicate with selected clients
         if self.num_parallels <= 1:
             # computing iteratively
@@ -209,46 +264,63 @@ class BasicServer(BasicParty):
             pool.close()
             pool.join()
             packages_received_from_clients = list(map(lambda x: x.get(), packages_received_from_clients))
-        for i,cid in enumerate(communicate_clients): received_package_buffer[cid] = packages_received_from_clients[i]
-        packages_received_from_clients = [received_package_buffer[cid] for cid in selected_clients if received_package_buffer[cid]]
+        for i, cid in enumerate(communicate_clients): received_package_buffer[cid] = packages_received_from_clients[i]
+        packages_received_from_clients = [received_package_buffer[cid] for cid in selected_clients if
+                                          received_package_buffer[cid]]
         self.received_clients = selected_clients
         return self.unpack(packages_received_from_clients)
-    
+
     @ss.with_latency
     def communicate_with(self, target_id, package={}):
-        return super(BasicServer, self).communicate_with(target_id, package)
-    
-    
-    def pack(self, client_id, mtype=0, *args, **kwargs):
+        r"""Communicate with the object under system simulator that simulates the
+        network latency. Send the package to target object according to its id,
+        and receive the response from it
+
+        Args:
+            target_id (int): the id of the object to communicate with
+            package (dict): the package to be sended to the object
+
+        Returns:
+            client_package (dict): the reply from the target object and
+            will be 'None' if losing connection
         """
+        return super(BasicServer, self).communicate_with(target_id, package)
+
+    def pack(self, client_id, mtype=0, *args, **kwargs):
+        r"""
         Pack the necessary information for the client's local training.
         Any operations of compression or encryption should be done here.
+
         Args:
             client_id (int): the id of the client to communicate with
+            mtype: the message type
+
         Returns:
-            a dict that only contains the global model as default.
+            a dict contains necessary information (e.g. a copy of the global model as default)
         """
         return {
-            "model" : copy.deepcopy(self.model),
+            "model": copy.deepcopy(self.model),
         }
 
     def unpack(self, packages_received_from_clients):
-        """
+        r"""
         Unpack the information from the received packages. Return models and losses as default.
+
         Args:
-            packages_received_from_clients (list of dict):
+            packages_received_from_clients (list): a list of packages
+
         Returns::
             res (dict): collections.defaultdict that contains several lists of the clients' reply
         """
-        if len(packages_received_from_clients)==0: return collections.defaultdict(list)
-        res = {pname:[] for pname in packages_received_from_clients[0]}
+        if len(packages_received_from_clients) == 0: return collections.defaultdict(list)
+        res = {pname: [] for pname in packages_received_from_clients[0]}
         for cpkg in packages_received_from_clients:
             for pname, pval in cpkg.items():
                 res[pname].append(pval)
         return res
 
     def global_lr_scheduler(self, current_round):
-        """
+        r"""
         Control the step size (i.e. learning rate) of local training
         Args:
             current_round (int): the current communication round
@@ -257,45 +329,56 @@ class BasicServer(BasicParty):
             return
         elif self.lr_scheduler_type == 0:
             """eta_{round+1} = DecayRate * eta_{round}"""
-            self.lr*=self.decay_rate
+            self.lr *= self.decay_rate
             for c in self.clients:
                 c.set_learning_rate(self.lr)
         elif self.lr_scheduler_type == 1:
             """eta_{round+1} = eta_0/(round+1)"""
-            self.lr = self.option['learning_rate']*1.0/(current_round+1)
+            self.lr = self.option['learning_rate'] * 1.0 / (current_round + 1)
             for c in self.clients:
                 c.set_learning_rate(self.lr)
 
     @ss.with_availability
     def sample(self):
-        """Sample the clients.
-        Args:
+        r"""
+        Sample the clients. There are three types of sampling manners:
+        full sample, uniform sample without replacement, and MDSample
+        with replacement. Particularly, if 'available' is in self.sample_option,
+        the server will only sample from currently available clients.
+
         Returns:
             a list of the ids of the selected clients
+
+        Example::
+            >>> selected_clients=self.sample()
+            >>> selected_clients
+            >>> # The selected_clients is a list of clients' ids
         """
-        all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in range(self.num_clients)]
+        all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in
+                                                                                        range(self.num_clients)]
         # full sampling with unlimited communication resources of the server
         if 'full' in self.sample_option:
             return all_clients
         # sample clients
         elif 'uniform' in self.sample_option:
             # original sample proposed by fedavg
-            selected_clients = list(np.random.choice(all_clients, min(self.clients_per_round, len(all_clients)), replace=False)) if len(all_clients)>0 else []
+            selected_clients = list(
+                np.random.choice(all_clients, min(self.clients_per_round, len(all_clients)), replace=False)) if len(
+                all_clients) > 0 else []
         elif 'md' in self.sample_option:
             # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local data sizes
             local_data_vols = [self.clients[cid].datavol for cid in all_clients]
             total_data_vol = sum(local_data_vols)
-            p = np.array(local_data_vols)/total_data_vol
-            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=p)) if len(all_clients)>0 else []
+            p = np.array(local_data_vols) / total_data_vol
+            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=p)) if len(
+                all_clients) > 0 else []
         return selected_clients
 
     def aggregate(self, models: list, *args, **kwargs):
-        """
-        Aggregate the locally improved models.
-        Args:
-            models (list): a list of local models
-        Returns:
-            the averaged result
+        r"""
+        Aggregate the locally trained models into the new one. The aggregation
+        will be according to self.aggregate_option where
+
         pk = nk/n where n=self.data_vol
         K = |S_t|
         N = |S|
@@ -303,12 +386,23 @@ class BasicServer(BasicParty):
          weighted_scale                 |uniform (default)          |weighted_com (original fedavg)   |other
         ==========================================================================================================================
         N/K * Σpk * model_k             |1/K * Σmodel_k             |(1-Σpk) * w_old + Σpk * model_k  |Σ(pk/Σpk) * model_k
+
+
+        Args:
+            models (list): a list of local models
+
+        Returns:
+            the aggregated model
+
+        Example::
+            >>> models = [m1, m2] # m1, m2 are models with the same architecture
+            >>> m_new = self.aggregate(models)
         """
         if len(models) == 0: return self.model
         local_data_vols = [c.datavol for c in self.clients]
         total_data_vol = sum(local_data_vols)
         if self.aggregation_option == 'weighted_scale':
-            p = [1.0 * local_data_vols[cid] /total_data_vol for cid in self.received_clients]
+            p = [1.0 * local_data_vols[cid] / total_data_vol for cid in self.received_clients]
             K = len(models)
             N = self.num_clients
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)]) * N / K
@@ -317,64 +411,79 @@ class BasicServer(BasicParty):
         elif self.aggregation_option == 'weighted_com':
             p = [1.0 * local_data_vols[cid] / total_data_vol for cid in self.received_clients]
             w = fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
-            return (1.0-sum(p))*self.model + w
+            return (1.0 - sum(p)) * self.model + w
         else:
             p = [1.0 * local_data_vols[cid] / total_data_vol for cid in self.received_clients]
             sump = sum(p)
-            p = [pk/sump for pk in p]
+            p = [pk / sump for pk in p]
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
 
-    def global_test(self, flag='valid'):
-        """
-        Validate accuracies and losses on clients' local datasets
+    def global_test(self, model=None, flag:str='valid'):
+        r"""
+        Collect local testing result of all the clients.
+
         Args:
-            dataflag (str): choose train data or valid data to evaluate
+            model (flgo.utils.fmodule.FModule|torch.nn.Module): the model to be sevaluated
+            flag (str): choose the data to evaluate the model
+
         Returns:
-            metrics (dict): a dict contains the lists of each metric_value of the clients
+            metrics (dict): a dict contains key-value pairs like (metric_name,
+            the lists of metric results of the clients)
         """
+        if model is None: model=self.model
         all_metrics = collections.defaultdict(list)
         for c in self.clients:
-            client_metrics = c.test(self.model, flag)
+            client_metrics = c.test(model, flag)
             for met_name, met_val in client_metrics.items():
                 all_metrics[met_name].append(met_val)
         return all_metrics
 
-    def test(self, model=None, flag='test'):
-        """
+    def test(self, model=None, flag:str='test'):
+        r"""
         Evaluate the model on the test dataset owned by the server.
+
         Args:
             model (flgo.utils.fmodule.FModule): the model need to be evaluated
+            flag (str): choose the data to evaluate the model
+
         Returns::
-            metrics (dict): specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
+            metrics (dict): the dict contains the evaluating results
         """
-        if model is None: model=self.model
-        if flag == 'valid': dataset = self.valid_data
-        elif flag == 'test': dataset = self.test_data
-        else: dataset = self.train_data
-        if dataset is None: return {}
+        if model is None: model = self.model
+        dataset = getattr(self, flag+'_data') if hasattr(self, flag+'_data') else None
+        if dataset is None:
+            return {}
         else:
-            return self.calculator.test(model, dataset, batch_size = self.option['test_batch_size'], num_workers = self.option['num_workers'], pin_memory = self.option['pin_memory'])
+            return self.calculator.test(model, dataset, batch_size=self.option['test_batch_size'],
+                                        num_workers=self.option['num_workers'], pin_memory=self.option['pin_memory'])
 
     def init_algo_para(self, algo_para: dict):
         """
         Initialize the algorithm-dependent hyper-parameters for the server and all the clients.
+
         Args:
             algo_paras (dict): the dict that defines the hyper-parameters (i.e. name, value and type) for the algorithm.
 
-        Example 1:
-            calling `self.init_algo_para({'u':0.1})` will set the attributions `server.u` and `c.u` as 0.1 with type float where `c` is an instance of `CLient`.
+        Example::
+            >>> # s is an instance of Server and s.clients are instances of Client
+            >>> s.u # will raise error
+            >>> [c.u for c in s.clients] # will raise errors too
+            >>> s.init_algo_para({'u': 0.1})
+            >>> s.u # will be 0.1
+            >>> [c.u for c in s.clients] # will be [0.1, 0.1,..., 0.1]
+
         Note:
             Once `option['algo_para']` is not `None`, the value of the pre-defined hyperparameters will be replaced by the list of values in `option['algo_para']`,
             which requires the length of `option['algo_para']` is equal to the length of `algo_paras`
         """
         self.algo_para = algo_para
-        if len(self.algo_para)==0: return
+        if len(self.algo_para) == 0: return
         # initialize algorithm-dependent hyperparameters from the input options
         if self.option['algo_para'] is not None:
             # assert len(self.algo_para) == len(self.option['algo_para'])
             keys = list(self.algo_para.keys())
-            for i,pv in enumerate(self.option['algo_para']):
-                if i==len(self.option['algo_para']): break
+            for i, pv in enumerate(self.option['algo_para']):
+                if i == len(self.option['algo_para']): break
                 para_name = keys[i]
                 try:
                     self.algo_para[para_name] = type(self.algo_para[para_name])(pv)
@@ -383,41 +492,52 @@ class BasicServer(BasicParty):
         # register the algorithm-dependent hyperparameters as the attributes of the server and all the clients
         for para_name, value in self.algo_para.items():
             self.__setattr__(para_name, value)
-            for c in self.clients:
-                c.__setattr__(para_name, value)
+            for p in self._object_map.values():
+                p.__setattr__(para_name, value)
         return
 
     def get_tolerance_for_latency(self):
+        r"""
+        Get the tolerance for latency of waiting for clients' responses
+
+        Returns:
+            a int number (i.e. self.tolerance_for_latency)
+        """
         return self.tolerance_for_latency
 
     def wait_time(self, t=1):
+        r"""
+        Wait for the time of the virtual clock to pass t units
+        """
         ss.clock.step(t)
         return
 
     @property
     def available_clients(self):
         """
-        Return all the available clients at current round.
-        Args:
-        Returns:: a list of indices of currently available clients
+        Return all the available clients at the current round.
+
+        Returns:
+            a list of indices of currently available clients
         """
         return [cid for cid in range(self.num_clients) if self.clients[cid].is_idle()]
 
     def register_clients(self, clients):
         """
-        register self.clients=clients
+        Regiser clients to self.clients, and update related attributes (e.g. self.num_clients)
+        
         Args:
-            clients (list of Client()): clients
-        Returns:: a list of indices of currently available clients
+            clients (list): a list of objects
         """
-        self.clients = clients
+        self.register_objects(clients, 'clients')
         self.num_clients = len(clients)
         for cid, c in enumerate(self.clients):
             c.client_id = cid
-        for c in self.clients:c.register_server(self)
+        for c in self.clients: c.register_server(self)
         self.clients_per_round = max(int(self.num_clients * self.proportion), 1)
         self.selected_clients = []
         self.dropped_clients = []
+
 
 class BasicClient(BasicParty):
     def __init__(self, option={}):
@@ -425,7 +545,7 @@ class BasicClient(BasicParty):
         self.id = None
         # create local dataset
         self.data_loader = None
-        self.test_data=None
+        self.test_data = None
         self.valid_data = None
         self.train_data = None
         self.model = None
@@ -453,21 +573,19 @@ class BasicClient(BasicParty):
         self.option = option
         self.actions = {0: self.reply}
 
-    def initialize(self):
-        # to be implemented for customized initializing operations
-        return
-
     @ss.with_completeness
     @fmodule.with_multi_gpus
     def train(self, model):
-        """
-        Standard local training procedure. Train the transmitted model with local training dataset.
+        r"""
+        Standard local training procedure. Train the transmitted model with
+        local training dataset.
+
         Args:
             model (FModule): the global model
-        Returns:
         """
         model.train()
-        optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
+        optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay,
+                                                  momentum=self.momentum)
         for iter in range(self.num_steps):
             # get a batch of data
             batch_data = self.get_batch_data()
@@ -478,45 +596,46 @@ class BasicClient(BasicParty):
             optimizer.step()
         return
 
-    @ fmodule.with_multi_gpus
+    @fmodule.with_multi_gpus
     def test(self, model, flag='valid'):
-        """
-        Evaluate the model with local data (e.g. training data or validating data).
+        r"""
+        Evaluate the model on the dataset owned by the client
+
         Args:
-            model (FModule):
-            dataflag (str): choose the dataset to be evaluated on
+            model (flgo.utils.fmodule.FModule): the model need to be evaluated
+            flag (str): choose the data to evaluate the model
+
         Returns:
-            metric (dict): specified by the task during running time (e.g. metric = [mean_accuracy, mean_loss] when the task is classification)
+            metric (dict): the evaluating results (e.g. metric = {'loss':1.02})
         """
-        if flag == 'valid': dataset = self.valid_data
-        elif flag == 'test': dataset = self.test_data
-        else: dataset = self.train_data
-        if dataset is not None:
-            return self.calculator.test(model, dataset, self.test_batch_size, self.option['num_workers'])
-        else:
-            return {}
+        dataset = getattr(self, flag + '_data') if hasattr(self, flag + '_data') else None
+        if dataset is None: return {}
+        return self.calculator.test(model, dataset, self.test_batch_size, self.option['num_workers'])
+
 
     def unpack(self, received_pkg):
-        """
+        r"""
         Unpack the package received from the server
+
         Args:
             received_pkg (dict): a dict contains the global model as default
+
         Returns:
-            the unpacked information that can be rewritten
+            the unpacked information
         """
         # unpack the received package
         return received_pkg['model']
 
     def reply(self, svr_pkg):
-        """
-        Reply to server with the transmitted package.
-        The whole local procedure should be planned here.
-        The standard form consists of three procedure:
-        unpacking the server_package to obtain the global model,
-        training the global model, and finally packing the updated
-        model into client_package.
+        r"""
+        Reply a package to the server. The whole local procedure should be defined here.
+        The standard form consists of three procedure: unpacking the
+        server_package to obtain the global model, training the global model,
+        and finally packing the updated model into client_package.
+
         Args:
             svr_pkg (dict): the package received from the server
+
         Returns:
             client_pkg (dict): the package to be send to the server
         """
@@ -526,114 +645,140 @@ class BasicClient(BasicParty):
         return cpkg
 
     def pack(self, model, *args, **kwargs):
-        """
+        r"""
         Packing the package to be send to the server. The operations of compression
         of encryption of the package should be done here.
+
         Args:
             model: the locally trained model
-        Returns
+
+        Returns:
             package: a dict that contains the necessary information for the server
         """
         return {
-            "model" : model,
+            "model": model,
         }
 
     def is_idle(self):
-        """
-        Check if the client is active to participate training.
-        Args:
+        r"""
+        Check if the client is available to participate training.
+
         Returns:
-            True if the client is active according to the active_rate else False
+            True if the client is available according to the active_rate else False
         """
-        return self.gv.simulator.client_states[self.id]=='idle'
+        return self.gv.simulator.client_states[self.id] == 'idle'
 
     def is_dropped(self):
-        """
+        r"""
         Check if the client drops out during communicating.
-        Args:
+
         Returns:
             True if the client was being dropped
         """
-        return self.gv.simulator.client_states[self.id]=='dropped'
+        return self.gv.simulator.client_states[self.id] == 'dropped'
 
     def is_working(self):
-        return self.gv.simulator.client_states[self.id]=='working'
+        r"""
+        Check if the client is training the model.
+
+        Returns:
+            True if the client is working
+        """
+
+        return self.gv.simulator.client_states[self.id] == 'working'
 
     def train_loss(self, model):
-        """
-        Get the task specified loss of the model on local training data
-        Args: model:
+        r"""
+        Get the loss value of the model on local training data
+
+        Args:
+            model (flgo.utils.fmodule.FModule|torch.nn.Module): model
+
         Returns:
+            the training loss of model on self's training data
         """
-        return self.test(model,'train')['loss']
+        return self.test(model, 'train')['loss']
 
     def valid_loss(self, model):
-        """
-        Get the task specified loss of the model on local validating data
-        Args: model:
+        r"""
+        Get the loss value of the model on local validating data
+
+        Args:
+            model (flgo.utils.fmodule.FModule|torch.nn.Module): model
+
         Returns:
+            the validation loss of model on self's validation data
         """
         return self.test(model)['loss']
 
-    def set_model(self, model):
-        """
-        set self.model
-        Args: model:
-        Returns:
-        """
-        self.model = model
-
     def register_server(self, server=None):
+        r"""
+        Register the server to self.server
+        """
+        self.register_objects([server], 'server_list')
         if server is not None:
             self.server = server
 
     def set_local_epochs(self, epochs=None):
+        r"""
+        Set local training epochs
+        """
         if epochs is None: return
         self.epochs = epochs
-        self.num_steps = self.epochs * math.ceil(len(self.train_data)/self.batch_size)
+        self.num_steps = self.epochs * math.ceil(len(self.train_data) / self.batch_size)
         return
 
     def set_batch_size(self, batch_size=None):
+        r"""
+        Set local training batch size
+
+        Args:
+            batch_size (int): the training batch size
+        """
         if batch_size is None: return
         self.batch_size = batch_size
 
-    def set_learning_rate(self, lr = None):
+    def set_learning_rate(self, lr=None):
         """
-        set the learning rate of local training
-        Args: lr:
-        Returns:
+        Set the learning rate of local training
+        Args:
+            lr (float): a real number
         """
         self.learning_rate = lr if lr else self.learning_rate
 
     def get_time_response(self):
         """
         Get the latency amount of the client
-        Returns: self.latency_amount if client not dropping out
+
+        Returns:
+            self.latency_amount if client not dropping out
         """
         return np.inf if self.dropped else self.time_response
 
     def get_batch_data(self):
         """
-        Get the batch of data
+        Get the batch of training data
         Returns:
             a batch of data
         """
         try:
             batch_data = next(self.data_loader)
         except Exception as e:
-            self.data_loader = iter(self.calculator.get_dataloader(self.train_data, batch_size=self.batch_size, num_workers=self.loader_num_workers, pin_memory=self.option['pin_memory']))
+            self.data_loader = iter(self.calculator.get_dataloader(self.train_data, batch_size=self.batch_size,
+                                                                   num_workers=self.loader_num_workers,
+                                                                   pin_memory=self.option['pin_memory']))
             batch_data = next(self.data_loader)
         # clear local DataLoader when finishing local training
-        self.current_steps = (self.current_steps+1) % self.num_steps
-        if self.current_steps == 0:self.data_loader = None
+        self.current_steps = (self.current_steps + 1) % self.num_steps
+        if self.current_steps == 0: self.data_loader = None
         return batch_data
 
     def update_device(self, dev):
         """
-        Update running-time GPU device to the inputted dev, including change the client's device and the task_calculator's device
+        Update running-time GPU device to dev
+
         Args:
             dev (torch.device): target dev
-        Returns:
         """
         self.device = dev
         self.calculator = self.gv.TaskCalculator(dev, self.calculator.optimizer_name)
