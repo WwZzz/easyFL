@@ -1,3 +1,7 @@
+"""
+This is a non-official implementation of Scaffold proposed in 'Stochastic
+Controlled Averaging for Federated Learning' (ICML 2020).
+"""
 from flgo.algorithm.fedbase import BasicServer, BasicClient
 import copy
 from flgo.utils import fmodule

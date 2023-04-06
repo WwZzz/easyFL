@@ -1,3 +1,6 @@
+"""This is a non-official implementation of 'Fair Resource Allocation in
+Federated Learning' (http://arxiv.org/abs/1905.10497).  And this implementation
+refers to the official github repository https://github.com/litian96/fair_flearn """
 import flgo.algorithm.fedbase as fedbase
 import flgo.utils.fmodule as fmodule
 import copy

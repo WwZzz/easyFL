@@ -1,4 +1,4 @@
-from .fedbase import BasicParty, BasicServer
+from .fedbase import BasicParty
 import collections
 import torch
 import torch.multiprocessing as mp
