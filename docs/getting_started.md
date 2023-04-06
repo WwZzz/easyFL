@@ -37,7 +37,7 @@ After running the codes above, a federated dataset is successfully created in th
 
 
 
-## Run FedAVG to Train Your Model
+## Run FedAvg to Train Your Model
 Now we are going to run the classical federated optimization algorithm, FedAvg [1], on the task created by us to train a model.
 ```python
 import flgo.algorithm.fedavg as fedavg
