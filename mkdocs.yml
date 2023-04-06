@@ -42,9 +42,11 @@ nav:
       - Docs/utils/index.md
       - flgo.utils.fflow: Docs/utils/fflow.md
       - flgo.utils.fmodule: Docs/utils/fmodule.md
-  - "Tutorials": tutorials/index.md
+  - "Tutorials":
+    - Tutorials/index.md
+    - 0 Quick Start: Tutorials/0_Quick_Start.md
   - "About": about.md
-
+  - "Github": https://github.com/WwZzz/easyFL
 theme:
   features:
     - navigation.instant
