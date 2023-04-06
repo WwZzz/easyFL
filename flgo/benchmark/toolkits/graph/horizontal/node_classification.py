@@ -3,7 +3,7 @@ import torch_geometric.transforms as T
 from torch_geometric.utils import mask_to_index, index_to_mask, from_networkx
 import torch_geometric.utils
 import collections
-from flgo.benchmark.toolkits.base import *
+from flgo.benchmark.base import *
 import networkx as nx
 
 

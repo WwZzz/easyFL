@@ -1,20 +1,10 @@
-import community.community_louvain
-import torch
-from community import community_louvain
 from torch import Tensor
 from torch_geometric.data import Data, DataLoader
-from torch_geometric.datasets import Planetoid
-import torch_geometric.transforms as T
-from torch_geometric.utils import train_test_split_edges, mask_to_index, index_to_mask, from_networkx
 
-import torch_geometric.utils
 import collections
 import numpy as np
-import os
-import json
 
-from flgo.benchmark.toolkits.base import *
-import networkx as nx
+from flgo.benchmark.base import *
 
 from flgo.benchmark.toolkits import BasicTaskPipe, BasicTaskCalculator
 

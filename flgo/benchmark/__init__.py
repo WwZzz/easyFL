@@ -22,7 +22,7 @@ procedure that can easily convert various ML tasks into federated ones:
             and creating the data loader
 
 The architecture of a complete federate benchmark is shown as follows:
-
+```
 benchmark_name                  # benchmark folder
 ├─ core.py                      # core file
 │   ├─ TaskGenerator            # class TaskGenerator(...)
@@ -37,6 +37,7 @@ benchmark_name                  # benchmark folder
 │       └─ init_global_module   # the function initializes the global models for parties
 │
 └─ __init__.py                  # containing the variable default_model
+```
 """
 
 path = '/'.join(__file__.split('/')[:-1])

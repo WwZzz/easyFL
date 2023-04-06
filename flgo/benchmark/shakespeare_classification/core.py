@@ -3,7 +3,7 @@ import zipfile
 import torch
 from torch.utils.data import TensorDataset, Dataset
 from flgo.benchmark.toolkits import BasicTaskGenerator, BasicTaskCalculator
-from flgo.benchmark.toolkits.base import BasicTaskPipe
+from flgo.benchmark.base import BasicTaskPipe
 import collections
 import re
 import os

@@ -1,5 +1,5 @@
 from flgo.benchmark.mnist_classification.core import builtin_class, transforms
-from flgo.benchmark.toolkits.base import BasicTaskPipe, BasicTaskCalculator
+from flgo.benchmark.base import BasicTaskPipe, BasicTaskCalculator
 from flgo.benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator
 import torch
 import os.path

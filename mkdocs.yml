@@ -4,19 +4,37 @@ nav:
   - "Get Started": getting_started.md
   - "Overview": overview.md
   - "Docs":
-    - Docs/index.md
+    - Docs/FLGo.md
     - flgo.algorithm: 
       - Docs/algorithm/index.md
+      - flgo.algorithm.fedbase: Docs/algorithm/fedbase.md
+      - flgo.algorithm.vflbase: Docs/algorithm/vflbase.md
     - flgo.benchmark: 
       - Docs/benchmark/index.md
-    - flgo.experiment: 
+      - flgo.benchmark.base: Docs/benchmark/base.md
+      - flgo.benchmark.toolkits:
+        - flgo.benchmark.toolkits.cv:
+          - Docs/benchmark/toolkits/cv/index.md
+          - flgo.benchmark.toolkits.cv.horizontal.image_classification: Docs/benchmark/toolkits/cv/horizontal/image_classification.md
+        - flgo.benchmark.toolkits.nlp: Docs/empty.md
+        - flgo.benchmark.toolkits.graph: Docs/empty.md
+        - flgo.benchmark.toolkits.tabular: Docs/empty.md
+        - flgo.benchmark.toolkits.partition: Docs/benchmark/toolkits/parition.md
+        - flgo.benchmark.toolkits.visualization: Docs/benchmark/toolkits/visualization.md
+    - flgo.experiment:
       - Docs/experiment/index.md
+      - flgo.experiment.logger:
+          - Docs/experiment/logger/BasicLogger.md
+      - flgo.experiment.analyzer: Docs/experiment/analyzer.md
+      - flgo.experiment.device_scheduler: Docs/experiment/device_scheduler.md
     - flgo.simulator:
       - Docs/simulator/index.md
+      - flgo.simulator.base: Docs/simulator/base.md
+      - flgo.simulator.default_simulator: Docs/simulator/default_simulator.md
     - flgo.utils:
       - Docs/utils/index.md
       - flgo.utils.fflow: Docs/utils/fflow.md
-
+      - flgo.utils.fmodule: Docs/utils/fmodule.md
   - "Tutorials": tutorials/index.md
   - "About": about.md
 

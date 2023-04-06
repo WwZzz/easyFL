@@ -1,7 +1,7 @@
 import random
 import torch.utils.data
 import json
-from flgo.benchmark.toolkits.base import *
+from flgo.benchmark.base import *
 
 class BuiltinClassGenerator(BasicTaskGenerator):
     r"""

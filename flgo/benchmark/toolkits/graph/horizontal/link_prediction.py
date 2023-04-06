@@ -8,7 +8,7 @@ from torch_geometric.utils import negative_sampling, from_networkx
 import torch_geometric.utils
 import collections
 
-from flgo.benchmark.toolkits.base import *
+from flgo.benchmark.base import *
 
 
 class LinkPredicitonTaskGenenerator(BasicTaskGenerator):

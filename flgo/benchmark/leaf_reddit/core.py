@@ -13,7 +13,7 @@ import json
 from torch.utils.data import Dataset
 
 from flgo.benchmark.toolkits import BasicTaskGenerator
-from flgo.benchmark.toolkits.base import BasicTaskPipe, BasicTaskCalculator
+from flgo.benchmark.base import BasicTaskPipe, BasicTaskCalculator
 
 
 def download_from_url(url= None, filepath = '.'):

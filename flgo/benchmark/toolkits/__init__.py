@@ -1,3 +1,3 @@
-from .base import BasicTaskPipe
-from .base import BasicTaskGenerator
-from .base import BasicTaskCalculator
+from flgo.benchmark.base import BasicTaskPipe
+from flgo.benchmark.base import BasicTaskGenerator
+from flgo.benchmark.base import BasicTaskCalculator

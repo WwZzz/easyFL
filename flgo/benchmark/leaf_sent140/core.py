@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 import flgo.benchmark
 import os.path
 from flgo.benchmark.toolkits import BasicTaskGenerator, BasicTaskCalculator
-from flgo.benchmark.toolkits.base import XYHorizontalTaskPipe as TaskPipe, BasicTaskPipe
+from flgo.benchmark.base import XYHorizontalTaskPipe as TaskPipe, BasicTaskPipe
 import collections
 import re
 import os
