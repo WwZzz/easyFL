@@ -11,7 +11,7 @@ nav:
       - Docs/benchmark/index.md
     - flgo.experiment: 
       - Docs/experiment/index.md
-    - flgo.system_simulator:
+    - flgo.simulator:
       - Docs/simulator/index.md
     - flgo.utils:
       - Docs/utils/index.md

@@ -91,7 +91,7 @@ class ElemClock:
         Args:
             delta_t (int): the delta of time
         """
-        if delta_t < 0: raise RuntimeError("Cannot inverse time of system_simulator.base.clock.")
+        if delta_t < 0: raise RuntimeError("Cannot inverse time of simulator.base.clock.")
         if self.simulator is not None:
             for t in range(delta_t):
                 self.simulator.flush()
@@ -104,7 +104,7 @@ class ElemClock:
         Args:
             t (int): time
         """
-        if t < self.time: raise RuntimeError("Cannot inverse time of system_simulator.base.clock.")
+        if t < self.time: raise RuntimeError("Cannot inverse time of simulator.base.clock.")
         self.time = t
 
     def put(self, x, time):
@@ -413,7 +413,7 @@ def with_availability(sample):
 
     Example::
         >>> import flgo.algorithm.fedbase
-        >>> import flgo.system_simulator.base as ss
+        >>> import flgo.simulator.base as ss
         >>> class Server(flgo.algorithm.fedbase.BasicServer):
         ...     @ss.with_availability
         ...     def sample(self):
@@ -446,7 +446,7 @@ def with_dropout(communicate):
 
     Example::
         >>> import flgo.algorithm.fedbase
-        >>> import flgo.system_simulator.base as ss
+        >>> import flgo.simulator.base as ss
         >>> class Server(flgo.algorithm.fedbase.BasicServer):
         ...     @ss.with_dropout
         ...     def communicate(self,...):
@@ -471,7 +471,7 @@ def with_latency(communicate_with):
 
     Example::
         >>> import flgo.algorithm.fedbase
-        >>> import flgo.system_simulator.base as ss
+        >>> import flgo.simulator.base as ss
         >>> class Server(flgo.algorithm.fedbase.BasicServer):
         ...     @ss.with_latency
         ...     def communicate_with(self,...):
@@ -508,7 +508,7 @@ def with_completeness(train):
 
     Example::
         >>> import flgo.algorithm.fedbase
-        >>> import flgo.system_simulator.base as ss
+        >>> import flgo.simulator.base as ss
         >>> class Client(flgo.algorithm.fedbase.BasicClient):
         ...     @ss.with_completeness
         ...     def train(self,...):
@@ -529,7 +529,7 @@ def with_clock(communicate):
 
     Example::
         >>> import flgo.algorithm.fedbase
-        >>> import flgo.system_simulator.base as ss
+        >>> import flgo.simulator.base as ss
         >>> class Server(flgo.algorithm.fedbase.BasicServer):
         ...     @ss.with_clock
         ...     def communicate(self,...):

@@ -1,6 +1,6 @@
 from flgo.experiment.logger import BasicLogger
 import numpy as np
-import flgo.system_simulator.base as ss
+import flgo.simulator.base as ss
 
 class SimpleLogger(BasicLogger):
     r"""Simple Logger. Only evaluating model performance on testing dataset and validation dataset."""

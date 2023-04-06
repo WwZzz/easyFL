@@ -2138,8 +2138,6 @@ class BasicLogger(Logger):
         self.output['option'] = option
         self.current_round = -1
         self.objects = []
-        self.coordinator = None
-        self.participants = []
         self.temp = "{:<30s}{:.4f}"
         self.time_costs = []
         self.time_buf = {}
@@ -2185,6 +2183,7 @@ class BasicLogger(Logger):
         else:
             self.time_buf[key][-1] = time.time() - self.time_buf[key][-1]
             self.info("{:<30s}{:.4f}".format(key + ":", self.time_buf[key][-1]) + 's')
+            return self.time_buf[key][-1]
 
     def save_output_as_json(self, filepath=None):
         """Save the self.output as .json file"""

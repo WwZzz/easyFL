@@ -34,7 +34,7 @@ responsiveness_modes = {
 
 """
 
-from flgo.system_simulator.base import BasicSimulator
+from flgo.simulator.base import BasicSimulator
 import random
 import numpy as np
 import collections

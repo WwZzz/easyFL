@@ -7,7 +7,7 @@ import torch.multiprocessing as mp
 import numpy as np
 
 from flgo.utils import fmodule
-import flgo.system_simulator.base as ss
+import flgo.simulator.base as ss
 
 
 # The BasicParty
@@ -185,9 +185,7 @@ class BasicServer(BasicParty):
         while self.current_round <= self.num_rounds:
             self.gv.clock.step()
             # iterate
-            self.gv.logger.time_start('Iterate Time Cost')
             updated = self.iterate()
-            self.gv.logger.time_end('Iterate Time Cost')
             # using logger to evaluate the model if the model is updated
             if updated is True or updated is None:
                 self.gv.logger.info("--------------Round {}--------------".format(self.current_round))

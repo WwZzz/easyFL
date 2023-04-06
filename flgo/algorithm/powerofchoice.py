@@ -5,7 +5,7 @@ Convergence Analysis and Power-of-Choice Selection Strategies' (https://arxiv.or
 import numpy as np
 from flgo.algorithm.fedavg import Client
 from flgo.algorithm.fedbase import BasicServer
-import flgo.system_simulator.base as ss
+import flgo.simulator.base as ss
 
 class Server(BasicServer):
     def initialize(self, *args, **kwargs):

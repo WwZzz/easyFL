@@ -1,5 +1,5 @@
 import copy
-from flgo.system_simulator.base import BasicSimulator
+from flgo.simulator.base import BasicSimulator
 import os
 import zipfile
 import pandas as pd

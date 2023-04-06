@@ -13,7 +13,7 @@ We build up a client state machine to simulate the four types of system heteroge
 APIs to allow customized system heterogeneity simulation.
 
 Example 1: How to customize the system heterogeneity?
->>> class MySimulator(flgo.system_simulator.base.BasicSimulator):
+>>> class MySimulator(flgo.simulator.base.BasicSimulator):
 ...     def update_client_availability(self):
 ...         # update the variable 'prob_available' and 'prob_unavailable' for all the clients
 ...         self.set_variable(self.all_clients, 'prob_available', [0.9 for _ in self.all_clients])
@@ -34,7 +34,7 @@ Example 1: How to customize the system heterogeneity?
 >>> # The runner r will be runned under the customized system heterogeneity, where the clients' states will be flushed by
 >>> # MySimulator.update_client_xxx at each moment of the virtual clock or particular events happen (i.e. a client was selected)
 
-We also provide some preset Simulator like flgo.system_simulator.DefaultSimulator and flgo.system_simulator.
+We also provide some preset Simulator like flgo.simulator.DefaultSimulator and flgo.simulator.
 """
-from flgo.system_simulator.default_simulator import Simulator as DefaultSimulator
-from flgo.system_simulator.phone_simulator import Simulator as PhoneSimulator
+from flgo.simulator.default_simulator import Simulator as DefaultSimulator
+from flgo.simulator.phone_simulator import Simulator as PhoneSimulator

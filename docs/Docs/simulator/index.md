@@ -19,7 +19,7 @@
       heading_level: 1
       show_source: false
 
-::: flgo.system_simulator
+::: flgo.simulator
     handler: python
     options:
       show_root_heading: true

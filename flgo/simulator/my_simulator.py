@@ -1,4 +1,4 @@
-from flgo.system_simulator.base import BasicSimulator
+from flgo.simulator.base import BasicSimulator
 import numpy as np
 class Simulator(BasicSimulator):
     def update_client_connectivity(self, client_ids):

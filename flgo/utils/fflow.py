@@ -26,16 +26,16 @@ try:
 except ModuleNotFoundError:
     warnings.warn("Module pyyaml is not installed. The configuration cannot be loaded by .yml file.")
 
-import flgo.system_simulator
-import flgo.system_simulator.default_simulator
-import flgo.system_simulator.base
+import flgo.simulator
+import flgo.simulator.default_simulator
+import flgo.simulator.base
 import flgo.utils.fmodule
 import flgo.experiment.logger.simple_logger
 import flgo.experiment.logger.tune_logger
 import flgo.experiment.logger.vertical_logger
 import flgo.experiment.logger
 import flgo.experiment.device_scheduler
-from flgo.system_simulator.base import BasicSimulator
+from flgo.simulator.base import BasicSimulator
 import flgo.benchmark.toolkits.partition
 import flgo.algorithm
 
@@ -315,7 +315,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
     except:
         pass
 
-def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = None, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal'):
+def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = None, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal'):
     r"""
     Initialize a runner in FLGo, which is to optimize a model on a specific task (i.e. IID-mnist-of-100-clients) by the selected federated algorithm.
 
@@ -325,7 +325,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         option (dict|str): the configurations of training, environment, algorithm, logger and simulator
         model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
         Logger (flgo.experiment.logger.BasicLogger): the class of the logger inherited from flgo.experiment.logger.BasicLogger
-        Simulator (flgo.system_simulator.base.BasicSimulator): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
+        Simulator (flgo.simulator.base.BasicSimulator): the class of the simulator inherited from flgo.simulator.BasicSimulator
         scene (str): 'horizontal' or 'vertical' in current version of FLGo
 
     Returns:
@@ -422,8 +422,8 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
 
     # init virtual system environment
     gv.logger.info('Use `{}` as the system simulator'.format(str(Simulator)))
-    flgo.system_simulator.base.random_seed_gen = flgo.system_simulator.base.seed_generator(option['seed'])
-    gv.clock = flgo.system_simulator.base.ElemClock()
+    flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
+    gv.clock = flgo.simulator.base.ElemClock()
     gv.simulator = Simulator(objects, option)
     gv.clock.register_simulator(simulator=gv.simulator)
 
@@ -455,7 +455,7 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
         opt (dict): option
         model_name (str): the module name of model
         Logger (flgo.experiment.logger.BasicLogger): the class of the logger
-        Simulator (flgo.system_simulator.base.BasicSimulator): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
+        Simulator (flgo.simulator.base.BasicSimulator): the class of the simulator inherited from flgo.simulator.BasicSimulator
         scene (str): horizontal or vertical
         send_end (connection.Connection): the return of multiprocess.Pipe(...) that is used to pass data to the parent process
     """
@@ -483,7 +483,7 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
         send_end.send(res)
 
 
-def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.system_simulator.DefaultSimulator, scene='horizontal', scheduler=None):
+def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None):
     """
         Tune hyper-parameters for the specific (task, algorithm, model) in parallel.
         Args:
@@ -492,7 +492,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
             option (dict): the dict whose values should be of type list to construct the combinations
             model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
             Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
-            Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
+            Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
             scene (str): 'horizontal' or 'vertical' in current version of FLGo
             scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
         """
@@ -523,7 +523,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
     print('The minimal validation loss occurs at the round {}'.format(op_round))
 
-def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.system_simulator.DefaultSimulator, scene='horizontal', scheduler = None):
+def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler = None):
     """
     Run different groups of hyper-parameters for one task and one algorithm in parallel.
 
@@ -534,7 +534,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
         devices (list): the list of IDs of devices
         Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
-        Simulator (class): the class of the simulator inherited from flgo.system_simulator.BasicSimulator
+        Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
         scene (str): 'horizontal' or 'vertical' in current version of FLGo
         scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
 
@@ -660,14 +660,14 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
                 tmp['Logger'] = flgo.experiment.logger.simple_logger.SimpleLogger
             algorithm_name = tmp['algorithm'].__name__ if (not hasattr(tmp['algorithm'], '__module__') and hasattr(tmp['algorithm'], '__name__')) else tmp['algorithm']
             if tmp['Simulator'] is None:
-                tmp['Simulator'] = flgo.system_simulator.DefaultSimulator
+                tmp['Simulator'] = flgo.simulator.DefaultSimulator
             if tmp['scene'] is None:
                 tmp['scene'] = 'horizontal'
             args.append(list(tmp.values()))
     elif type(runner_args[0]) is tuple or type(runner_args[0]) is list:
         for a in runner_args:
             if len(a)<2: raise RuntimeError('the args of runner should at least contain task and algorithm.')
-            default_args = [None, None, default_option_dict, None, flgo.experiment.logger.simple_logger.SimpleLogger, flgo.system_simulator.DefaultSimulator, 'horizontal']
+            default_args = [None, None, default_option_dict, None, flgo.experiment.logger.simple_logger.SimpleLogger, flgo.simulator.DefaultSimulator, 'horizontal']
             for aid in range(len(a)):
                 if aid==0:
                     default_args[aid] = a[aid]

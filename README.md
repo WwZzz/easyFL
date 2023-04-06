@@ -104,7 +104,7 @@ Logger's setting
 
 ## Architecture
 
-We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`, `fedtask`, `system_simulator` and `utils`.
+We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`, `fedtask`, `simulator` and `utils`.
 ```
 ├─ algorithm
 │  ├─ fedavg.py                   //fedavg algorithm
@@ -134,7 +134,7 @@ We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`
 │  ├─ res_config.yml                  //hyperparameter file of analyzer.py
 │  ├─ run_config.yml                  //hyperparameter file of runner.py
 |  └─ runner.py                    //the class for generating experimental commands based on hyperparameter combinations and processor scheduling for all experimental 
-├─ system_simulator                     //system heterogeneity simulation module
+├─ simulator                     //system heterogeneity simulation module
 │  ├─ base.py							//the base class for simulate system heterogeneity
 │  ├─ default_simulator.py				//the default class for simulate system heterogeneity
 |  └─ ...
@@ -216,9 +216,9 @@ Further details of this module are described in `algorithm/README.md`.
 
 The experiment module contains experiment command generation and scheduling operation, which can help FL researchers more conveniently conduct experiments in the field of federated learning.
 
-### System_simulator
+### simulator
 
-The system_simulator module is used to realize the simulation of heterogeneous systems, and we set multiple states such as network speed and availability to better simulate the system heterogeneity of federated learning parties.
+The simulator module is used to realize the simulation of heterogeneous systems, and we set multiple states such as network speed and availability to better simulate the system heterogeneity of federated learning parties.
 
 ### Utils
 
