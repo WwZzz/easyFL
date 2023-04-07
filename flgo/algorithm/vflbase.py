@@ -132,7 +132,7 @@ class ActiveParty(PassiveParty):
         Unpack the information from the received packages. Return models and losses as default.
         Args:
             packages_received_from_clients (list of dict):
-        Returns::
+        Returns:
             res (dict): collections.defaultdict that contains several lists of the clients' reply
         """
         if len(packages_received_from_clients)==0: return collections.defaultdict(list)
@@ -188,8 +188,8 @@ class ActiveParty(PassiveParty):
     def get_batch_data(self):
         """
         Get the batch of data
-        Returns::
-            a batch of data
+        Returns:
+            batch_data: a batch of data
         """
         try:
             batch_data = next(self.data_loader)

@@ -183,7 +183,8 @@ def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dic
         rawdata_path (str): where the raw data will be downloaded\stored
         seed (int): the random seed used to generate the task
 
-    Example::
+    Example:
+    ```python
         >>> import flgo
         >>> import flgo.benchmark.mnist_classification as mnist
         >>> from flgo.benchmark.toolkits.partition import IIDPartitioner
@@ -191,6 +192,7 @@ def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dic
         >>> flgo.gen_task_by_para(benchmark=mnist, Partitioner = IIDPartitioner, par_para={'num_clients':100}, task_path='./mnist_gen_by_para1')
         >>> # GENERATE THE SAME TASK BY PASSING THE STRING
         >>> flgo.gen_task_by_para(benchmark='flgo.benchmark.mnist_classification', Partitioner='IIDPartitioner', par_para={'num_clients':100}, task_path='./mnist_gen_by_para2')
+    ```
     """
     random.seed(3 + seed)
     np.random.seed(97 + seed)
@@ -246,11 +248,13 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
         rawdata_path (str): where the raw data will be downloaded\stored
         seed (int): the random seed used to generate the task
 
-    Example::
+    Example:
+    ```python
         >>> import flgo
         >>> config = {'benchmark':{'name':'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDParitioner', 'para':{'num_clients':100}}}
         >>> flgo.gen_task(config, './my_mnist_iid')
         >>> # The task will be stored as `my_mnist_iid` in the current working dictionary
+    ```
     """
     # setup random seed
     random.seed(3 + seed)
@@ -331,7 +335,8 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     Returns:
         runner: the object instance that has the method runner.run()
 
-    Example::
+    Example:
+    ```python
         >>> import flgo
         >>> from flgo.algorithm import fedavg
         >>> from flgo.experiment.logger.simple_logger import SimpleLogger
@@ -341,6 +346,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         >>> fedavg_runner = flgo.init('mnist_iid', algorithm=fedavg, option = {'num_rounds':20, 'gpu':[0], 'learning_rate':0.1})
         >>> fedavg_runner.run()
         ... # the training will start after runner.run() was called, and the running-time results will be recorded by Logger into the task dictionary
+    ```
     """
 
     # init option
@@ -609,13 +615,15 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
     Returns:
         a list of output results of runners
 
-    Example::
+    Example:
+    ```python
         >>> from flgo.algorithm import fedavg, fedprox, scaffold
         >>> # create task 'mnist_iid' by flgo.gen_task if there exists no such task
         >>> task='./mnist_iid'
         >>> if os.path.exists(task): flgo.gen_task({'benchmark':{'name':'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDPartitioner','para':{'num_clients':100}}}, task)
         >>> algos = [fedavg, fedprox, scaffold]
         >>> flgo.multi_init_and_run([{'task':task, 'algorithm':algo} for algo in algos], devices=[0])
+    ```
     """
     if len(runner_args)==0:return
     args = []

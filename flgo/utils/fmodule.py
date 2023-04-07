@@ -5,7 +5,8 @@ class FModule(nn.Module):
     r"""
     This module implements commonly used model-level operators like add, sub, and so on.
 
-    Example::
+    Example:
+    ```python
         >>> class TestModel(FModule):
         ...     def __init__(self):
         ...         self.mlp = torch.nn.Linear(2,2, bias=False)
@@ -13,6 +14,7 @@ class FModule(nn.Module):
         >>> m2 = TestModel()
         >>> m3 = m1+m2
         >>> (m1.mlp.weight+m2.mlp.weight)==m3.mlp.weight
+    ```
     """
     def __init__(self):
         super().__init__()

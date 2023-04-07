@@ -2,6 +2,9 @@ r"""
 This module is to help conduct experiments in federated learning by providing high-level APIs to
 records information during running-time. To customized the logger, anyone should overwrite the three
 methods:
+
+Example:
+```python
 >>> import flgo.experiment.logger
 >>> class MyLogger(flgo.experiment.logger.BasicLogger):
 ...     def initialize(self):
@@ -18,6 +21,8 @@ methods:
 ...         # organize the variables in self.output here before saving it into .json file
 ...         pass
 >>> runner = flgo.init(task, algorithm=fedavg, Logger=MyLogger)
+```
+
 Then the customized Logger will be used to record running-time variables.
 
 The Logger is also used to enable early stopping, where 'valid_loss' must be a key in self.output if

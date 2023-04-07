@@ -1,18 +1,24 @@
 r"""
 This module is to simulate arbitrary system heterogeneity that may occur in practice.
-We conclude four types of system heterogeneity from existing works:
-    1) availability: the devices will be either available or unavailable at each moment, where only the
+We conclude four types of system heterogeneity from existing works.
+System Heterogeneity Description:
+    1. **Availability**: the devices will be either available or unavailable at each moment, where only the
                     available devices can be selected to participate in training.
-    2) responsiveness: the responsiveness describes the length of the period from the server broadcasting the
+
+    2. **Responsiveness**: the responsiveness describes the length of the period from the server broadcasting the
                     gloabl model to the server receiving the locally trained model from a particular client.
-    3) completeness: since the server cannot fully control the behavior of devices,it's possible for devices to
+
+    3. **Completeness**: since the server cannot fully control the behavior of devices,it's possible for devices to
                     upload imcomplete model updates (i.e. only training for a few steps).
-    4) connectivity: the clients who promise to complete training may suffer accidients so that the server may lose
+
+    4. **Connectivity**: the clients who promise to complete training may suffer accidients so that the server may lose
                     connections with these client who will never return the currently trained local model.
+
 We build up a client state machine to simulate the four types of system heterogeneity, and provide high-level
 APIs to allow customized system heterogeneity simulation.
 
-Example 1: How to customize the system heterogeneity?
+**Example**: How to customize the system heterogeneity:
+```python
 >>> class MySimulator(flgo.simulator.base.BasicSimulator):
 ...     def update_client_availability(self):
 ...         # update the variable 'prob_available' and 'prob_unavailable' for all the clients
@@ -33,6 +39,7 @@ Example 1: How to customize the system heterogeneity?
 >>> r = flgo.init(task, algorithm=fedavg, Simulator=MySimulator)
 >>> # The runner r will be runned under the customized system heterogeneity, where the clients' states will be flushed by
 >>> # MySimulator.update_client_xxx at each moment of the virtual clock or particular events happen (i.e. a client was selected)
+```
 
 We also provide some preset Simulator like flgo.simulator.DefaultSimulator and flgo.simulator.
 """

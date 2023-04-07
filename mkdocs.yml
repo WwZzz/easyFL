@@ -77,8 +77,9 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-
+copyright: Copyright &copy; 2023, Zheng Wang
 extra:
+  generator: false
   alternate:
     - name: English
       link: /en/ 
@@ -86,6 +87,10 @@ extra:
     - name: 中文
       link: /cn/
       lang: cn
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/WwZzz/easyFL
+      name: FLGo
 
 plugins:
 - search

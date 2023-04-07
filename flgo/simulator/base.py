@@ -411,13 +411,15 @@ def with_availability(sample):
     r"""
     The decorator for sampling with client availability
 
-    Example::
+    Example:
+    ```python
         >>> import flgo.algorithm.fedbase
         >>> import flgo.simulator.base as ss
         >>> class Server(flgo.algorithm.fedbase.BasicServer):
         ...     @ss.with_availability
         ...     def sample(self):
         ...         ...
+    ```
     """
     @functools.wraps(sample)
     def sample_with_availability(self):
@@ -444,13 +446,15 @@ def with_dropout(communicate):
     r"""
     The decorator for communicating to simulate the scene where clients may drop out
 
-    Example::
+    Example:
+    ```python
         >>> import flgo.algorithm.fedbase
         >>> import flgo.simulator.base as ss
         >>> class Server(flgo.algorithm.fedbase.BasicServer):
         ...     @ss.with_dropout
         ...     def communicate(self,...):
         ...         ...
+    ```
     """
     @functools.wraps(communicate)
     def communicate_with_dropout(self, selected_clients, mtype=0, asynchronous=False):
@@ -469,13 +473,15 @@ def with_latency(communicate_with):
     r"""
     The decorator to simulate the scene where there are network latencies during communication
 
-    Example::
+    Example:
+    ```python
         >>> import flgo.algorithm.fedbase
         >>> import flgo.simulator.base as ss
         >>> class Server(flgo.algorithm.fedbase.BasicServer):
         ...     @ss.with_latency
         ...     def communicate_with(self,...):
         ...         ...
+    ```
     """
     @functools.wraps(communicate_with)
     def delayed_communicate_with(self, target_id, package):
@@ -506,13 +512,15 @@ def with_completeness(train):
     r"""
     The decorator to simulate the scene where the clients may upload incomplete model updates
 
-    Example::
+    Example:
+    ```python
         >>> import flgo.algorithm.fedbase
         >>> import flgo.simulator.base as ss
         >>> class Client(flgo.algorithm.fedbase.BasicClient):
         ...     @ss.with_completeness
         ...     def train(self,...):
         ...         ...
+    ```
     """
     @functools.wraps(train)
     def train_with_incomplete_update(self, model, *args, **kwargs):
@@ -527,13 +535,15 @@ def with_clock(communicate):
     r"""
     The decorator to simulate the scene where there is a virtual global clock
 
-    Example::
+    Example:
+    ```python
         >>> import flgo.algorithm.fedbase
         >>> import flgo.simulator.base as ss
         >>> class Server(flgo.algorithm.fedbase.BasicServer):
         ...     @ss.with_clock
         ...     def communicate(self,...):
         ...         ...
+    ```
     """
     def communicate_with_clock(self, selected_clients, mtype=0, asynchronous=False):
         self.gv.simulator.update_client_completeness(selected_clients)

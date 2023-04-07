@@ -168,12 +168,14 @@ class Selector:
     Args:
         selector_config (dict): the dictionary that is used to filter records
 
-    Example::
+    Example:
+    ```python
         >>> task='./my_task'
         >>> selector = Selector({'task':task, 'header':['fedavg'], 'filter':{'lr':0.1}})
         >>> selector.records[task]
         >>> # selector.records is a dict where selector.records[task] is a list
         >>> # of the records that pass the filter
+    ```
     """
     def __init__(self, selector_config):
         self.config = selector_config
@@ -263,7 +265,8 @@ class PaintObject:
         obj_option (dict): the personal option for each object
         draw_func (str): optional, the function name. All the subclass of this class won't claim this parameter.
 
-    Example::
+    Example:
+    ```python
         >>> class GroupCurve(PaintObject):
         ...     def __init__(self, rec, args,  obj_option):
         ...         super(GroupCurve, self).__init__(rec, args, obj_option, '')
@@ -277,6 +280,7 @@ class PaintObject:
         ...         ax.plot(x, mean_y, label=self.rec.data['label'])
         ...         ax.fill_between(x, max_y, min_y, alpha=0.3)
         ...         ax.legend()
+    ```
     """
     def __init__(self, rec: Record, args: dict,  obj_option: dict, draw_func: str):
         self.rec = rec
@@ -368,9 +372,11 @@ class Painter:
             object_class (class|str): the types of the obejct to be drawed
             fig_config (dict): the drawing configuration
 
-        Example::
+        Example:
+        ```python
             >>> p=Painter(records)
             >>> p.create_figure(Curve, {'args':{'x':'communication_round', 'y':'valid_loss'}})
+        ```
         """
         object_class = eval(object_class) if type(object_class) is str else object_class
         if 'split' in  fig_config.keys():
@@ -616,10 +622,12 @@ class Table:
             func (func|str): the name of the function or the function
             col_option (dict|str): the option of the column to index data in each record
 
-        Example::
+        Example:
+        ```python
             >>> tb = Table(records)
             >>> tb.add_column(min_value, col_option={'x':'valid_loss'})
             >>> tb.print()
+        ```
         """
         func = eval(func) if type(func) is str else func
         col_option = {'x': col_option} if type(col_option) is not dict else col_option
@@ -658,7 +666,8 @@ def show(config, save_figure=False, save_text=False, path='.', seed=0):
         path (str): the path to store the results
         seed (int): random seed
 
-    Example::
+    Example:
+    ```python
         >>> import flgo.experiment.analyzer as al
         >>> # only records of fedavg running on the task 'my_task' with learning rate lr<=0.01 will be selected
         >>> selector_config = {'task':'./my_task', 'header':['fedavg'], 'filter':['LR':'<=0.1']}
@@ -670,6 +679,7 @@ def show(config, save_figure=False, save_text=False, path='.', seed=0):
         >>> analysis_plan = {'Selector':selector_config, 'Painter':painter_config, 'Table':table_config}
         >>> # call this function
         >>> al.show(analysis_plan)
+    ```
     """
     random.seed(seed)
     np.random.seed(seed)

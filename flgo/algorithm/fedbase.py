@@ -101,7 +101,8 @@ class BasicParty:
             parties (list): a list of objects
             parties_name (str): the name of attribute to store parties
 
-        Example::
+        Example:
+        ```python
             >>> a = BasicParty()
             >>> b = BasicParty()
             >>> c = BasicParty()
@@ -110,6 +111,7 @@ class BasicParty:
             >>> d = BasicParty()
             >>> a.register_objects([d], 'parties')
             >>> a.parties # will be [b,c,d]
+        ```
         """
         if type(parties) is not list:
             raise TypeError("parties should be a list")
@@ -307,7 +309,7 @@ class BasicServer(BasicParty):
         Args:
             packages_received_from_clients (list): a list of packages
 
-        Returns::
+        Returns:
             res (dict): collections.defaultdict that contains several lists of the clients' reply
         """
         if len(packages_received_from_clients) == 0: return collections.defaultdict(list)
@@ -347,10 +349,12 @@ class BasicServer(BasicParty):
         Returns:
             a list of the ids of the selected clients
 
-        Example::
+        Example:
+        ```python
             >>> selected_clients=self.sample()
             >>> selected_clients
             >>> # The selected_clients is a list of clients' ids
+        ```
         """
         all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in
                                                                                         range(self.num_clients)]
@@ -392,9 +396,11 @@ class BasicServer(BasicParty):
         Returns:
             the aggregated model
 
-        Example::
+        Example:
+        ```python
             >>> models = [m1, m2] # m1, m2 are models with the same architecture
             >>> m_new = self.aggregate(models)
+        ```
         """
         if len(models) == 0: return self.model
         local_data_vols = [c.datavol for c in self.clients]
@@ -444,7 +450,7 @@ class BasicServer(BasicParty):
             model (flgo.utils.fmodule.FModule): the model need to be evaluated
             flag (str): choose the data to evaluate the model
 
-        Returns::
+        Returns:
             metrics (dict): the dict contains the evaluating results
         """
         if model is None: model = self.model
@@ -462,14 +468,15 @@ class BasicServer(BasicParty):
         Args:
             algo_paras (dict): the dict that defines the hyper-parameters (i.e. name, value and type) for the algorithm.
 
-        Example::
+        Example:
+        ```python
             >>> # s is an instance of Server and s.clients are instances of Client
             >>> s.u # will raise error
             >>> [c.u for c in s.clients] # will raise errors too
             >>> s.init_algo_para({'u': 0.1})
             >>> s.u # will be 0.1
             >>> [c.u for c in s.clients] # will be [0.1, 0.1,..., 0.1]
-
+        ```
         Note:
             Once `option['algo_para']` is not `None`, the value of the pre-defined hyperparameters will be replaced by the list of values in `option['algo_para']`,
             which requires the length of `option['algo_para']` is equal to the length of `algo_paras`

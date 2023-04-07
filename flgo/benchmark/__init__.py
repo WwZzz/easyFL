@@ -4,24 +4,26 @@ in FL, a commonly used benchmark is federated MNIST that splits MNIST
 into 100 shards and each shard contains data of two types of labels.
 
 In FLGo, three basic components are created to describe a general
-procedure that can easily convert various ML tasks into federated ones:
+procedure that can easily convert various ML tasks into federated ones.
 
-    1. TaskGenerator
-        1.1 load the original dataset
-        1.2 partition the original dataset into local data
+Components:
+    * `TaskGenerator`
+        - load the original dataset
+        - partition the original dataset into local data
 
-    2. TaskPipe
-        2.1 store the partition information of TaskGenerator into the disk
+    * `TaskPipe`
+        - store the partition information of TaskGenerator into the disk
             when generating federated tasks
-        2.2 load the original dataset and the partition information to
+        - load the original dataset and the partition information to
             create the federated scenario when optimizing models
 
-    3. TaskCalculator
-        3.1 support task-specific computation when optimizing models, such
+    * `TaskCalculator`
+        - support task-specific computation when optimizing models, such
             as putting data into device, computing loss, evaluating models,
             and creating the data loader
 
 The architecture of a complete federate benchmark is shown as follows:
+
 ```
 benchmark_name                  # benchmark folder
 ├─ core.py                      # core file
@@ -38,6 +40,23 @@ benchmark_name                  # benchmark folder
 │
 └─ __init__.py                  # containing the variable default_model
 ```
+
+**Example**:
+The architecture of MNIST is
+```
+├─ core.py
+│   ├─ TaskGenerator
+│   ├─ TaskPipe
+│   └─ TaskCalculator
+├─  model
+│   ├─ cnn.py
+│   └─ mlp.py
+│       ├─ init_local_module
+│       └─ init_global_module
+└─ __init__.py
+```
+
+The details of implementing a customized benchmark are in Tutorial.3
 """
 
 path = '/'.join(__file__.split('/')[:-1])

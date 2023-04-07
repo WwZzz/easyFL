@@ -90,11 +90,13 @@ class AutoScheduler(BasicScheduler):
         dynamic_memory_occupated (bool, optional): whether to dynamically estimate the memory occupation
         dynamic_condition (str): 'mean' or 'max'
 
-    Example::
+    Example:
+    ```python
         >>> import flgo.experiment.device_scheduler
         >>> sc = flgo.experiment.device_scheduler.AutoScheduler([0,1])
         >>> import flgo
         >>> flgo.multi_init_and_run(runner_args, scheduler=sc)
+    ```
     """
     def __init__(self, devices:list, put_interval = 5, mean_memory_occupated = 1000, available_interval=5, dynamic_memory_occupated=True, dynamic_condition='mean'):
         super(AutoScheduler, self).__init__(devices)
