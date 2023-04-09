@@ -2251,7 +2251,7 @@ class BasicLogger(Logger):
                 try:
                     content = self.temp.format(key, val[-1])
                 except:
-                    content = "{}:".format(key)+str(val)
+                    content = "{}:".format(key)+str(val[-1])
                 self.info(content)
 
     def get_output_name(self, suffix='.json'):
