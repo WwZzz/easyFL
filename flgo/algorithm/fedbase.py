@@ -180,10 +180,11 @@ class BasicServer(BasicParty):
         Running the FL symtem where the global model is trained and evaluated iteratively.
         """
         self.gv.logger.time_start('Total Time Cost')
-        self.gv.logger.info("--------------Initial Evaluation--------------")
-        self.gv.logger.time_start('Eval Time Cost')
-        self.gv.logger.log_once()
-        self.gv.logger.time_end('Eval Time Cost')
+        if self.eval_interval>0:
+            self.gv.logger.info("--------------Initial Evaluation--------------")
+            self.gv.logger.time_start('Eval Time Cost')
+            self.gv.logger.log_once()
+            self.gv.logger.time_end('Eval Time Cost')
         while self.current_round <= self.num_rounds:
             self.gv.clock.step()
             # iterate

@@ -2248,7 +2248,11 @@ class BasicLogger(Logger):
             a = [(yk in key) for yk in yes_key]
             nf = [(nk not in key) for nk in no_key]
             if np.all(nf) and np.any(a):
-                self.info(self.temp.format(key, val[-1]))
+                try:
+                    content = self.temp.format(key, val[-1])
+                except:
+                    content = "{}:".format(key)+str(val)
+                self.info(content)
 
     def get_output_name(self, suffix='.json'):
         if not hasattr(self, 'option'): raise NotImplementedError('logger has no attr named "option"')

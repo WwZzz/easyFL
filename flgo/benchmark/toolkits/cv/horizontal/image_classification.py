@@ -22,8 +22,20 @@ class BuiltinClassGenerator(BasicTaskGenerator):
         self.test_additional_option = {}
 
     def load_data(self):
-        self.train_data = self.builtin_class(root=self.rawdata_path, download=True, train=True, transform=self.transform)
-        self.test_data = self.builtin_class(root=self.rawdata_path, download=True, train=False, transform=self.transform)
+        # load the datasets
+        train_default_init_para = {'root': self.rawdata_path, 'download':True, 'train':True, 'transform':self.transform}
+        test_default_init_para = {'root': self.rawdata_path, 'download':True, 'train':False, 'transform':self.transform}
+        train_default_init_para.update(self.additional_option)
+        train_default_init_para.update(self.train_additional_option)
+        test_default_init_para.update(self.additional_option)
+        test_default_init_para.update(self.test_additional_option)
+        train_pop_key = [k for k in train_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+        test_pop_key = [k for k in test_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+        for k in train_pop_key: train_default_init_para.pop(k)
+        for k in test_pop_key: test_default_init_para.pop(k)
+        # init datasets
+        self.train_data = self.builtin_class(**train_default_init_para)
+        self.test_data = self.builtin_class(**test_default_init_para)
 
     def partition(self):
         self.local_datas = self.partitioner(self.train_data)
