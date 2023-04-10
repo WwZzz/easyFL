@@ -1,21 +1,20 @@
 import math
 import shutil
 import urllib.request
-import random
 import zipfile
+from typing import Any
+
 import flgo.benchmark
 import os.path
 import json
 import numpy as np
-from sklearn.model_selection import train_test_split
-from torchvision.datasets import MNIST, utils
+from torchvision.datasets import MNIST
 from PIL import Image
 import os.path
 import torch
 import torchvision
-from tqdm import tqdm
 
-from flgo.benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
+from flgo.benchmark.toolkits.cv.classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 
 def download_from_url(url= None, filepath = '.'):
     """Download dataset from url to filepath."""
@@ -38,8 +37,8 @@ class FEMNIST(MNIST):
     "LEAF: A Benchmark for Federated Settings" https://arxiv.org/abs/1812.01097.
     """
 
-    def __init__(self, root, train=True, transform=None, target_transform=None,
-                 download=False):
+    def __init__(self, root:str, train:bool=True, transform:Any=None, target_transform:Any=None,
+                 download:bool=False):
         super(MNIST, self).__init__(root, transform=transform,
                                     target_transform=target_transform)
         self.train = train
@@ -121,10 +120,14 @@ class FEMNIST(MNIST):
 
 TaskCalculator = GeneralCalculator
 
+builtin_class = FEMNIST
+path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'MNIST')
+transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), ])
+
 class TaskGenerator(BuiltinClassGenerator):
-    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'MNIST')):
-        super(TaskGenerator, self).__init__('femnist_classification', rawdata_path, FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
+    def __init__(self, rawdata_path=path):
+        super(TaskGenerator, self).__init__(__file__.split('/')[-2], rawdata_path, builtin_class, transform)
 
 class TaskPipe(BuiltinClassPipe):
     def __init__(self, task_path):
-        super(TaskPipe, self).__init__(task_path, FEMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(), ]))
+        super(TaskPipe, self).__init__(task_path, builtin_class, transform)

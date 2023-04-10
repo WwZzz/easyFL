@@ -1,12 +1,15 @@
 import torchvision
-from flgo.benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
+from flgo.benchmark.toolkits.cv.classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 import flgo.benchmark
 import os.path
-TaskCalculator = GeneralCalculator
+
+builtin_class = torchvision.datasets.EMNIST
+transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'EMNIST')
 
 class TaskGenerator(BuiltinClassGenerator):
-    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'EMNIST'), split='byclass'):
-        super(TaskGenerator, self).__init__('emnist_classification', rawdata_path, torchvision.datasets.EMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(),]))
+    def __init__(self, rawdata_path=path, split='byclass'):
+        super(TaskGenerator, self).__init__(__file__.split('/')[-2], rawdata_path, builtin_class, transform)
         self.split = split
         self.additional_option = {'split': self.split}
 
@@ -16,4 +19,6 @@ class TaskGenerator(BuiltinClassGenerator):
 
 class TaskPipe(BuiltinClassPipe):
     def __init__(self, task_path):
-        super(TaskPipe, self).__init__(task_path, torchvision.datasets.EMNIST, torchvision.transforms.Compose([torchvision.transforms.ToTensor(), ]))
+        super(TaskPipe, self).__init__(task_path, builtin_class, transform)
+
+TaskCalculator = GeneralCalculator

@@ -1,10 +1,19 @@
+from __future__ import annotations
+
+import flgo.utils.fmodule
 from .fedbase import BasicParty
 import collections
 import torch
 import torch.multiprocessing as mp
 
 class PassiveParty(BasicParty):
-    def __init__(self, option):
+    r"""This is the implementation of the passive party in vertival FL.
+    The passive party owns only a part of data features without label information.
+
+    Args:
+        option (dict): running-time option
+    """
+    def __init__(self, option:dict):
         super().__init__()
         self.option = option
         self.actions = {0: self.forward, 1:self.backward, 2:self.forward_test}
@@ -30,7 +39,16 @@ class PassiveParty(BasicParty):
         self._effective_num_steps = self.num_steps
         self._latency = 0
 
-    def forward(self, package):
+    def forward(self, package:dict={}):
+        r"""
+        Local forward to computing the activations on local features
+
+        Args:
+            package (dict): the package from the active party that contains batch information and the type of data
+
+        Returns:
+            passive_package (dict): the package that contains the activation to be sent to the active party
+        """
         batch_ids = package['batch']
         tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
         dataset = tmp[package['data_type']]
@@ -39,11 +57,24 @@ class PassiveParty(BasicParty):
         return {'activation': self.activation.clone().detach()}
 
     def backward(self, package):
+        r"""
+        Local backward to computing the gradients on local modules
+
+        Args:
+            package (dict): the package from the active party that contains the derivations
+        """
         derivation = package['derivation']
         self.update_local_module(derivation, self.activation)
         return
 
     def update_local_module(self, derivation, activation):
+        r"""
+        Update local modules according to the derivation and the activation
+
+        Args:
+            derivation (Any): the derivation from the active party
+            activation (Any): the local computed activation
+        """
         optimizer = self.calculator.get_optimizer(self.local_module, self.lr)
         loss_surrogat = (derivation*activation).sum()
         loss_surrogat.backward()
@@ -51,6 +82,15 @@ class PassiveParty(BasicParty):
         return
 
     def forward_test(self, package):
+        r"""
+        Local forward to computing the activations on local features for testing
+
+        Args:
+            package (dict): the package from the active party that contains batch information and the type of data
+
+        Returns:
+            passive_package (dict): the package that contains the activation to be sent to the active party
+        """
         batch_ids = package['batch']
         tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
         dataset = tmp[package['data_type']]
@@ -59,6 +99,14 @@ class PassiveParty(BasicParty):
         return {'activation': self.activation}
 
 class ActiveParty(PassiveParty):
+    r"""
+    This is the implementation of the active party in vertival FL. The active party owns
+    the data label information and may also own parts of data features. If a active party owns
+    data features, it is also a passive party simultaneously.
+
+    Args:
+        option (dict): running-time option
+    """
     def __init__(self, option):
         super().__init__(option)
         self.actions = {0: self.forward, 1: self.backward,2:self.forward_test}
@@ -170,6 +218,20 @@ class ActiveParty(PassiveParty):
         return
 
     def iterate(self):
+        r"""
+        The standard VFL process.
+
+         1. The active party first generates the batch information.
+
+         2. Then, it collects activations from all the passive parties.
+
+         3. Thirdly, it continues the forward passing and backward passing to update the decoder part of the model, and distributes the derivations to parties.
+
+         4. Finally, each passive party will update its local modules accoring to the derivations and activations.
+
+        Returns:
+            updated (bool): whether the model is updated in this iteration
+        """
         self._data_type='train'
         self.crt_batch = self.get_batch_data()
         activations = self.communicate([pid for pid in range(len(self.parties))], mtype=0)['activation']
@@ -177,11 +239,21 @@ class ActiveParty(PassiveParty):
         _ = self.communicate([pid for pid in range(len(self.parties))], mtype=1)
         return True
 
-    def pack(self, client_id, mtype=0):
+    def pack(self, party_id, mtype=0):
+        r"""
+        Pack the necessary information to parties into packages.
+
+        Args:
+            party_id (int): the id of the party
+            mtype (Any): the message type
+
+        Returns:
+            package (dict): the package
+        """
         if mtype==0:
             return {'batch': self.crt_batch[2], 'data_type': self._data_type}
         elif mtype==1:
-            return {'derivation': self.defusion[client_id]}
+            return {'derivation': self.defusion[party_id]}
         elif mtype==2:
             return {'batch': self.crt_test_batch[2], 'data_type': self._data_type}
 
@@ -189,7 +261,7 @@ class ActiveParty(PassiveParty):
         """
         Get the batch of data
         Returns:
-            batch_data: a batch of data
+            batch_data (Any): a batch of data
         """
         try:
             batch_data = next(self.data_loader)
@@ -198,7 +270,15 @@ class ActiveParty(PassiveParty):
             batch_data = next(self.data_loader)
         return batch_data
 
-    def update_global_module(self, activations, model):
+    def update_global_module(self, activations:list, model:torch.nn.Module|flgo.utils.fmodule.FModule):
+        r"""
+        Update the global module by computing the forward passing and the backward passing. The attribute
+        self.defusion and self.fusion.grad will be changed after calling this method.
+
+        Args:
+            activations (list): a list of activations from all the passive parties
+            model (torch.nn.Module|flgo.utils.fmodule.FModule): the model
+        """
         self.fusion = self.fuse(activations)
         self.fusion.requires_grad=True
         optimizer = self.calculator.get_optimizer(self.global_module, lr=self.lr)
@@ -207,13 +287,40 @@ class ActiveParty(PassiveParty):
         optimizer.step()
         self.defusion = self.defuse(self.fusion)
 
-    def fuse(self, activations):
+    def fuse(self, activations:list):
+        r"""
+        Fuse the activations into one.
+
+        Args:
+            activations (list): a list of activations from all the passive parties
+
+        Returns:
+            fusion (Any): the fused result
+        """
         return torch.stack(activations).mean(dim=0)
 
     def defuse(self, fusion):
+        r"""
+        Defuse the fusion into derivations.
+
+        Args:
+            fusion (Any): the fused result
+
+        Returns:
+            derivations (list): a list of derivations
+        """
         return [fusion.grad for _ in self.parties]
 
-    def test(self, flag='test'):
+    def test(self, flag:str='test') -> dict:
+        r"""
+        Test the performance of the model
+
+        Args:
+            flag (str): the type of dataset
+
+        Returns:
+            result (dict): a dict that contains the testing result
+        """
         self.set_model_mode('eval')
         flag_dict = {'test':self.test_data, 'train':self.train_data, 'valid':self.valid_data}
         dataset = flag_dict[flag]
@@ -235,6 +342,12 @@ class ActiveParty(PassiveParty):
         return {'accuracy': 1.0 * num_correct / len(dataset), 'loss': total_loss / len(dataset)}
 
     def set_model_mode(self,mode = 'train'):
+        r"""
+        Set all the modes of the modules owned by all the parties.
+
+        Args:
+            mode (str): the mode of models
+        """
         for party in self.parties:
             if hasattr(party, 'local_module') and party.local_module is not None:
                 if mode == 'train':

@@ -20,19 +20,21 @@ class BuiltinClassGenerator(BasicTaskGenerator):
         self.additional_option = {}
         self.train_additional_option = {}
         self.test_additional_option = {}
+        self.download = True
 
     def load_data(self):
         # load the datasets
-        train_default_init_para = {'root': self.rawdata_path, 'download':True, 'train':True, 'transform':self.transform}
-        test_default_init_para = {'root': self.rawdata_path, 'download':True, 'train':False, 'transform':self.transform}
+        train_default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':True, 'transform':self.transform}
+        test_default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':False, 'transform':self.transform}
         train_default_init_para.update(self.additional_option)
         train_default_init_para.update(self.train_additional_option)
         test_default_init_para.update(self.additional_option)
         test_default_init_para.update(self.test_additional_option)
-        train_pop_key = [k for k in train_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
-        test_pop_key = [k for k in test_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
-        for k in train_pop_key: train_default_init_para.pop(k)
-        for k in test_pop_key: test_default_init_para.pop(k)
+        if 'kwargs' not in self.builtin_class.__init__.__annotations__:
+            train_pop_key = [k for k in train_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+            test_pop_key = [k for k in test_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+            for k in train_pop_key: train_default_init_para.pop(k)
+            for k in test_pop_key: test_default_init_para.pop(k)
         # init datasets
         self.train_data = self.builtin_class(**train_default_init_para)
         self.test_data = self.builtin_class(**test_default_init_para)
@@ -79,6 +81,12 @@ class BuiltinClassPipe(BasicTaskPipe):
                     return self.dataset[self.indices[idx]][0] + self.perturbation[self.indices[idx]],  self.dataset[self.indices[idx]][1]
 
     def __init__(self, task_path, buildin_class, transform=None):
+        """
+        Args:
+            task_path (str): the path of the task
+            builtin_class (class): class in torchvision.datasets
+            transform (torchvision.transforms.*): the transform
+        """
         super(BuiltinClassPipe, self).__init__(task_path)
         self.builtin_class = buildin_class
         self.transform = transform
@@ -101,10 +109,11 @@ class BuiltinClassPipe(BasicTaskPipe):
             test_default_init_para.update(self.feddata['additional_option'])
         if 'train_additional_option' in self.feddata.keys(): train_default_init_para.update(self.feddata['train_additional_option'])
         if 'test_additional_option' in self.feddata.keys(): test_default_init_para.update(self.feddata['test_additional_option'])
-        train_pop_key = [k for k in train_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
-        test_pop_key = [k for k in test_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
-        for k in train_pop_key: train_default_init_para.pop(k)
-        for k in test_pop_key: test_default_init_para.pop(k)
+        if 'kwargs' not in self.builtin_class.__init__.__annotations__:
+            train_pop_key = [k for k in train_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+            test_pop_key = [k for k in test_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+            for k in train_pop_key: train_default_init_para.pop(k)
+            for k in test_pop_key: test_default_init_para.pop(k)
         train_data = self.builtin_class(**train_default_init_para)
         test_data = self.builtin_class(**test_default_init_para)
         test_data = self.TaskDataset(test_data, list(range(len(test_data))), None, running_time_option['pin_memory'])

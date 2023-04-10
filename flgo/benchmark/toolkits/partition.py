@@ -19,8 +19,11 @@ from abc import abstractmethod, ABCMeta
 import random
 import numpy as np
 import collections
-
 import torch
+try:
+    import community.community_louvain
+except:
+    pass
 
 class AbstractPartitioner(metaclass=ABCMeta):
     @abstractmethod
@@ -150,10 +153,11 @@ class DirichletPartitioner(BasicPartitioner):
         samples_per_client = self.data_imbalance_generator(self.num_clients, len(data), self.imbalance)
         # count the label distribution
         lb_counter = collections.Counter(attrs)
+        lb_names = list(lb_counter.keys())
         p = np.array([1.0 * v / len(data) for v in lb_counter.values()])
         lb_dict = {}
         attrs = np.array(attrs)
-        for lb in range(len(lb_counter.keys())):
+        for lb in lb_names:
             lb_dict[lb] = np.where(attrs == lb)[0]
         proportions = [np.random.dirichlet(self.alpha * p) for _ in range(self.num_clients)]
         while np.any(np.isnan(proportions)):
@@ -199,9 +203,9 @@ class DirichletPartitioner(BasicPartitioner):
             loop_count += 1
         local_datas = [[] for _ in range(self.num_clients)]
         self.dirichlet_dist = []  # for efficiently visualizing
-        for lb in lb_counter.keys():
+        for lb in lb_names:
             lb_idxs = lb_dict[lb]
-            lb_proportion = np.array([pi[lb] * si for pi, si in zip(proportions, samples_per_client)])
+            lb_proportion = np.array([pi[lb_names.index(lb)] * si for pi, si in zip(proportions, samples_per_client)])
             lb_proportion = lb_proportion / lb_proportion.sum()
             lb_proportion = (np.cumsum(lb_proportion) * len(lb_idxs)).astype(int)[:-1]
             lb_datas = np.split(lb_idxs, lb_proportion)
@@ -400,3 +404,42 @@ class VerticalSplittedPartitioner(BasicPartitioner):
         for i in range(l, n + 1):
             for result in self.integer_k_partition(n - i, k - 1, i):
                 yield (i,) + result
+
+class NodeLouvainPartitioner(BasicPartitioner):
+    """
+    """
+    def __init__(self, num_clients=100):
+        self.num_clients = num_clients
+
+    def __str__(self):
+        name = "Louvain"
+        return name
+
+    def __call__(self, data):
+        local_nodes = [[] for _ in range(self.num_clients)]
+        self.node_groups = community.community_louvain.best_partition(data)
+        groups = collections.defaultdict(list)
+        for ni, gi in self.node_groups.items():
+            groups[gi].append(ni)
+        groups = {k: groups[k] for k in list(range(len(groups)))}
+        # ensure the number of groups is larger than the number of clients
+        while len(groups) < self.num_clients:
+            # find the group with the largest size
+            groups_lens = [groups[k] for k in range(len(groups))]
+            max_gi = np.argmax(groups_lens)
+            # set the size of the new group
+            min_glen = min(groups_lens)
+            max_glen = max(groups_lens)
+            if max_glen < 2 * min_glen: min_glen = max_glen // 2
+            # split the group with the largest size into two groups
+            nodes_in_gi = groups[max_gi]
+            new_group_id = len(groups)
+            groups[new_group_id] = nodes_in_gi[:min_glen]
+            groups[max_gi] = nodes_in_gi[min_glen:]
+        # allocate different groups to clients
+        groups_lens = [groups[k] for k in range(len(groups))]
+        group_ids = np.argsort(groups_lens)
+        for gi in group_ids:
+            cid = np.argmin([len(li) for li in local_nodes])
+            local_nodes[cid].extend(groups[gi])
+        return local_nodes

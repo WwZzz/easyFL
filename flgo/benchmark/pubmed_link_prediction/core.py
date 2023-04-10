@@ -1,7 +1,6 @@
 from torch_geometric.datasets import Planetoid
 import flgo.benchmark
-import os.path
-from flgo.benchmark.toolkits.graph.horizontal.link_prediction import *
+from flgo.benchmark.toolkits.graph.link_prediction import *
 
 TaskCalculator = LinkPredicitonTaskCalculator
 class TaskGenerator(LinkPredicitonTaskGenenerator):

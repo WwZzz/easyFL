@@ -1,6 +1,5 @@
-import numpy as np
 from flgo.benchmark.base import *
-from flgo.benchmark.toolkits.cv.horizontal.image_classification import GeneralCalculator
+from flgo.benchmark.toolkits.cv.classification import GeneralCalculator
 from flgo.benchmark.toolkits.partition import BasicPartitioner
 TaskPipe = XYHorizontalTaskPipe
 TaskCalculator = GeneralCalculator

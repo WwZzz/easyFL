@@ -1,6 +1,6 @@
-from flgo.benchmark.mnist_classification.core import builtin_class, transforms
+from flgo.benchmark.mnist_classification.core import builtin_class, transform
 from flgo.benchmark.base import BasicTaskPipe, BasicTaskCalculator
-from flgo.benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator
+from flgo.benchmark.toolkits.cv.classification.__init__ import BuiltinClassGenerator
 import torch
 import os.path
 from torch.utils.data import Dataset
@@ -10,7 +10,7 @@ import json
 
 class TaskGenerator(BuiltinClassGenerator):
     def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'MNIST')):
-        super(TaskGenerator, self).__init__('vertical_mnist_classification', rawdata_path, builtin_class, transforms)
+        super(TaskGenerator, self).__init__('vertical_mnist_classification', rawdata_path, builtin_class, transform)
 
     def partition(self):
         self.local_datas = self.partitioner(self.train_data)
@@ -62,7 +62,7 @@ class TaskPipe(BasicTaskPipe):
     def __init__(self, task_name):
         super().__init__(task_name)
         self.builtin_class = builtin_class
-        self.transform = transforms
+        self.transform = transform
 
     def save_task(self, generator):
         party_names = self.gen_client_names(len(generator.local_datas))

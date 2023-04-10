@@ -8,30 +8,42 @@ from flgo.benchmark.base import *
 
 from flgo.benchmark.toolkits import BasicTaskPipe, BasicTaskCalculator
 
-
-class GraphClassificationTaskGen(BasicTaskGenerator):
-    def __init__(self, benchmark, rawdata_path, builtin_class, dataset_name, transforms=None):
-        super(GraphClassificationTaskGen, self).__init__(benchmark, rawdata_path)
+class BuiltinClassGenerator(BasicTaskGenerator):
+    def __init__(self, benchmark, rawdata_path, builtin_class, transform=None):
+        super(BuiltinClassGenerator, self).__init__(benchmark, rawdata_path)
         self.builtin_class = builtin_class
-        self.dataset_name = dataset_name
-        self.transforms = transforms
-        self.additional_option = {}
+        self.transforms = transform
 
     def load_data(self):
+        default_init_para = {'root': self.rawdata_path, 'download': self.download, 'train': True,'transform': self.transform}
         self.all_data, self.perm = self.builtin_class(root=self.rawdata_path, name=self.dataset_name, transform=self.transforms).shuffle(return_perm=True)
         self.num_samples = len(self.all_data)
         k = int(0.9 * self.num_samples)
         self.train_data = self.all_data[:k]
         self.test_data = list(range(self.num_samples))[k:]
 
+    def load_data(self):
+
+        default_init_para.update(self.additional_option)
+        if 'kwargs' not in self.builtin_class.__init__.__annotations__:
+            pop_key = [k for k in default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+            for k in pop_key: default_init_para.pop(k)
+        self.dataset = T.RandomNodeSplit(split='train_rest', num_val=0.0, num_test=self.test_rate)(
+            self.builtin_class(**default_init_para).data)
+        self.G = torch_geometric.utils.to_networkx(self.dataset, to_undirected=self.dataset.is_undirected(),
+                                                   node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
+        self.test_nodes = mask_to_index(self.dataset.test_mask).tolist() if self.test_rate > 0 else []
+        self.train_nodes = mask_to_index(self.dataset.train_mask).tolist()
+        self.train_data = nx.subgraph(self.G, self.train_nodes)
+
     def partition(self):
         self.local_datas = self.partitioner(self.train_data)
         self.num_clients = len(self.local_datas)
 
 
-class GraphClassificationTaskPipe(BasicTaskPipe):
+class BuiltinClassPipe(BasicTaskPipe):
     def __init__(self, task_name, buildin_class, transform=None):
-        super(GraphClassificationTaskPipe, self).__init__(task_name)
+        super(BuiltinClassPipe, self).__init__(task_name)
         self.builtin_class = buildin_class
         self.transform = transform
 
@@ -65,9 +77,9 @@ class GraphClassificationTaskPipe(BasicTaskPipe):
         return task_data
 
 
-class GraphClassificationTaskCalculator(BasicTaskCalculator):
+class GeneralCalculator(BasicTaskCalculator):
     def __init__(self, device, optimizer_name='sgd'):
-        super(GraphClassificationTaskCalculator, self).__init__(device, optimizer_name)
+        super(GeneralCalculator, self).__init__(device, optimizer_name)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.DataLoader = DataLoader
 

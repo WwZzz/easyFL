@@ -1,10 +1,8 @@
-import collections
-import random
 import torch.utils.data
-import json
-from flgo.benchmark.base import *
-from flgo.benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassGenerator
-from flgo.benchmark.toolkits.cv.horizontal.image_classification import BuiltinClassPipe as ClsPipe
+from flgo.benchmark.base import BasicTaskCalculator
+from flgo.benchmark.toolkits.cv.classification import BuiltinClassPipe as ClsPipe
+from flgo.benchmark.toolkits.cv.classification import BuiltinClassGenerator
+
 
 class BuiltinClassPipe(ClsPipe):
     class TaskDataset(torch.utils.data.Subset):

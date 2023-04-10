@@ -45,6 +45,8 @@ nav:
   - "Tutorials":
     - Tutorials/index.md
     - 0 Quick Start: Tutorials/0_Quick_Start.md
+  - "Resources":
+    - Resources/index.md
   - "About": about.md
   - "Github": https://github.com/WwZzz/easyFL
 theme:

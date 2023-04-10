@@ -97,6 +97,7 @@ class BasicTaskGenerator(AbstractTaskGenerator):
         self.partitioner = None
         self.train_data = None
         self.test_data = None
+        self.valid_data = None
         self.task_name = None
         self.para = {}
         self.additional_option = {}
