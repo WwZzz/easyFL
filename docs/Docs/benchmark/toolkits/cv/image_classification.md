@@ -1,1 +1,0 @@
-:::flgo.benchmark.toolkits.cv.horizontal.image_classification
