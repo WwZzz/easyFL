@@ -35,7 +35,7 @@ class Model(fmodule.FModule):
     def __init__(self):
         super(Model, self).__init__()
         self.name = 'faster-rcnn'
-        self.model = fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=True, num_classes=20)
+        self.model = fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=True, num_classes=len(self.CLASSES))
 
     def convert_target(self, target):
         anno = target['annotation']

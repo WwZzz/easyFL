@@ -6,12 +6,12 @@ import collections
 from flgo.benchmark.base import *
 import networkx as nx
 
-
 class BuiltinClassGenerator(BasicTaskGenerator):
-    def __init__(self, benchmark, rawdata_path, builtin_class, transform=None, test_rate=0.2, transductive=True):
+    def __init__(self, benchmark, rawdata_path, builtin_class, transform=None, pre_transform=None, test_rate=0.2, transductive=True):
         super(BuiltinClassGenerator, self).__init__(benchmark, rawdata_path)
         self.builtin_class = builtin_class
         self.transform = transform
+        self.pre_transform = pre_transform
         self.transductive = transductive
         self.test_rate = test_rate
         self.additional_option = {}
@@ -20,7 +20,7 @@ class BuiltinClassGenerator(BasicTaskGenerator):
         self.download = True
 
     def load_data(self):
-        default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':True, 'transform':self.transform}
+        default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':True, 'transform':self.transform, 'pre_transform':self.pre_transform}
         default_init_para.update(self.additional_option)
         if 'kwargs' not in self.builtin_class.__init__.__annotations__:
             pop_key = [k for k in default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
@@ -66,9 +66,10 @@ class BuiltinClassPipe(BasicTaskPipe):
         def __len__(self):
             return len(self.mask)
 
-    def __init__(self, task_name, buildin_class, transform=None):
+    def __init__(self, task_name, buildin_class, transform=None, pre_transform=None):
         super(BuiltinClassPipe, self).__init__(task_name)
         self.builtin_class = buildin_class
+        self.pre_transform = pre_transform
         self.transform = transform
         # self.train_data = from_networkx(nx.subgraph(G, self.train_nodes))
 
@@ -87,7 +88,7 @@ class BuiltinClassPipe(BasicTaskPipe):
         return
 
     def load_data(self, running_time_option) -> dict:
-        default_init_para = {'root': self.feddata['rawdata_path'], 'download': True, 'train': True, 'transform': self.transform}
+        default_init_para = {'root': self.feddata['rawdata_path'], 'download': True, 'train': True, 'transform': self.transform, 'pre_transform':self.pre_transform}
         default_init_para.update(self.feddata['additional_option'])
         if 'kwargs' not in self.builtin_class.__init__.__annotations__:
             pop_key = [k for k in default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]

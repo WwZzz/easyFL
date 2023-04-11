@@ -1,60 +1,53 @@
-from torch import Tensor
+import torch
 from torch_geometric.data import Data, DataLoader
+from flgo.benchmark.toolkits.graph.node_classification import BuiltinClassGenerator as NodeClassGenerator
+import os
+try:
+    import ujson as json
+except:
+    import json
+from flgo.benchmark.base import BasicTaskPipe, BasicTaskCalculator
+import random
 
-import collections
-import numpy as np
-
-from flgo.benchmark.base import *
-
-from flgo.benchmark.toolkits import BasicTaskPipe, BasicTaskCalculator
-
-class BuiltinClassGenerator(BasicTaskGenerator):
-    def __init__(self, benchmark, rawdata_path, builtin_class, transform=None):
-        super(BuiltinClassGenerator, self).__init__(benchmark, rawdata_path)
-        self.builtin_class = builtin_class
-        self.transforms = transform
-
+class BuiltinClassGenerator(NodeClassGenerator):
     def load_data(self):
-        default_init_para = {'root': self.rawdata_path, 'download': self.download, 'train': True,'transform': self.transform}
-        self.all_data, self.perm = self.builtin_class(root=self.rawdata_path, name=self.dataset_name, transform=self.transforms).shuffle(return_perm=True)
-        self.num_samples = len(self.all_data)
-        k = int(0.9 * self.num_samples)
-        self.train_data = self.all_data[:k]
-        self.test_data = list(range(self.num_samples))[k:]
-
-    def load_data(self):
-
+        default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':True, 'transform':self.transform}
         default_init_para.update(self.additional_option)
         if 'kwargs' not in self.builtin_class.__init__.__annotations__:
             pop_key = [k for k in default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
             for k in pop_key: default_init_para.pop(k)
-        self.dataset = T.RandomNodeSplit(split='train_rest', num_val=0.0, num_test=self.test_rate)(
-            self.builtin_class(**default_init_para).data)
-        self.G = torch_geometric.utils.to_networkx(self.dataset, to_undirected=self.dataset.is_undirected(),
-                                                   node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
-        self.test_nodes = mask_to_index(self.dataset.test_mask).tolist() if self.test_rate > 0 else []
-        self.train_nodes = mask_to_index(self.dataset.train_mask).tolist()
-        self.train_data = nx.subgraph(self.G, self.train_nodes)
+        self.dataset = self.builtin_class(**default_init_para)
+        self.num_samples = len(self.dataset)
+        k = int(self.test_rate*self.num_samples)
+        all_idxs = list(range(self.num_samples))
+        random.shuffle(all_idxs)
+        self.test_idxs = all_idxs[:k]
+        self.train_idxs = all_idxs[k:]
+        self.train_data = self.dataset[self.train_idxs]
+        self.train_data = [(d, self.dataset[d].y) for d in self.train_idxs]
+        self.test_data = self.dataset[self.test_idxs]
 
     def partition(self):
         self.local_datas = self.partitioner(self.train_data)
         self.num_clients = len(self.local_datas)
-
+        self.local_datas = [[self.train_data[idx][0] for idx in local_data] for local_data in self.local_datas]
 
 class BuiltinClassPipe(BasicTaskPipe):
-    def __init__(self, task_name, buildin_class, transform=None):
-        super(BuiltinClassPipe, self).__init__(task_name)
+    def __init__(self, task_path, buildin_class, transform=None, pre_transform=None):
+        super(BuiltinClassPipe, self).__init__(task_path)
         self.builtin_class = buildin_class
+        self.pre_transform = pre_transform
         self.transform = transform
 
     def save_task(self, generator):
-        client_names = self.gen_client_names(len(generator.local_nodes))
+        client_names = self.gen_client_names(len(generator.local_datas))
         feddata = {'client_names': client_names,
                    'server_data': list(range(len(generator.test_data))),
                    'rawdata_path': generator.rawdata_path,
-                   'para': generator.para,
-                   'dataset_name': generator.dataset_name,
-                   'perm': generator.perm}
+                   'additional_option':generator.additional_option,
+                   'test_idxs':generator.test_idxs,
+                   'download': generator.download_data,
+                   }
         for cid in range(len(client_names)):
             feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
@@ -62,20 +55,33 @@ class BuiltinClassPipe(BasicTaskPipe):
         return
 
     def load_data(self, running_time_option) -> dict:
+        default_init_para = {'root': self.feddata['rawdata_path'], 'download':self.feddata['download'], 'train':True, 'transform':self.transform, 'pre_transform':self.pre_transform}
+        default_init_para.update(self.feddata['additional_option'])
+        if 'kwargs' not in self.builtin_class.__init__.__annotations__:
+            pop_key = [k for k in default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+            for k in pop_key: default_init_para.pop(k)
         # load the datasets
-        dataset = self.builtin_class(root=self.feddata['rawdata_path'], name=self.feddata['dataset_name'],
-                                     transform=self.transform)
-        dataset = dataset[self.feddata['perm']]
-        test_data = dataset[self.feddata['server_data']]
-        server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
-        task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}
+        dataset = self.builtin_class(**default_init_para)
+        k = int(len(self.feddata['test_idxs'])*running_time_option['test_holdout'])
+        valid_idxs = self.feddata['test_idxs'][:k]
+        test_idxs = self.feddata['test_idxs'][k:]
+        server_data_test = dataset[test_idxs]
+        server_data_valid = dataset[valid_idxs]
+        task_data = {'server': {'test': server_data_test if len(test_idxs)>0 else None, 'valid': server_data_valid if len(valid_idxs)>0 else None}}
         # rearrange data for clients
         for cid, cname in enumerate(self.feddata['client_names']):
-            cdata = self.feddata[cname]['data']
-            cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
-            task_data[cname] = {'train': cdata_train, 'valid': cdata_valid}
+            cdata_all = self.feddata[cname]['data']
+            ck = int(running_time_option['train_holdout']*len(cdata_all))
+            cdata_valid = cdata_all[:ck]
+            cdata_train = cdata_all[ck:]
+            if running_time_option['train_holdout'] > 0 and running_time_option['local_test']:
+                ck2 = int(0.5*ck)
+                cdata_test = cdata_valid[ck2:]
+                cdata_valid = cdata_valid[:ck2]
+            else:
+                cdata_test = []
+            task_data[cname] = {'train': dataset[cdata_train] if len(cdata_train)>0 else None, 'valid': dataset[cdata_valid] if len(cdata_valid)>0 else None, 'test': dataset[cdata_test] if len(cdata_test)>0 else None}
         return task_data
-
 
 class GeneralCalculator(BasicTaskCalculator):
     def __init__(self, device, optimizer_name='sgd'):
@@ -90,12 +96,12 @@ class GeneralCalculator(BasicTaskCalculator):
         Returns: dict of train-one-step's result, which should at least contains the key 'loss'
         """
         tdata = self.to_device(data)
-        outputs = model(tdata[0])
-        loss = self.criterion(outputs, tdata[-1])
+        outputs = model(tdata)
+        loss = self.criterion(outputs, tdata.y)
         return {'loss': loss}
 
     @torch.no_grad()
-    def test(self, model, dataset, batch_size=64, num_workers=0):
+    def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
         """
         Metric = [mean_accuracy, mean_loss]
         Args:
@@ -105,23 +111,23 @@ class GeneralCalculator(BasicTaskCalculator):
         """
         model.eval()
         if batch_size == -1: batch_size = len(dataset)
-        data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers)
+        data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
         total_loss = 0.0
         num_correct = 0
         for batch_id, batch_data in enumerate(data_loader):
             batch_data = self.to_device(batch_data)
-            outputs = model(batch_data[0])
-            batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
+            outputs = model(batch_data)
+            batch_mean_loss = self.criterion(outputs, batch_data.y).item()
             y_pred = outputs.data.max(1, keepdim=True)[1]
-            correct = y_pred.eq(batch_data[-1].data.view_as(y_pred)).long().cpu().sum()
+            correct = y_pred.eq(batch_data.y.data.view_as(y_pred)).long().cpu().sum()
             num_correct += correct.item()
-            total_loss += batch_mean_loss * len(batch_data[-1])
+            total_loss += batch_mean_loss * len(batch_data.y)
         return {'accuracy': 1.0 * num_correct / len(dataset), 'loss': total_loss / len(dataset)}
 
     def to_device(self, data):
-        return data[0].to(self.device), data[1].to(self.device)
+        return data.to(self.device)
 
-    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0):
+    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
-        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory)

@@ -1,5 +1,4 @@
 import copy
-
 import community.community_louvain
 import networkx as nx
 import torch_geometric
@@ -10,10 +9,9 @@ import collections
 
 from flgo.benchmark.base import *
 
-
-class LinkPredicitonTaskGenenerator(BasicTaskGenerator):
+class BuiltinClassGenerator(BasicTaskGenerator):
     def __init__(self, benchmark, rawdata_path, builtin_class, dataset_name, transforms=None, num_clients=10):
-        super(LinkPredicitonTaskGenenerator, self).__init__(benchmark, rawdata_path)
+        super(BuiltinClassGenerator, self).__init__(benchmark, rawdata_path)
         self.builtin_class = builtin_class
         self.dataset_name = dataset_name
         self.transforms = transforms
@@ -61,10 +59,9 @@ class LinkPredicitonTaskGenenerator(BasicTaskGenerator):
     def get_task_name(self):
         return '_'.join(['B-' + self.benchmark, 'P-None', 'N-' + str(self.num_clients)])
 
-
-class LinkPredicitonTaskPipe(BasicTaskPipe):
+class BuiltinClassPipe(BasicTaskPipe):
     def __init__(self, task_name, buildin_class, transform=None):
-        super(LinkPredicitonTaskPipe, self).__init__(task_name)
+        super(BuiltinClassPipe, self).__init__(task_name)
         self.builtin_class = buildin_class
         self.transform = transform
 
@@ -108,13 +105,11 @@ class LinkPredicitonTaskPipe(BasicTaskPipe):
             task_data[cname] = {'train': train_data, 'valid': val_data}
         return task_data
 
-
-class LinkPredicitonTaskCalculator(BasicTaskCalculator):
+class GeneralCalculator(BasicTaskCalculator):
     def __init__(self, device, optimizer_name='sgd'):
-        super(LinkPredicitonTaskCalculator, self).__init__(device, optimizer_name)
+        super(GeneralCalculator, self).__init__(device, optimizer_name)
         self.criterion = torch.nn.BCEWithLogitsLoss()
         self.DataLoader = torch_geometric.loader.DataLoader
-
 
     def compute_loss(self, model, data):
         tdata = self.data_to_device(data)
@@ -136,7 +131,7 @@ class LinkPredicitonTaskCalculator(BasicTaskCalculator):
         return {'loss': loss}
 
     @torch.no_grad()
-    def test(self, model, dataset, batch_size=64, num_workers=0):
+    def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
         total_loss = 0
         total_num_samples = 0
         tdata = self.data_to_device(dataset)
@@ -152,5 +147,5 @@ class LinkPredicitonTaskCalculator(BasicTaskCalculator):
     def data_to_device(self, data):
         return data.to(self.device)
 
-    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0):
-        return self.DataLoader([dataset], batch_size=batch_size, shuffle=shuffle)
+    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False):
+        return self.DataLoader([dataset], batch_size=batch_size, shuffle=shuffle, pin_memory=pin_memory)

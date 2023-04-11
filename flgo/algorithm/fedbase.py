@@ -459,7 +459,7 @@ class BasicServer(BasicParty):
         if dataset is None:
             return {}
         else:
-            return self.calculator.test(model, dataset, batch_size=self.option['test_batch_size'],
+            return self.calculator.test(model, dataset, batch_size=min(self.option['test_batch_size'], len(dataset)),
                                         num_workers=self.option['num_workers'], pin_memory=self.option['pin_memory'])
 
     def init_algo_para(self, algo_para: dict):
@@ -616,7 +616,7 @@ class BasicClient(BasicParty):
         """
         dataset = getattr(self, flag + '_data') if hasattr(self, flag + '_data') else None
         if dataset is None: return {}
-        return self.calculator.test(model, dataset, self.test_batch_size, self.option['num_workers'])
+        return self.calculator.test(model, dataset, min(self.test_batch_size, len(dataset)), self.option['num_workers'])
 
 
     def unpack(self, received_pkg):

@@ -2,7 +2,7 @@ import torch.utils.data
 from flgo.benchmark.base import BasicTaskCalculator
 from flgo.benchmark.toolkits.cv.classification import BuiltinClassPipe as ClsPipe
 from flgo.benchmark.toolkits.cv.classification import BuiltinClassGenerator
-
+import numpy as np
 
 class BuiltinClassPipe(ClsPipe):
     class TaskDataset(torch.utils.data.Subset):

@@ -9,7 +9,7 @@ path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'EMNIST')
 
 class TaskGenerator(BuiltinClassGenerator):
     def __init__(self, rawdata_path=path, split='byclass'):
-        super(TaskGenerator, self).__init__(__file__.split('/')[-2], rawdata_path, builtin_class, transform)
+        super(TaskGenerator, self).__init__(os.path.split(os.path.dirname(__file__))[-1], rawdata_path, builtin_class, transform)
         self.split = split
         self.additional_option = {'split': self.split}
 

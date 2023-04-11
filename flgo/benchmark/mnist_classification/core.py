@@ -11,7 +11,7 @@ TaskCalculator = GeneralCalculator
 
 class TaskGenerator(BuiltinClassGenerator):
     def __init__(self, rawdata_path=path):
-        super(TaskGenerator, self).__init__(__file__.split('/')[-2], rawdata_path, builtin_class, transform)
+        super(TaskGenerator, self).__init__(os.path.split(os.path.dirname(__file__))[-1], rawdata_path, builtin_class, transform)
 
 class TaskPipe(BuiltinClassPipe):
     def __init__(self, task_path):

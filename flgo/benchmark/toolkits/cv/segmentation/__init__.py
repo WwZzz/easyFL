@@ -2,20 +2,7 @@ import random
 import torch.utils.data
 import json
 from flgo.benchmark.base import *
-
-def cat_list(images, fill_value=0):
-    max_size = tuple(max(s) for s in zip(*[img.shape for img in images]))
-    batch_shape = (len(images),) + max_size
-    batched_imgs = images[0].new(*batch_shape).fill_(fill_value)
-    for img, pad_img in zip(images, batched_imgs):
-        pad_img[..., : img.shape[-2], : img.shape[-1]].copy_(img)
-    return batched_imgs
-
-def collate_fn(batch):
-    images, targets = list(zip(*batch))
-    batched_imgs = cat_list(images, fill_value=0)
-    batched_targets = cat_list(targets, fill_value=255)
-    return batched_imgs, batched_targets
+from flgo.benchmark.toolkits.cv.segmentation.utils import ConfusionMatrix, collate_fn,cat_list
 
 class BuiltinClassGenerator(BasicTaskGenerator):
     r"""
@@ -27,11 +14,12 @@ class BuiltinClassGenerator(BasicTaskGenerator):
         builtin_class (class): class in torchvision.datasets
         transform (torchvision.transforms.*): the transform
     """
-    def __init__(self, benchmark, rawdata_path, builtin_class, transform=None, target_transform=None):
+    def __init__(self, benchmark, rawdata_path, builtin_class, train_transform=None, test_transform=None, num_classes=0):
         super(BuiltinClassGenerator, self).__init__(benchmark, rawdata_path)
+        self.num_classes = num_classes
         self.builtin_class = builtin_class
-        self.transform = transform
-        self.target_transform = target_transform
+        self.train_transform = train_transform
+        self.test_transform = test_transform
         self.additional_option = {}
         self.train_additional_option = {}
         self.test_additional_option = {}
@@ -39,8 +27,8 @@ class BuiltinClassGenerator(BasicTaskGenerator):
 
     def load_data(self):
         # load the datasets
-        train_default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':True, 'transform':self.transform, 'target_transform':self.target_transform}
-        test_default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':False, 'transform':self.transform, 'target_transform':self.target_transform}
+        train_default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':True, 'transforms':self.train_transform}
+        test_default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':False, 'transforms':self.test_transform}
         train_default_init_para.update(self.additional_option)
         train_default_init_para.update(self.train_additional_option)
         test_default_init_para.update(self.additional_option)
@@ -71,48 +59,49 @@ class BuiltinClassPipe(BasicTaskPipe):
             super().__init__(dataset, indices)
             self.dataset = dataset
             self.indices = indices
-            self.perturbation = {idx:p for idx, p in zip(indices, perturbation)} if perturbation is not None else None
+            self.perturbation = {idx: p for idx, p in zip(indices, perturbation)} if perturbation is not None else None
             self.pin_memory = pin_memory
             if not self.pin_memory:
                 self.X = None
                 self.Y = None
             else:
-                self.X = torch.stack([self.dataset[i][0] for i in self.indices])
-                self.Y = torch.LongTensor([self.dataset[i][1] for i in self.indices])
+                self.X = [self.dataset[i][0] for i in self.indices]
+                self.Y = [self.dataset[i][1] for i in self.indices]
 
         def __getitem__(self, idx):
             if self.X is not None:
                 if self.perturbation is None:
                     return self.X[idx], self.Y[idx]
                 else:
-                    return self.X[idx]+self.perturbation[self.indices[idx]], self.Y[idx]
+                    return self.X[idx] + self.perturbation[self.indices[idx]], self.Y[idx]
             else:
                 if self.perturbation is None:
                     if isinstance(idx, list):
                         return self.dataset[[self.indices[i] for i in idx]]
                     return self.dataset[self.indices[idx]]
                 else:
-                    return self.dataset[self.indices[idx]][0] + self.perturbation[self.indices[idx]],  self.dataset[self.indices[idx]][1]
+                    return self.dataset[self.indices[idx]][0] + self.perturbation[self.indices[idx]], \
+                           self.dataset[self.indices[idx]][1]
 
-    def __init__(self, task_path, buildin_class, transform=None, target_transform=None):
+    def __init__(self, task_path, buildin_class, train_transform=None, test_transform=None):
         super(BuiltinClassPipe, self).__init__(task_path)
         self.builtin_class = buildin_class
-        self.transform = transform
-        self.target_transform = target_transform
+        self.train_transform = train_transform
+        self.test_transform = test_transform
+        self.num_classes = 0
 
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
-        feddata = {'client_names': client_names, 'server_data': list(range(len(generator.test_data))),  'rawdata_path': generator.rawdata_path, 'additional_option': generator.additional_option, 'train_additional_option':generator.train_additional_option, 'test_additional_option':generator.test_additional_option,}
+        feddata = {'client_names': client_names, 'server_data': list(range(len(generator.test_data))),  'rawdata_path': generator.rawdata_path, 'additional_option': generator.additional_option, 'train_additional_option':generator.train_additional_option, 'test_additional_option':generator.test_additional_option,'num_classes':generator.num_classes}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
-        if hasattr(generator.partitioner, 'local_perturbation'): feddata['local_perturbation'] = generator.partitioner.local_perturbation
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
             json.dump(feddata, outf)
         return
 
     def load_data(self, running_time_option) -> dict:
         # load the datasets
-        train_default_init_para = {'root': self.feddata['rawdata_path'], 'download':True, 'train':True, 'transform':self.transform, 'target_transform':self.target_transform}
-        test_default_init_para = {'root': self.feddata['rawdata_path'], 'download':True, 'train':False, 'transform':self.transform, 'target_transform':self.target_transform}
+        train_default_init_para = {'root': self.feddata['rawdata_path'], 'download':True, 'train':True, 'transforms':self.train_transform}
+        test_default_init_para = {'root': self.feddata['rawdata_path'], 'download':True, 'train':False, 'transforms':self.test_transform}
         if 'additional_option' in self.feddata.keys():
             train_default_init_para.update(self.feddata['additional_option'])
             test_default_init_para.update(self.feddata['additional_option'])
@@ -127,6 +116,9 @@ class BuiltinClassPipe(BasicTaskPipe):
         test_data = self.TaskDataset(test_data, list(range(len(test_data))), None, running_time_option['pin_memory'])
         # rearrange data for server
         server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
+        num_classes = self.feddata['num_classes']
+        if server_data_valid is not None: server_data_valid.num_classes = num_classes
+        if server_data_test is not None: server_data_test.num_classes = num_classes
         task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}
         # rearrange data for clients
         local_perturbation = self.feddata['local_perturbation'] if 'local_perturbation' in self.feddata.keys() else [None for _ in self.feddata['client_names']]
@@ -138,6 +130,9 @@ class BuiltinClassPipe(BasicTaskPipe):
                 cdata_valid, cdata_test = self.split_dataset(cdata_valid, 0.5)
             else:
                 cdata_test = None
+            if cdata_train is not None: cdata_train.num_classes = num_classes
+            if cdata_valid is not None: cdata_valid.num_classes = num_classes
+            if cdata_test is not None: cdata_test.num_classes = num_classes
             task_data[cname] = {'train':cdata_train, 'valid':cdata_valid, 'test': cdata_test}
         return task_data
 
@@ -152,8 +147,9 @@ class GeneralCalculator(BasicTaskCalculator):
     def __init__(self, device, optimizer_name='sgd'):
         super(GeneralCalculator, self).__init__(device, optimizer_name)
         self.DataLoader = torch.utils.data.DataLoader
+        self.criterion = self.compute_criterion
 
-    def criterion(self, inputs, target):
+    def compute_criterion(self, inputs, target):
         losses = {}
         for name, x in inputs.items():
             losses[name] = torch.nn.functional.cross_entropy(x, target, ignore_index=255)
@@ -193,50 +189,16 @@ class GeneralCalculator(BasicTaskCalculator):
         for batch_id, batch_data in enumerate(data_loader):
             batch_data = self.to_device(batch_data)
             outputs = model(batch_data[0])
-            loss = self.criterion(outputs, batch_data[-1])
+            # loss = self.criterion(outputs, batch_data[-1])
             outputs = outputs['out']
             confmat.update(batch_data[-1].flatten(), outputs.argmax(1).flatten())
-            total_loss += loss*len(batch_data[0])
-        return {'ConfuseMatrix':confmat , 'loss':total_loss/len(dataset)}
+            # total_loss += loss*len(batch_data[0])
+        return {'confuse_mat':confmat}
 
-    def to_device(self, data):
+    def to_device(self, data:tuple):
         return data[0].to(self.device), data[1].to(self.device)
 
     def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
         return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last, collate_fn=collate_fn)
-
-class ConfusionMatrix:
-    def __init__(self, num_classes):
-        self.num_classes = num_classes
-        self.mat = None
-
-    def update(self, a, b):
-        n = self.num_classes
-        if self.mat is None:
-            self.mat = torch.zeros((n, n), dtype=torch.int64, device=a.device)
-        with torch.inference_mode():
-            k = (a >= 0) & (a < n)
-            inds = n * a[k].to(torch.int64) + b[k]
-            self.mat += torch.bincount(inds, minlength=n**2).reshape(n, n)
-
-    def reset(self):
-        self.mat.zero_()
-
-    def compute(self):
-        h = self.mat.float()
-        acc_global = torch.diag(h).sum() / h.sum()
-        acc = torch.diag(h) / h.sum(1)
-        iu = torch.diag(h) / (h.sum(1) + h.sum(0) - torch.diag(h))
-        return acc_global, acc, iu
-
-    def __str__(self):
-        acc_global, acc, iu = self.compute()
-        return ("global correct: {:.1f}\naverage row correct: {}\nIoU: {}\nmean IoU: {:.1f}").format(
-            acc_global.item() * 100,
-            [f"{i:.1f}" for i in (acc * 100).tolist()],
-            [f"{i:.1f}" for i in (iu * 100).tolist()],
-            iu.mean().item() * 100,
-        )
-

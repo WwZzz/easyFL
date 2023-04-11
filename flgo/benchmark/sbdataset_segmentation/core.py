@@ -3,11 +3,12 @@ import shutil
 from typing import Any, Callable, Optional, Tuple
 import numpy as np
 import torch
+import flgo
 from PIL import Image
 from torchvision.datasets.utils import download_url, verify_str_arg, download_and_extract_archive
 from torchvision.datasets.vision import VisionDataset
 from flgo.benchmark.toolkits.cv.segmentation import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
-
+from ..toolkits.cv.segmentation.utils import get_transform
 
 class SBDataset(VisionDataset):
     """`Semantic Boundaries Dataset <http://home.bharathh.info/pubs/codes/SBD/download.html>`_
@@ -122,73 +123,21 @@ class SBDataset(VisionDataset):
         lines = ["Image set: {image_set}", "Mode: {mode}"]
         return "\n".join(lines).format(**self.__dict__)
 
-
 builtin_class = SBDataset
-transforms = None
+train_transform = get_transform(train=True)
+test_transform = get_transform(train=False)
+path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'SBDATASET')
 
 class TaskGenerator(BuiltinClassGenerator):
-    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path, 'RAW_DATA', 'SBDATASET')):
-        super(TaskGenerator, self).__init__(benchmark='sbdataset_segmentation', rawdata_path=rawdata_path,
-                                            builtin_class=builtin_class, transform=transforms)
-        self.num_classes = 21
+    def __init__(self, rawdata_path=path):
+        super(TaskGenerator, self).__init__(benchmark=os.path.split(os.path.dirname(__file__))[-1], rawdata_path=rawdata_path,
+                                            builtin_class=builtin_class, train_transform=train_transform, test_transform=test_transform, num_classes = 21)
         self.additional_option = {'mode':'segmentation'}
         self.train_additional_option = {'image_set':'train_noval'}
         self.test_additional_option = {'image_set':'val'}
 
-    def load_data(self):
-        # load the datasets
-        train_default_init_para = {'root': self.rawdata_path, 'download': self.download, 'train': True,
-                                   'transforms': self.transform}
-        test_default_init_para = {'root': self.rawdata_path, 'download': self.download, 'train': False,
-                                  'transforms': self.transform}
-        train_default_init_para.update(self.additional_option)
-        train_default_init_para.update(self.train_additional_option)
-        test_default_init_para.update(self.additional_option)
-        test_default_init_para.update(self.test_additional_option)
-        train_pop_key = [k for k in train_default_init_para.keys() if
-                         k not in self.builtin_class.__init__.__annotations__]
-        test_pop_key = [k for k in test_default_init_para.keys() if
-                        k not in self.builtin_class.__init__.__annotations__]
-        for k in train_pop_key: train_default_init_para.pop(k)
-        for k in test_pop_key: test_default_init_para.pop(k)
-        # init datasets
-        self.train_data = self.builtin_class(**train_default_init_para)
-        self.test_data = self.builtin_class(**test_default_init_para)
-
 class TaskPipe(BuiltinClassPipe):
     def __init__(self, task_path):
-        super(TaskPipe, self).__init__(task_path, builtin_class, transforms)
-
-    def load_data(self, running_time_option) -> dict:
-        # load the datasets
-        train_default_init_para = {'root': self.feddata['rawdata_path'], 'download':True, 'train':True, 'transforms':self.transform}
-        test_default_init_para = {'root': self.feddata['rawdata_path'], 'download':True, 'train':False, 'transforms':self.transform}
-        if 'additional_option' in self.feddata.keys():
-            train_default_init_para.update(self.feddata['additional_option'])
-            test_default_init_para.update(self.feddata['additional_option'])
-        if 'train_additional_option' in self.feddata.keys(): train_default_init_para.update(self.feddata['train_additional_option'])
-        if 'test_additional_option' in self.feddata.keys(): test_default_init_para.update(self.feddata['test_additional_option'])
-        train_pop_key = [k for k in train_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
-        test_pop_key = [k for k in test_default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
-        for k in train_pop_key: train_default_init_para.pop(k)
-        for k in test_pop_key: test_default_init_para.pop(k)
-        train_data = self.builtin_class(**train_default_init_para)
-        test_data = self.builtin_class(**test_default_init_para)
-        test_data = self.TaskDataset(test_data, list(range(len(test_data))), None, running_time_option['pin_memory'])
-        # rearrange data for server
-        server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
-        task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}
-        # rearrange data for clients
-        local_perturbation = self.feddata['local_perturbation'] if 'local_perturbation' in self.feddata.keys() else [None for _ in self.feddata['client_names']]
-        for cid, cname in enumerate(self.feddata['client_names']):
-            cpert = None if  local_perturbation[cid] is None else [torch.tensor(t) for t in local_perturbation[cid]]
-            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert, running_time_option['pin_memory'])
-            cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
-            if running_time_option['train_holdout']>0 and running_time_option['local_test']:
-                cdata_valid, cdata_test = self.split_dataset(cdata_valid, 0.5)
-            else:
-                cdata_test = None
-            task_data[cname] = {'train':cdata_train, 'valid':cdata_valid, 'test': cdata_test}
-        return task_data
+        super(TaskPipe, self).__init__(task_path, builtin_class, train_transform, test_transform)
 
 TaskCalculator = GeneralCalculator

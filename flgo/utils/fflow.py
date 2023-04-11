@@ -428,7 +428,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
 
     # init virtual system environment
     gv.logger.info('Use `{}` as the system simulator'.format(str(Simulator)))
-    flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
+    # flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
     gv.clock = flgo.simulator.base.ElemClock()
     gv.simulator = Simulator(objects, option)
     gv.clock.register_simulator(simulator=gv.simulator)

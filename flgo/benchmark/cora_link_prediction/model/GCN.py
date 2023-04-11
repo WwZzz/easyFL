@@ -9,12 +9,12 @@ class Model(FModule):
         self.conv2 = GCNConv(128, 64)
 
     def encode(self, x, edge_index):
-        x = self.conv1(x, edge_index)
+        x = self.conv1(x, edge_index.long())
         x = x.relu()
-        return self.conv2(x, edge_index)
+        return self.conv2(x, edge_index.long())
 
     def decode(self, z, edge_label_index):
-        return (z[edge_label_index[0]] * z[edge_label_index[1]]).sum(dim=-1)
+        return (z[edge_label_index.long()[0]] * z[edge_label_index.long()[1]]).sum(dim=-1)
 
     def decode_all(self, z):
         prob_adj = z @ z.t()
