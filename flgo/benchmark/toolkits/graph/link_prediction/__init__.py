@@ -3,6 +3,7 @@ import community.community_louvain
 import networkx as nx
 import torch_geometric
 from torch_geometric.transforms import RandomLinkSplit
+import torch_geometric.transforms as T
 from torch_geometric.utils import negative_sampling, from_networkx
 import torch_geometric.utils
 import collections
@@ -19,9 +20,8 @@ class BuiltinClassGenerator(BasicTaskGenerator):
 
     def load_data(self):
         all_data = self.builtin_class(root=self.rawdata_path, name=self.dataset_name, transform=self.transforms).data
-        transform = RandomLinkSplit(is_undirected=all_data.is_undirected(), num_test=0.2, num_val=0,
-                                    add_negative_train_samples=False)
-        local_data, _, test_data = transform(all_data)
+        transform = T.RandomLinkSplit(num_test=0.1, num_val=0, add_negative_train_samples=False)
+        local_data, valid_data, test_data = transform(all_data)
         self.local_data_edge_label_index = local_data.edge_label_index
         self.test_data_edge_label_index = test_data.edge_label_index
         self.test_data_edge_label = test_data.edge_label
