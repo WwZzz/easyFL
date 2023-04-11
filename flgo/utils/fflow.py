@@ -205,7 +205,16 @@ def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dic
             if Partitioner in globals().keys(): Partitioner = eval(Partitioner)
             else: Partitioner = getattr(flgo.benchmark.toolkits.partition, Partitioner)
         partitioner = Partitioner(**par_para)
-    else: partitioner = None
+    else:
+        try:
+            if hasattr(benchmark, 'default_partitioner'):
+                Partitioner = getattr(benchmark, 'default_partitioner')
+                default_partition_para = getattr(benchmark, 'default_partition_para') if hasattr(benchmark, 'default_partition_para') else {}
+                partitioner = Partitioner(**default_partition_para)
+            else:
+                partitioner = None
+        except:
+            partitioner = None
     if rawdata_path!='': bmk_para['rawdata_path']=rawdata_path
     bmk_core = benchmark.core
     task_generator = getattr(bmk_core, 'TaskGenerator')(**bmk_para)
@@ -263,6 +272,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
     os.environ['PYTHONHASHSEED'] = str(seed)
     # load configuration
     gen_option = load_configuration(config)
+    if type(gen_option['benchmark']) is not dict: gen_option['benchmark']={'name':gen_option['benchmark']}
     if 'para' not in gen_option['benchmark'].keys(): gen_option['benchmark']['para'] = {}
     if 'partitioner' in gen_option.keys():
         # update parameters of partitioner
@@ -276,10 +286,12 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
     if type(gen_option['benchmark']['name']) is str:
         bmk_core = importlib.import_module('.'.join([gen_option['benchmark']['name'], 'core']))
     elif hasattr(gen_option['benchmark']['name'], '__path__'):
-        bmk_core = getattr(gen_option['benchmark']['name'],'core')
+        bmk_core = importlib.import_module('.core', gen_option['benchmark']['name'].__name__)
     else:
         raise RuntimeError("The value of parameter config['benchmark']['name'] should be either a string or a python package.")
     task_generator = getattr(bmk_core, 'TaskGenerator')(**gen_option['benchmark']['para'])
+    bmk_module = importlib.import_module(gen_option['benchmark']['name']) if type(
+        gen_option['benchmark']['name']) is str else gen_option['benchmark']['name']
     # create partitioner for generator if specified
     if 'partitioner' in gen_option.keys() and 'name' in gen_option['partitioner'].keys():
         Partitioner = gen_option['partitioner']['name']
@@ -290,7 +302,17 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
         task_generator.register_partitioner(partitioner)
         partitioner.register_generator(task_generator)
     else:
-        partitioner = None
+        try:
+            if hasattr(bmk_module, 'default_partitioner'):
+                Partitioner = getattr(bmk_module, 'default_partitioner')
+                default_partition_para = getattr(bmk_module, 'default_partition_para') if hasattr(bmk_module, 'default_partition_para') else {}
+                partitioner = Partitioner(**default_partition_para)
+                task_generator.register_partitioner(partitioner)
+                partitioner.register_generator(task_generator)
+            else:
+                partitioner = None
+        except:
+            partitioner = None
     # generate federated task
     task_generator.generate()
     # save the generated federated benchmark
@@ -314,7 +336,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
         print("Failed to saving splited dataset.")
     # save visualization
     try:
-        visualize_func = getattr(importlib.import_module(gen_option['benchmark']['name']),'visualize')
+        visualize_func = getattr(bmk_module,'visualize')
         visualize_func(task_generator, partitioner, task_path)
     except:
         pass

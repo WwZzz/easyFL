@@ -22,7 +22,7 @@ nav:
       - flgo.benchmark.toolkits:
         - flgo.benchmark.toolkits.cv:
           - Docs/benchmark/toolkits/cv/index.md
-          - flgo.benchmark.toolkits.cv.horizontal.image_classification: Docs/benchmark/toolkits/cv/horizontal/image_classification.md
+          - image_classification: Docs/benchmark/toolkits/cv/image_classification.md
         - flgo.benchmark.toolkits.nlp: Docs/empty.md
         - flgo.benchmark.toolkits.graph: Docs/empty.md
         - flgo.benchmark.toolkits.tabular: Docs/empty.md
