@@ -11,98 +11,90 @@ import collections
 from flgo.benchmark.base import *
 
 class BuiltinClassGenerator(BasicTaskGenerator):
-    def __init__(self, benchmark, rawdata_path, builtin_class, dataset_name, transforms=None, num_clients=10):
+    def __init__(self, benchmark, rawdata_path, builtin_class, transform=None, pre_transform=None, test_rate=0.2, test_node_split=True, disjoint_train_ratio=0.3, neg_sampling_ratio=1.0):
         super(BuiltinClassGenerator, self).__init__(benchmark, rawdata_path)
         self.builtin_class = builtin_class
-        self.dataset_name = dataset_name
-        self.transforms = transforms
-        self.num_clients = num_clients
+        self.transform = transform
+        self.pre_transform = pre_transform
+        self.test_rate = test_rate
+        self.test_node_split = test_node_split
+        self.disjoint_train_ratio = disjoint_train_ratio
+        self.neg_sampling_ratio = neg_sampling_ratio
+        self.download = False
 
     def load_data(self):
-        all_data = self.builtin_class(root=self.rawdata_path, name=self.dataset_name, transform=self.transforms).data
-        transform = T.RandomLinkSplit(num_test=0.1, num_val=0, add_negative_train_samples=False)
-        local_data, valid_data, test_data = transform(all_data)
-        self.local_data_edge_label_index = local_data.edge_label_index
-        self.test_data_edge_label_index = test_data.edge_label_index
-        self.test_data_edge_label = test_data.edge_label
-        self.train_G = torch_geometric.utils.to_networkx(all_data, to_undirected=all_data.is_undirected(),
-                                                         node_attrs=['x'])
+        default_init_para = {'root': self.rawdata_path, 'download':self.download, 'train':True, 'transform':self.transform, 'pre_transform':self.pre_transform}
+        default_init_para.update(self.additional_option)
+        if 'kwargs' not in self.builtin_class.__init__.__annotations__:
+            pop_key = [k for k in default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+            for k in pop_key: default_init_para.pop(k)
+        self.dataset = self.builtin_class(**default_init_para).data
+        transform_for_create_test = T.RandomLinkSplit(neg_sampling_ratio=0.0, is_undirected=self.dataset.is_undirected(), num_test=self.test_rate, num_val=0, add_negative_train_samples=False)
+        _,_,test_data = transform_for_create_test(self.dataset)
+        self.test_nodes = list(set(test_data.edge_label_index.view(-1).tolist()))
+        all_nodes = list(set(self.dataset.edge_index.view(-1).tolist()))
+        self.train_nodes = list(set(all_nodes).difference(self.test_nodes)) if self.test_node_split else all_nodes
+        self.G = torch_geometric.utils.to_networkx(self.dataset, to_undirected=self.dataset.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
+        self.train_data = nx.subgraph(self.G, self.train_nodes)
 
     def partition(self):
-        self.local_nodes = [[] for _ in range(self.num_clients)]
-        node_groups = community.community_louvain.best_partition(self.train_G)
-        groups = collections.defaultdict(list)
-        for ni, gi in node_groups.items():
-            groups[gi].append(ni)
-        groups = {k: groups[k] for k in list(range(len(groups)))}
-        # ensure the number of groups is larger than the number of clients
-        while len(groups) < self.num_clients:
-            # find the group with the largest size
-            groups_lens = [groups[k] for k in range(len(groups))]
-            max_gi = np.argmax(groups_lens)
-            # set the size of the new group
-            min_glen = min(groups_lens)
-            max_glen = max(groups_lens)
-            if max_glen < 2 * min_glen: min_glen = max_glen // 2
-            # split the group with the largest size into two groups
-            nodes_in_gi = groups[max_gi]
-            new_group_id = len(groups)
-            groups[new_group_id] = nodes_in_gi[:min_glen]
-            groups[max_gi] = nodes_in_gi[min_glen:]
-        # allocate different groups to clients
-        groups_lens = [groups[k] for k in range(len(groups))]
-        group_ids = np.argsort(groups_lens)
-        for gi in group_ids:
-            cid = np.argmin([len(li) for li in self.local_nodes])
-            self.local_nodes[cid].extend(groups[gi])
+        self.local_datas = self.partitioner(self.train_data)
+        self.num_clients = len(self.local_datas)
 
     def get_task_name(self):
         return '_'.join(['B-' + self.benchmark, 'P-None', 'N-' + str(self.num_clients)])
 
 class BuiltinClassPipe(BasicTaskPipe):
-    def __init__(self, task_name, buildin_class, transform=None):
+    def __init__(self, task_name, builtin_class, transform=None, pre_transform=None):
         super(BuiltinClassPipe, self).__init__(task_name)
-        self.builtin_class = buildin_class
+        self.builtin_class = builtin_class
+        self.pre_transform = pre_transform
         self.transform = transform
 
     def save_task(self, generator):
-        client_names = self.gen_client_names(len(generator.local_nodes))
-        feddata = {'client_names': client_names,
-                   'server_data':
-                       {'edge_label_index': generator.test_data_edge_label_index.tolist(),
-                        'edge_label': generator.test_data_edge_label.tolist()},
-                   'rawdata_path': generator.rawdata_path,
-                   'dataset_name': generator.dataset_name,
-                   'local_edge_label_index': generator.local_data_edge_label_index.tolist()}
-        for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_nodes[cid]}
+        client_names = self.gen_client_names(len(generator.local_datas))
+        feddata = {'client_names': client_names, 'server_data': generator.test_nodes,
+                   'rawdata_path': generator.rawdata_path, 'additional_option': generator.additional_option,
+                   'train_additional_option': generator.train_additional_option,
+                   'test_additional_option': generator.test_additional_option,
+                   'test_rate': generator.test_rate,
+                   'disjoint_train_ratio': generator.disjoint_train_ratio,
+                   'neg_sampling_ratio': generator.neg_sampling_ratio
+                   }
+        for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
             json.dump(feddata, outf)
         return
 
     def load_data(self, running_time_option) -> dict:
-        # load the datasets
-        all_data = self.builtin_class(root=self.feddata['rawdata_path'], name=self.feddata['dataset_name'],
-                                           transform=self.transform).data
-        server_data = copy.deepcopy(all_data)
-        server_data.edge_label_index = torch.Tensor(self.feddata['server_data']['edge_label_index'])
-        server_data.edge_label = torch.Tensor(self.feddata['server_data']['edge_label'])
-
-        local_data = copy.deepcopy(all_data)
-        local_data_edge_label_index = torch.Tensor(self.feddata['local_edge_label_index'])
-        edge_index = torch.cat([local_data_edge_label_index,
-                                           torch.flip(local_data_edge_label_index, dims=[0])], dim=1)
-        local_data.edge_index = edge_index
-        server_data.edge_index = edge_index
-        task_data = {'server': {'test': server_data}}
-        G = torch_geometric.utils.to_networkx(local_data, to_undirected=local_data.is_undirected(),
-                                              node_attrs=['x'])
+        default_init_para = {'root': self.feddata['rawdata_path'], 'download': True, 'train': True, 'transform': self.transform, 'pre_transform':self.pre_transform}
+        default_init_para.update(self.feddata['additional_option'])
+        if 'kwargs' not in self.builtin_class.__init__.__annotations__:
+            pop_key = [k for k in default_init_para.keys() if k not in self.builtin_class.__init__.__annotations__]
+            for k in pop_key: default_init_para.pop(k)
+        self.dataset = self.builtin_class(**default_init_para).data
+        self.G = torch_geometric.utils.to_networkx(self.dataset, to_undirected=self.dataset.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
+        if self.feddata['test_rate']>0:
+            test_dataset = from_networkx(nx.subgraph(self.G, self.feddata['server_data']))
+            server_valid_data,_,server_test_data = T.RandomLinkSplit(neg_sampling_ratio=self.feddata['neg_sampling_ratio'],is_undirected=self.dataset.is_undirected(),num_test=1-running_time_option['test_holdout'], num_val=0.0, add_negative_train_samples=True)(test_dataset)
+            if len(server_valid_data.edge_label)==0:server_valid_data = None
+            if len(server_test_data.edge_label)==0:server_test_data = None
+        else:
+            server_test_data,server_valid_data = None,None
+        task_data = {'server': {'test': server_test_data, 'valid': server_valid_data}}
         # rearrange data for clients
+        if running_time_option['local_test']:
+            num_val = running_time_option['train_holdout']*0.5
+            num_test = running_time_option['train_holdout']*0.5
+        else:
+            num_val = running_time_option['train_holdout']
+            num_test = 0
         for cid, cname in enumerate(self.feddata['client_names']):
-            cdata = from_networkx(nx.subgraph(G, self.feddata[cname]['data']))
-            transform = RandomLinkSplit(is_undirected=cdata.is_undirected(), num_test=running_time_option['train_holdout'], num_val=0,
-                                        add_negative_train_samples=False)
-            train_data, _, val_data = transform(cdata)
-            task_data[cname] = {'train': train_data, 'valid': val_data}
+            c_dataset = from_networkx(nx.subgraph(self.G, self.feddata[cname]['data']))
+            ctrans = RandomLinkSplit(neg_sampling_ratio=self.feddata['neg_sampling_ratio'],is_undirected=self.dataset.is_undirected(), num_test=num_test, num_val=num_val,
+                                        add_negative_train_samples=False, disjoint_train_ratio=self.feddata['disjoint_train_ratio'])
+            cdata_train, cdata_valid, cdata_test = ctrans(c_dataset)
+            task_data[cname] = {'train': cdata_train, 'valid': cdata_valid if len(cdata_valid.edge_label)>0 else None, 'test':cdata_test if len(cdata_test.edge_label)>0 else None}
         return task_data
 
 class GeneralCalculator(BasicTaskCalculator):
