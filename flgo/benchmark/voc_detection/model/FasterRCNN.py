@@ -1,5 +1,4 @@
 import collections
-
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 import numpy as np
 import flgo.utils.fmodule as fmodule

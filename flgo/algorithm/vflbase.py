@@ -18,9 +18,9 @@ class PassiveParty(BasicParty):
         self.option = option
         self.actions = {0: self.forward, 1:self.backward, 2:self.forward_test}
         self.id = None
-        # create local dataset
+        # create local_movielens_recommendation dataset
         self.data_loader = None
-        # local calculator
+        # local_movielens_recommendation calculator
         self.device = self.gv.apply_for_device()
         self.calculator = self.gv.TaskCalculator(self.device, option['optimizer'])
         # hyper-parameters for training
@@ -41,7 +41,7 @@ class PassiveParty(BasicParty):
 
     def forward(self, package:dict={}):
         r"""
-        Local forward to computing the activations on local features
+        Local forward to computing the activations on local_movielens_recommendation features
 
         Args:
             package (dict): the package from the active party that contains batch information and the type of data
@@ -58,7 +58,7 @@ class PassiveParty(BasicParty):
 
     def backward(self, package):
         r"""
-        Local backward to computing the gradients on local modules
+        Local backward to computing the gradients on local_movielens_recommendation modules
 
         Args:
             package (dict): the package from the active party that contains the derivations
@@ -69,11 +69,11 @@ class PassiveParty(BasicParty):
 
     def update_local_module(self, derivation, activation):
         r"""
-        Update local modules according to the derivation and the activation
+        Update local_movielens_recommendation modules according to the derivation and the activation
 
         Args:
             derivation (Any): the derivation from the active party
-            activation (Any): the local computed activation
+            activation (Any): the local_movielens_recommendation computed activation
         """
         optimizer = self.calculator.get_optimizer(self.local_module, self.lr)
         loss_surrogat = (derivation*activation).sum()
@@ -83,7 +83,7 @@ class PassiveParty(BasicParty):
 
     def forward_test(self, package):
         r"""
-        Local forward to computing the activations on local features for testing
+        Local forward to computing the activations on local_movielens_recommendation features for testing
 
         Args:
             package (dict): the package from the active party that contains batch information and the type of data
@@ -227,7 +227,7 @@ class ActiveParty(PassiveParty):
 
          3. Thirdly, it continues the forward passing and backward passing to update the decoder part of the model, and distributes the derivations to parties.
 
-         4. Finally, each passive party will update its local modules accoring to the derivations and activations.
+         4. Finally, each passive party will update its local_movielens_recommendation modules accoring to the derivations and activations.
 
         Returns:
             updated (bool): whether the model is updated in this iteration

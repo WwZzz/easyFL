@@ -50,7 +50,7 @@ class Server(BasicServer):
 
     def global_test(self, flag='valid'):
         """
-        Validate accuracies and losses on clients' local datasets
+        Validate accuracies and losses on clients' local_movielens_recommendation datasets
         Args:
             flag: choose train data or valid data to evaluate
         Returns:

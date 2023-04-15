@@ -69,35 +69,6 @@ class GeneralCalculator(BasicTaskCalculator):
         dataloader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
         metrics = model.evaluate(dataloader)
         return metrics
-        #
-        # if hasattr(model, 'name') and 'rcnn' in model.name:
-        #     if metrics=='all': metrics=['loss', 'mAP']
-        #     if type(metrics) is not list: metrics=[metrics]
-        #     res = {}
-        #     for metric_name in metrics:
-        #         if metric_name=='loss':
-        #             losses = []
-        #             model.train()
-        #             dataloader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
-        #             for images, targets in dataloader:
-        #                 images, targets = model.transform(images, targets, device=self.device)
-        #                 output = model(images, targets)
-        #                 output = model.organize_output(output)
-        #                 losses.append(output['loss']*len(dataset))
-        #             res['loss'] = sum(losses)/len(dataset)
-        #         elif metric_name=='mAP':
-        #             APs = []
-        #             model.eval()
-        #             dataloader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers,
-        #                                              pin_memory=pin_memory)
-        #             for images, targets in dataloader:
-        #                 images, targets = model.transform(images, targets, device=self.device)
-        #                 preds = model(images, targets)
-        #                 preds = model.organize(preds)
-        #                 APs.append(self.compute_ap(targets, preds))
-        #             res['mAP'] = np.mean(APs)
-        #     return res
-
 
     def to_device(self, images, targets):
         images = list(img.to(self.device) for img in images)

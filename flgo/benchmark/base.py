@@ -82,7 +82,7 @@ class AbstractTaskCalculator(metaclass=ABCMeta):
 class BasicTaskGenerator(AbstractTaskGenerator):
     r"""
         Load the original dataset and partition the
-        original dataset into local data
+        original dataset into local_movielens_recommendation data
     """
     def __init__(self, benchmark:str, rawdata_path:str):
         """
@@ -119,7 +119,7 @@ class BasicTaskGenerator(AbstractTaskGenerator):
         raise NotImplementedError
 
     def partition(self, *args, **kwargs):
-        """Partition the data into different local datasets"""
+        """Partition the data into different local_movielens_recommendation datasets"""
         return
 
     def register_partitioner(self, partitioner=None):
@@ -241,7 +241,7 @@ class BasicTaskPipe(AbstractTaskPipe):
 
     def distribute(self, task_data: dict, objects: list):
         r"""
-        Distribute the loaded local datasets to different objects in
+        Distribute the loaded local_movielens_recommendation datasets to different objects in
         the federated scenario
         """
         for ob in objects:
@@ -379,7 +379,7 @@ class XYHorizontalTaskPipe(BasicTaskPipe):
      that can be indexed by $i$.
     To use this pipe, it's necessary to set the attribute `test_data` of the generator to be a dict like:
         {'x': [...], 'y':[...]}
-    and the attribute `local_datas` to be a list of the above dict that means the local data owned by clients:
+    and the attribute `local_datas` to be a list of the above dict that means the local_movielens_recommendation data owned by clients:
         [{'x':[...], 'y':[...]}, ..., ]
     """
     TaskDataset = torch.utils.data.TensorDataset

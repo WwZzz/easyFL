@@ -732,14 +732,14 @@ class SysLogHandler(logging.Handler):
     LOG_FTP       = 11      #  FTP daemon
 
     #  other codes through 15 reserved for system use
-    LOG_LOCAL0    = 16      #  reserved for local use
-    LOG_LOCAL1    = 17      #  reserved for local use
-    LOG_LOCAL2    = 18      #  reserved for local use
-    LOG_LOCAL3    = 19      #  reserved for local use
-    LOG_LOCAL4    = 20      #  reserved for local use
-    LOG_LOCAL5    = 21      #  reserved for local use
-    LOG_LOCAL6    = 22      #  reserved for local use
-    LOG_LOCAL7    = 23      #  reserved for local use
+    LOG_LOCAL0    = 16      #  reserved for local_movielens_recommendation use
+    LOG_LOCAL1    = 17      #  reserved for local_movielens_recommendation use
+    LOG_LOCAL2    = 18      #  reserved for local_movielens_recommendation use
+    LOG_LOCAL3    = 19      #  reserved for local_movielens_recommendation use
+    LOG_LOCAL4    = 20      #  reserved for local_movielens_recommendation use
+    LOG_LOCAL5    = 21      #  reserved for local_movielens_recommendation use
+    LOG_LOCAL6    = 22      #  reserved for local_movielens_recommendation use
+    LOG_LOCAL7    = 23      #  reserved for local_movielens_recommendation use
 
     priority_names = {
         "alert":    LOG_ALERT,
@@ -798,7 +798,7 @@ class SysLogHandler(logging.Handler):
         Initialize a handler.
 
         If address is specified as a string, a UNIX socket is used. To log to a
-        local syslogd, "SysLogHandler(address="/dev/log")" can be used.
+        local_movielens_recommendation syslogd, "SysLogHandler(address="/dev/log")" can be used.
         If facility is not specified, LOG_USER is used. If socktype is
         specified as socket.SOCK_DGRAM or socket.SOCK_STREAM, that specific
         socket type will be used. For Unix sockets, you can also specify a

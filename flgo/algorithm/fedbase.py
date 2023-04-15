@@ -15,7 +15,7 @@ class BasicParty:
     def __init__(self, *args, **kwargs):
         self.actions = {}  # the message-action map that is used to customize the communication process
         self.id = None  # the id for communicating
-        self._object_map = collections.defaultdict(lambda:None) # mapping objects according to their ids
+        self._object_map = {} # mapping objects according to their ids
 
     def register_action_to_mtype(self, action_name: str, mtype):
         r"""
@@ -289,7 +289,7 @@ class BasicServer(BasicParty):
 
     def pack(self, client_id, mtype=0, *args, **kwargs):
         r"""
-        Pack the necessary information for the client's local training.
+        Pack the necessary information for the client's local_movielens_recommendation training.
         Any operations of compression or encryption should be done here.
 
         Args:
@@ -322,7 +322,7 @@ class BasicServer(BasicParty):
 
     def global_lr_scheduler(self, current_round):
         r"""
-        Control the step size (i.e. learning rate) of local training
+        Control the step size (i.e. learning rate) of local_movielens_recommendation training
         Args:
             current_round (int): the current communication round
         """
@@ -369,7 +369,7 @@ class BasicServer(BasicParty):
                 np.random.choice(all_clients, min(self.clients_per_round, len(all_clients)), replace=False)) if len(
                 all_clients) > 0 else []
         elif 'md' in self.sample_option:
-            # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local data sizes
+            # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local_movielens_recommendation data sizes
             local_data_vols = [self.clients[cid].datavol for cid in all_clients]
             total_data_vol = sum(local_data_vols)
             p = np.array(local_data_vols) / total_data_vol
@@ -392,7 +392,7 @@ class BasicServer(BasicParty):
 
 
         Args:
-            models (list): a list of local models
+            models (list): a list of local_movielens_recommendation models
 
         Returns:
             the aggregated model
@@ -425,7 +425,7 @@ class BasicServer(BasicParty):
 
     def global_test(self, model=None, flag:str='valid'):
         r"""
-        Collect local testing result of all the clients.
+        Collect local_movielens_recommendation testing result of all the clients.
 
         Args:
             model (flgo.utils.fmodule.FModule|torch.nn.Module): the model to be sevaluated
@@ -549,13 +549,13 @@ class BasicClient(BasicParty):
     def __init__(self, option={}):
         super().__init__()
         self.id = None
-        # create local dataset
+        # create local_movielens_recommendation dataset
         self.data_loader = None
         self.test_data = None
         self.valid_data = None
         self.train_data = None
         self.model = None
-        # local calculator
+        # local_movielens_recommendation calculator
         self.device = self.gv.apply_for_device()
         self.calculator = self.gv.TaskCalculator(self.device, option['optimizer'])
         # hyper-parameters for training
@@ -583,8 +583,8 @@ class BasicClient(BasicParty):
     @fmodule.with_multi_gpus
     def train(self, model):
         r"""
-        Standard local training procedure. Train the transmitted model with
-        local training dataset.
+        Standard local_movielens_recommendation training procedure. Train the transmitted model with
+        local_movielens_recommendation training dataset.
 
         Args:
             model (FModule): the global model
@@ -634,7 +634,7 @@ class BasicClient(BasicParty):
 
     def reply(self, svr_pkg):
         r"""
-        Reply a package to the server. The whole local procedure should be defined here.
+        Reply a package to the server. The whole local_movielens_recommendation procedure should be defined here.
         The standard form consists of three procedure: unpacking the
         server_package to obtain the global model, training the global model,
         and finally packing the updated model into client_package.
@@ -695,7 +695,7 @@ class BasicClient(BasicParty):
 
     def train_loss(self, model):
         r"""
-        Get the loss value of the model on local training data
+        Get the loss value of the model on local_movielens_recommendation training data
 
         Args:
             model (flgo.utils.fmodule.FModule|torch.nn.Module): model
@@ -707,7 +707,7 @@ class BasicClient(BasicParty):
 
     def valid_loss(self, model):
         r"""
-        Get the loss value of the model on local validating data
+        Get the loss value of the model on local_movielens_recommendation validating data
 
         Args:
             model (flgo.utils.fmodule.FModule|torch.nn.Module): model
@@ -727,7 +727,7 @@ class BasicClient(BasicParty):
 
     def set_local_epochs(self, epochs=None):
         r"""
-        Set local training epochs
+        Set local_movielens_recommendation training epochs
         """
         if epochs is None: return
         self.epochs = epochs
@@ -736,7 +736,7 @@ class BasicClient(BasicParty):
 
     def set_batch_size(self, batch_size=None):
         r"""
-        Set local training batch size
+        Set local_movielens_recommendation training batch size
 
         Args:
             batch_size (int): the training batch size
@@ -746,7 +746,7 @@ class BasicClient(BasicParty):
 
     def set_learning_rate(self, lr=None):
         """
-        Set the learning rate of local training
+        Set the learning rate of local_movielens_recommendation training
         Args:
             lr (float): a real number
         """
@@ -774,7 +774,7 @@ class BasicClient(BasicParty):
                                                                    num_workers=self.loader_num_workers,
                                                                    pin_memory=self.option['pin_memory']))
             batch_data = next(self.data_loader)
-        # clear local DataLoader when finishing local training
+        # clear local_movielens_recommendation DataLoader when finishing local_movielens_recommendation training
         self.current_steps = (self.current_steps + 1) % self.num_steps
         if self.current_steps == 0: self.data_loader = None
         return batch_data

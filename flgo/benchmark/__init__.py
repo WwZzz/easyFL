@@ -9,7 +9,7 @@ procedure that can easily convert various ML tasks into federated ones.
 Components:
     * `TaskGenerator`
         - load the original dataset
-        - partition the original dataset into local data
+        - partition the original dataset into local_movielens_recommendation data
 
     * `TaskPipe`
         - store the partition information of TaskGenerator into the disk

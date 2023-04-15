@@ -4,7 +4,7 @@ All the Partitioner should implement the method `__call__(self, data)`
 where `data` is the dataset to be partitioned and the return is a list of the partitioned result.
 
 For example, The IIDPartitioner.__call__ receives a indexable object (i.e. instance of torchvision.datasets.mnsit.MNSIT)
-and I.I.D. selects samples' indices in the original dataset as each client's local data.
+and I.I.D. selects samples' indices in the original dataset as each client's local_movielens_recommendation data.
 The list of list of sample indices are finally returnerd (e.g. [[0,1,2,...,1008], ...,[25,23,98,...,997]]).
 
 To use the partitioner, you can specify Partitioner in the configuration dict for `flgo.gen_task`.
@@ -52,7 +52,7 @@ class BasicPartitioner(AbstractPartitioner):
             imbalance (float): the degree of data imbalance across clients
 
         Returns:
-            a list of integer numbers that represents local data sizes
+            a list of integer numbers that represents local_movielens_recommendation data sizes
         """
         if imbalance == 0:
             samples_per_client = [int(datasize / num_clients) for _ in range(num_clients)]
@@ -106,7 +106,7 @@ class IIDPartitioner(BasicPartitioner):
 
     Args:
         num_clients (int, optional): the number of clients
-        imbalance (float, optional): the degree of imbalance of the amounts of different local data (0<=imbalance<=1)
+        imbalance (float, optional): the degree of imbalance of the amounts of different local_movielens_recommendation data (0<=imbalance<=1)
     """
     def __init__(self, num_clients=100, imbalance=0):
         self.num_clients = num_clients
@@ -131,7 +131,7 @@ class DirichletPartitioner(BasicPartitioner):
     Args:
         num_clients (int, optional): the number of clients
         alpha (float, optional): `alpha`(i.e. alpha>=0) in Dir(alpha*p) where p is the global distribution. The smaller alpha is, the higher heterogeneity the data is.
-        imbalance (float, optional): the degree of imbalance of the amounts of different local data (0<=imbalance<=1)
+        imbalance (float, optional): the degree of imbalance of the amounts of different local_movielens_recommendation data (0<=imbalance<=1)
         error_bar (float, optional): the allowed error when the generated distribution mismatches the distirbution that is actually wanted, since there may be no solution for particular imbalance and alpha.
         flag_index (int, optional): the index of the distribution-dependent (i.e. label) attribute in each sample.
     """
@@ -223,7 +223,7 @@ class DiversityPartitioner(BasicPartitioner):
     Args:
         num_clients (int, optional): the number of clients
         diversity (float, optional): the ratio of locally owned types of the attributes (i.e. the actual number=diversity * total_num_of_types)
-        imbalance (float, optional): the degree of imbalance of the amounts of different local data (0<=imbalance<=1)
+        imbalance (float, optional): the degree of imbalance of the amounts of different local_movielens_recommendation data (0<=imbalance<=1)
         flag_index (int, optional): the index of the distribution-dependent (i.e. label) attribute in each sample.
     """
     def __init__(self, num_clients=100, diversity=1.0, flag_index=-1):
@@ -280,7 +280,7 @@ class GaussianPerturbationPartitioner(BasicPartitioner):
 
     Args:
         num_clients (int, optional): the number of clients
-        imbalance (float, optional): the degree of imbalance of the amounts of different local data (0<=imbalance<=1)
+        imbalance (float, optional): the degree of imbalance of the amounts of different local_movielens_recommendation data (0<=imbalance<=1)
         sigma (float, optional): the degree of feature skew
         scale (float, optional): the standard deviation of noise
         feature_index (int, optional): the index of the feature to be processed for each sample.
@@ -319,22 +319,25 @@ class IDPartitioner(BasicPartitioner):
 
     Args:
         num_clients (int, optional): the number of clients
-        priority (str, optional): The value should be in set ('random', 'max', 'min'). If the number of clients is smaller than the total number of all the clients, this term will decide the selected clients according to their local data sizes.
+        priority (str, optional): The value should be in set ('random', 'max', 'min'). If the number of clients is smaller than the total number of all the clients, this term will decide the selected clients according to their local_movielens_recommendation data sizes.
     """
-    def __init__(self, num_clients=-1, priority='random'):
+    def __init__(self, num_clients=-1, priority='random', flag=None):
         self.num_clients = int(num_clients)
         self.priorty = priority
-        return
+        self.flag = flag
 
     def __str__(self):
         return 'id'
 
     def __call__(self, data):
         all_data = list(range(len(data)))
-        data_owners = data.id
+        if self.flag is not None:
+            data_owners = [d[self.flag] for d in data]
+        else:
+            data_owners = data.id
         local_datas = collections.defaultdict(list)
         for idx in range(len(all_data)):
-            local_datas[data_owners[idx]].append(all_data[idx])
+            local_datas[data_owners[idx]].append(idx)
         local_datas = list(local_datas.values())
         if self.num_clients < 0:
             self.num_clients = len(local_datas)
@@ -345,6 +348,7 @@ class IDPartitioner(BasicPartitioner):
         elif self.priorty == 'random':
             random.shuffle(local_datas)
             local_datas = local_datas[:self.num_clients]
+        local_datas = sorted(local_datas, key=lambda x:data[x[0]][self.flag] if self.flag is not None else data.id[x[0]])
         return local_datas
 
 class VerticalSplittedPartitioner(BasicPartitioner):

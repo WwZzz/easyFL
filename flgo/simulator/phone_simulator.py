@@ -259,7 +259,7 @@ class Simulator(BasicSimulator):
         down_pkg_sizes = self.get_variable(client_ids, '__download_package_size')
         for cid, upsize,down_size in zip(client_ids, up_pkg_sizes, down_pkg_sizes):
             latency.append(int(1.0*upsize/self.net_speeds[cid][0] + 1.0*down_size/self.net_speeds[cid][1]))
-        # calculate time of local computing
+        # calculate time of local_movielens_recommendation computing
         tlcs = []
         model_sizes =  self.get_variable(client_ids, '__model_size')
         working_amounts = self.get_variable(client_ids, 'working_amount')

@@ -54,7 +54,7 @@ class BuiltinClassPipe(BasicTaskPipe):
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
         feddata = {'client_names': client_names, 'server_data': generator.test_nodes,
-                   'rawdata_path': generator.rawdata_path, 'additional_option': generator.additional_option,
+                   'rawdata_path': generator.root, 'additional_option': generator.additional_option,
                    'train_additional_option': generator.train_additional_option,
                    'test_additional_option': generator.test_additional_option,
                    'test_rate': generator.test_rate,

@@ -12,7 +12,7 @@ System Heterogeneity Description:
                     upload imcomplete model updates (i.e. only training for a few steps).
 
     4. **Connectivity**: the clients who promise to complete training may suffer accidients so that the server may lose
-                    connections with these client who will never return the currently trained local model.
+                    connections with these client who will never return the currently trained local_movielens_recommendation model.
 
 We build up a client state machine to simulate the four types of system heterogeneity, and provide high-level
 APIs to allow customized system heterogeneity simulation.

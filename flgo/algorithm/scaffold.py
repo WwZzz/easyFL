@@ -22,7 +22,7 @@ class Server(BasicServer):
     def iterate(self):
         # sample clients
         self.selected_clients = self.sample()
-        # local training
+        # local_movielens_recommendation training
         res = self.communicate(self.selected_clients)
         dys, dcs = res['dy'], res['dc']
         # aggregate

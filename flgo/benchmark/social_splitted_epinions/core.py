@@ -114,7 +114,7 @@ class TaskPipe(BasicTaskPipe):
 
     def save_task(self, generator):
         party_names = ['Advertiser', 'MeidaCompany']
-        feddata = {'party_names': party_names, 'rawdata_path': generator.rawdata_path}
+        feddata = {'party_names': party_names, 'rawdata_path': generator.root}
         feddata['Advertiser'] = {
             'data':{
                 'userID':generator.users,

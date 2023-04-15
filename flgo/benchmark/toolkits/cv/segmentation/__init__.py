@@ -92,7 +92,7 @@ class BuiltinClassPipe(BasicTaskPipe):
 
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
-        feddata = {'client_names': client_names, 'server_data': list(range(len(generator.test_data))),  'rawdata_path': generator.rawdata_path, 'additional_option': generator.additional_option, 'train_additional_option':generator.train_additional_option, 'test_additional_option':generator.test_additional_option,'num_classes':generator.num_classes}
+        feddata = {'client_names': client_names, 'server_data': list(range(len(generator.test_data))),  'rawdata_path': generator.root, 'additional_option': generator.additional_option, 'train_additional_option':generator.train_additional_option, 'test_additional_option':generator.test_additional_option, 'num_classes':generator.num_classes}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
             json.dump(feddata, outf)

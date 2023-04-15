@@ -105,20 +105,20 @@ def read_option_from_command():
     parser.add_argument('--learning_rate_decay', help='learning rate decay for the training process;', type=float, default=0.998)
     parser.add_argument('--lr_scheduler', help='type of the global learning rate scheduler', type=int, default=-1)
     parser.add_argument('--early_stop', help='stop training if there is no improvement for no smaller than the maximum rounds', type=int, default=-1)
-    # hyper-parameters of local training
+    # hyper-parameters of local_movielens_recommendation training
     parser.add_argument('--num_epochs', help='number of epochs when clients trainset on data;', type=int, default=5)
-    parser.add_argument('--num_steps', help='the number of local steps, which dominate num_epochs when setting num_steps>0', type=int, default=-1)
+    parser.add_argument('--num_steps', help='the number of local_movielens_recommendation steps, which dominate num_epochs when setting num_steps>0', type=int, default=-1)
     parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.1)
     parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=float, default='64')
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
-    parser.add_argument('--momentum', help='momentum of local update', type=float, default=0)
+    parser.add_argument('--momentum', help='momentum of local_movielens_recommendation update', type=float, default=0)
     parser.add_argument('--weight_decay', help='weight decay for the training process', type=float, default=0)
     # algorithm-dependent hyper-parameters
     parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
 
     """Environment Options"""
     # the ratio of the amount of the data used to train
-    parser.add_argument('--train_holdout', help='the rate of holding out the validation dataset from all the local training datasets', type=float, default=0.1)
+    parser.add_argument('--train_holdout', help='the rate of holding out the validation dataset from all the local_movielens_recommendation training datasets', type=float, default=0.1)
     parser.add_argument('--test_holdout', help='the rate of holding out the validation dataset from the training datasets', type=float, default=0.0)
     parser.add_argument('--local_test', help='if this term is set True and train_holdout>0, (0.5*train_holdout) of data will be set as client.test_data.', action="store_true", default=False)
     # realistic machine config
@@ -399,9 +399,13 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     with open(os.path.join(task, 'info'), 'r') as inf:
         task_info = json.load(inf)
     benchmark = task_info['benchmark']
-    if model== None: model = getattr(importlib.import_module(benchmark), 'default_model')
+    if model== None:
+        bmk_module = importlib.import_module(benchmark)
+        if hasattr(bmk_module, 'default_model'):
+            model = getattr(bmk_module, 'default_model')
+        else:
+            model = algorithm
     option['model'] = (model.__name__).split('.')[-1]
-
     # create global variable
     gv = GlobalVariable()
     # init logger
@@ -509,7 +513,6 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
         s = 'Process {} exits with error:" {}". '.format(pid, str(e))
         res = (opt, s, pid)
         send_end.send(res)
-
 
 def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None):
     """

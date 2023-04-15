@@ -76,7 +76,7 @@ class ActiveParty(vflbase.ActiveParty):
         return True
 
     def update_local_module(self, U, V):
-        self.local_module.user_embedding.weight = U.T
+        self.local_module.model.weight = U.T
         self.local_module.item_embedding.weight = V.T
 
     def secret_sharing_matrix_multiplication(self, P, users, mtype='Z1'):

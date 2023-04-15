@@ -43,7 +43,7 @@ class BuiltinClassPipe(BasicTaskPipe):
         client_names = self.gen_client_names(len(generator.local_datas))
         feddata = {'client_names': client_names,
                    'server_data': list(range(len(generator.test_data))),
-                   'rawdata_path': generator.rawdata_path,
+                   'rawdata_path': generator.root,
                    'additional_option':generator.additional_option,
                    'test_idxs':generator.test_idxs,
                    'download': generator.download_data,

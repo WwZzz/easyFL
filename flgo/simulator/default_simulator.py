@@ -223,7 +223,7 @@ def arbitrary_dynamic_unifrom_client_completeness(simulator, a=1, b=1):
     """
     This setting follows the setting in the paper 'Tackling the Objective Inconsistency Problem in
     Heterogeneous Federated Optimization' (http://arxiv.org/abs/2007.07481). The string `mode` should be like
-    'FEDNOVA-Uniform(a,b)' where `a` is the minimal value of the number of local epochs and `b` is the maximal
+    'FEDNOVA-Uniform(a,b)' where `a` is the minimal value of the number of local_movielens_recommendation epochs and `b` is the maximal
     value. If this mode is active, the `num_epochs` and `num_steps` of clients will be disable.
     """
     simulator._incomplete_a = min(a, 1)
@@ -240,7 +240,7 @@ def arbitrary_static_unifrom_client_completeness(simulator, a=1, b=1):
     """
     This setting follows the setting in the paper 'Tackling the Objective Inconsistency Problem in
     Heterogeneous Federated Optimization' (http://arxiv.org/abs/2007.07481). The string `mode` should be like
-    'FEDNOVA-Uniform(a,b)' where `a` is the minimal value of the number of local epochs and `b` is the maximal
+    'FEDNOVA-Uniform(a,b)' where `a` is the minimal value of the number of local_movielens_recommendation epochs and `b` is the maximal
     value. If this mode is active, the `num_epochs` and `num_steps` of clients will be disable.
     """
     a = min(a, 1)
