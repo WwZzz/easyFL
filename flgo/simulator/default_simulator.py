@@ -52,7 +52,7 @@ def y_max_first_client_availability(simulator, beta=0.1):
     This setting follows the activity mode in 'Fast Federated Learning in the
     Presence of Arbitrary Device Unavailability' , where each client ci will be ready
     for joining in a round with a static probability:
-        pi = alpha * min({label kept by ci}) / max({all labels}) + ( 1 - alpha )
+        pi = beta * min({label kept by ci}) / max({all labels}) + ( 1 - beta )
     and the participation of client is independent across rounds. The string mode
     should be like 'YMaxFirst-x' where x should be replaced by a float number.
     """
