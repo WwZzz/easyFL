@@ -1,3 +1,9 @@
+import math
+
+import flgo
+import numpy
+import torch
+
 from flgo.benchmark.base import *
 
 class BuiltinClassGenerator(BasicTaskGenerator):
@@ -149,33 +155,35 @@ class GeneralCalculator(BasicTaskCalculator):
         """
         tdata = self.to_device(data)
         outputs = model(tdata[0])
-        loss = self.criterion(outputs, tdata[-1])
+        loss = self.criterion(outputs, tdata[1])
         return {'loss': loss}
 
     @torch.no_grad()
     def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
         """
-        Metric = [mean_loss/mse, l1loss]
+        Metric = [rse, corr]
 
         Args:
             model:
             dataset:
             batch_size:
-        Returns: [mean_loss/mse, l1loss]
+        Returns: [rse, corr]
         """
         model.eval()
         if batch_size==-1:batch_size=len(dataset)
         data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
-        total_loss = 0.0
-        total_l1_loss = 0.0
+        predict = None
+        Y = None
         for batch_id, batch_data in enumerate(data_loader):
             batch_data = self.to_device(batch_data)
             outputs = model(batch_data[0])
-            batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
-            total_loss += batch_mean_loss * len(batch_data[-1])
-            batch_mean_l1_loss = torch.nn.L1Loss()(outputs, batch_data[-1]).item()
-            total_l1_loss += batch_mean_l1_loss * len(batch_data[-1])
-        return {'mse-loss':total_loss/len(dataset), 'l1-loss':total_l1_loss/len(dataset)}
+            if predict is None:
+                predict = outputs
+                Y = batch_data[1]
+            else:
+                predict = torch.cat((predict, outputs))
+                Y = torch.cat((Y, batch_data[1]))
+        return {'rse': self.RSE(predict, Y), 'corr': self.CORR(predict, Y)}
 
     def to_device(self, data):
         return data[0].to(self.device), data[1].to(self.device)
@@ -185,4 +193,14 @@ class GeneralCalculator(BasicTaskCalculator):
             raise NotImplementedError("DataLoader Not Found.")
         return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last)
 
+    def RSE(self, predict, Ytest):
+        mean = Ytest.mean(dim=0)
+        sum1 = ((Ytest - predict)**2).sum().item()
+        sum2 = ((Ytest - mean)**2).sum().item()
+        return math.sqrt(sum1/sum2)
 
+    def CORR(self, predict, Ytest):
+        mean_1 = predict.mean(dim=0)
+        mean_2 = Ytest.mean(dim=0)
+        corr = ((Ytest - mean_2) * (predict - mean_1)).sum(dim=1) / torch.sqrt(((Ytest - mean_2)**2) * ((predict - mean_1)**2)).sum(dim=1)
+        return corr.mean().item()
