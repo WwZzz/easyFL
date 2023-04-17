@@ -7,6 +7,8 @@ import torchtext.functional as F
 import torch
 from torch.utils.data import DataLoader
 from flgo.utils.fmodule import FModule
+from torchtext.data.functional import to_map_style_dataset
+
 padding_idx = 1
 bos_idx = 0
 eos_idx = 2
@@ -33,23 +35,18 @@ def collect_fn(batch):
 def apply_transform(x):
     return text_transform(x[0]), x[1]
 
+def feat2dict(x):
+    return {'token_ids':x[0], 'target':x[1]}
+
 def init_dataset(object):
     datanames = object.get_data_names()
-    for key in tqdm(datanames):
+    for key in datanames:
         data = object.get_data(key)
         if data is None: continue
         dp = dpiter.IterableWrapper(data)
         dp = dp.map(apply_transform)
-        def g(x):
-            return {'token_ids':x[0],  'target':x[1]}
-        def f(x):
-            return x['index'], {'token_ids': x['token_ids'], 'target':x['target']}
-        dp = dp.map(g)
-        dp = dp.add_index('index')
-        dp = dp.map(f)
-        tdata = dp.to_map_datapipe()
-        _ = tdata[0] # load the data to avoid error when using DataLoader
-        object.set_data(tdata, key)
+        dp = dp.map(feat2dict)
+        object.set_data(to_map_style_dataset(dp), key)
         object.calculator.set_collect_fn(collect_fn)
 
 class Model(FModule):
