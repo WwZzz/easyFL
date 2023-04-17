@@ -1,6 +1,7 @@
 import math
 import copy
 import collections
+from typing import Any
 
 import torch
 import torch.multiprocessing as mp
@@ -16,6 +17,7 @@ class BasicParty:
         self.actions = {}  # the message-action map that is used to customize the communication process
         self.id = None  # the id for communicating
         self._object_map = {} # mapping objects according to their ids
+        self._data_names = []
 
     def register_action_to_mtype(self, action_name: str, mtype):
         r"""
@@ -59,12 +61,14 @@ class BasicParty:
             flag (str): the name of the data
         """
         setattr(self, flag + '_data', data)
+        if flag not in self._data_names:
+            self._data_names.append(flag)
         if flag == 'train':
             self.datavol = len(data)
             if hasattr(self, 'batch_size'):
                 # reset batch_size
                 if self.batch_size < 0:
-                    self.batch_size = len(self.train_data)
+                    self.batch_size = len(self.get_data(flag))
                 elif self.batch_size >= 1:
                     self.batch_size = int(self.batch_size)
                 else:
@@ -75,6 +79,39 @@ class BasicParty:
                     self.num_epochs = 1.0 * self.num_steps / (math.ceil(self.datavol / self.batch_size))
                 else:
                     self.num_steps = self.num_epochs * math.ceil(self.datavol / self.batch_size)
+
+    def get_data(self, flag:str='valid')->Any:
+        r"""
+        Get self's attibute '{flag}_data' if this attribute exists.
+
+        Args:
+            flag (str): the name of the data
+
+        Returns:
+            flag_data (Any): self.{flag}_data
+        """
+        dname = (flag+'_data')
+        if flag not in self._data_names: return None
+        else:
+            return getattr(self, dname)
+
+    def get_data_names(self)->list:
+        """
+        Get the names of data hold by self.
+
+        Returns:
+            data_names (list): the names of data hold by self
+        """
+        return self._data_names
+
+    def get_classname(self)->str:
+        """
+        Get the class name of self.
+
+        Returns:
+            class_name (str): the class name
+        """
+        return self.__class__.__name__
 
     def set_model(self, model, model_name: str = 'model'):
         r"""
@@ -249,7 +286,7 @@ class BasicServer(BasicParty):
         if self.num_parallels <= 1:
             # computing iteratively
             for client_id in communicate_clients:
-                server_pkg = self.pack(cid, mtype)
+                server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
                 response_from_client_id = self.communicate_with(client_id, package=server_pkg)
                 packages_received_from_clients.append(response_from_client_id)
@@ -257,7 +294,7 @@ class BasicServer(BasicParty):
             # computing in parallel with torch.multiprocessing
             pool = mp.Pool(self.num_parallels)
             for client_id in communicate_clients:
-                server_pkg = self.pack(cid, mtype)
+                server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
                 self.clients[client_id].update_device(self.gv.apply_for_device())
                 args = (int(client_id), server_pkg)

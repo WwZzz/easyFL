@@ -49,6 +49,7 @@ class GeneralCalculator(BasicTaskCalculator):
         super(GeneralCalculator, self).__init__(device, optimizer_name)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.DataLoader = torch.utils.data.DataLoader
+        self.collect_fn = lambda x:tuple(zip(*x))
 
     def compute_loss(self, model, data):
         """
@@ -78,5 +79,5 @@ class GeneralCalculator(BasicTaskCalculator):
     def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
-        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last, collate_fn=lambda x:tuple(zip(*x)))
+        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last, collate_fn=self.collect_fn)
 

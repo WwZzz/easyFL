@@ -3,6 +3,8 @@ import shutil
 from abc import ABCMeta, abstractmethod
 import random
 import os
+from typing import Callable
+
 try:
     import ujson as json
 except:
@@ -316,6 +318,7 @@ class BasicTaskCalculator(AbstractTaskCalculator):
         self.optimizer_name = optimizer_name
         self.criterion = None
         self.DataLoader = None
+        self.collect_fn = None
 
     def to_device(self, data, *args, **kwargs):
         return NotImplementedError
@@ -351,6 +354,11 @@ class BasicTaskCalculator(AbstractTaskCalculator):
         else:
             raise RuntimeError("Invalid Optimizer.")
 
+    def set_criterion(self, criterion:Callable)->None:
+        self.criterion = criterion
+
+    def set_collect_fn(self, collect_fn:Callable)->None:
+        self.collect_fn = collect_fn
 
 # class HorizontalTaskPipe(BasicTaskPipe):
 #     def generate_objects(self, running_time_option):

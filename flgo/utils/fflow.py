@@ -446,6 +446,9 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     if hasattr(model, 'init_global_module'):
         for object in objects:
             model.init_global_module(object)
+    if hasattr(model, 'init_dataset'):
+        for object in objects:
+            model.init_dataset(object)
 
     # init communicator
     gv.communicator = flgo.VirtualCommunicator(objects)

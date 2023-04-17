@@ -200,7 +200,7 @@ class TaskPipe(BasicTaskPipe):
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
         feddata = {'client_names': client_names, 'server_data': list(range(len(generator.test_data))),
-                   'rawdata_path': generator.root}
+                   'rawdata_path': generator.rawdata_path}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
             json.dump(feddata, outf)

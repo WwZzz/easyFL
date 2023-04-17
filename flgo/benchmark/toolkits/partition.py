@@ -133,13 +133,13 @@ class DirichletPartitioner(BasicPartitioner):
         alpha (float, optional): `alpha`(i.e. alpha>=0) in Dir(alpha*p) where p is the global distribution. The smaller alpha is, the higher heterogeneity the data is.
         imbalance (float, optional): the degree of imbalance of the amounts of different local_movielens_recommendation data (0<=imbalance<=1)
         error_bar (float, optional): the allowed error when the generated distribution mismatches the distirbution that is actually wanted, since there may be no solution for particular imbalance and alpha.
-        flag_index (int, optional): the index of the distribution-dependent (i.e. label) attribute in each sample.
+        index_func (func, optional): to index the distribution-dependent (i.e. label) attribute in each sample.
     """
-    def __init__(self, num_clients=100, alpha=1.0, error_bar=1e-6, imbalance=0, flag_index=-1):
+    def __init__(self, num_clients=100, alpha=1.0, error_bar=1e-6, imbalance=0, index_func=lambda x:x[-1]):
         self.num_clients = num_clients
         self.alpha = alpha
         self.imbalance = imbalance
-        self.flag_index = flag_index
+        self.index_func = index_func
         self.error_bar = error_bar
 
     def __str__(self):
@@ -148,7 +148,7 @@ class DirichletPartitioner(BasicPartitioner):
         return name
 
     def __call__(self, data):
-        attrs = [d[self.flag_index] for d in data]
+        attrs = [self.index_func(d) for d in data]
         num_attrs = len(set(attrs))
         samples_per_client = self.data_imbalance_generator(self.num_clients, len(data), self.imbalance)
         # count the label distribution
@@ -224,19 +224,19 @@ class DiversityPartitioner(BasicPartitioner):
         num_clients (int, optional): the number of clients
         diversity (float, optional): the ratio of locally owned types of the attributes (i.e. the actual number=diversity * total_num_of_types)
         imbalance (float, optional): the degree of imbalance of the amounts of different local_movielens_recommendation data (0<=imbalance<=1)
-        flag_index (int, optional): the index of the distribution-dependent (i.e. label) attribute in each sample.
+        index_func (int, optional): the index of the distribution-dependent (i.e. label) attribute in each sample.
     """
-    def __init__(self, num_clients=100, diversity=1.0, flag_index=-1):
+    def __init__(self, num_clients=100, diversity=1.0, index_func=lambda x:x[-1]):
         self.num_clients = num_clients
         self.diversity = diversity
-        self.flag_index = flag_index
+        self.index_func = index_func
 
     def __str__(self):
         name = "div{:.1f}".format(self.diversity)
         return name
 
     def __call__(self, data):
-        labels = [d[self.flag_index] for d in data]
+        labels = [self.index_func(d) for d in data]
         num_classes = len(set(labels))
         dpairs = [[did, lb] for did, lb in zip(list(range(len(data))), labels)]
         num = max(int(self.diversity * num_classes), 1)
@@ -283,14 +283,14 @@ class GaussianPerturbationPartitioner(BasicPartitioner):
         imbalance (float, optional): the degree of imbalance of the amounts of different local_movielens_recommendation data (0<=imbalance<=1)
         sigma (float, optional): the degree of feature skew
         scale (float, optional): the standard deviation of noise
-        feature_index (int, optional): the index of the feature to be processed for each sample.
+        index_func (int, optional): the index of the feature to be processed for each sample.
     """
-    def __init__(self, num_clients=100, imbalance=0.0, sigma=0.1, scale=0.1, feature_index=0):
+    def __init__(self, num_clients=100, imbalance=0.0, sigma=0.1, scale=0.1, index_func=lambda x:x[0]):
         self.num_clients = num_clients
         self.imbalance = imbalance
         self.sigma = sigma
         self.scale = scale
-        self.feature_index = feature_index
+        self.index_func = index_func
 
     def __str__(self):
         name = "perturb_gs{:.1f}_{:.1f}".format(self.sigma, self.scale)
@@ -298,7 +298,7 @@ class GaussianPerturbationPartitioner(BasicPartitioner):
         return name
 
     def __call__(self, data):
-        shape = tuple(np.array(data[0][self.feature_index].shape))
+        shape = tuple(np.array(self.index_func(data[0]).shape))
         samples_per_client = self.data_imbalance_generator(self.num_clients, len(data), self.imbalance)
         d_idxs = np.random.permutation(len(data))
         local_datas = np.split(d_idxs, np.cumsum(samples_per_client))[:-1]
@@ -321,20 +321,17 @@ class IDPartitioner(BasicPartitioner):
         num_clients (int, optional): the number of clients
         priority (str, optional): The value should be in set ('random', 'max', 'min'). If the number of clients is smaller than the total number of all the clients, this term will decide the selected clients according to their local_movielens_recommendation data sizes.
     """
-    def __init__(self, num_clients=-1, priority='random', flag=None):
+    def __init__(self, num_clients=-1, priority='random', index_func=lambda x:x.id):
         self.num_clients = int(num_clients)
         self.priorty = priority
-        self.flag = flag
+        self.index_func = index_func
 
     def __str__(self):
         return 'id'
 
     def __call__(self, data):
         all_data = list(range(len(data)))
-        if self.flag is not None:
-            data_owners = [d[self.flag] for d in data]
-        else:
-            data_owners = data.id
+        data_owners = [self.index_func(d) for d in data]
         local_datas = collections.defaultdict(list)
         for idx in range(len(all_data)):
             local_datas[data_owners[idx]].append(idx)
@@ -348,7 +345,7 @@ class IDPartitioner(BasicPartitioner):
         elif self.priorty == 'random':
             random.shuffle(local_datas)
             local_datas = local_datas[:self.num_clients]
-        local_datas = sorted(local_datas, key=lambda x:data[x[0]][self.flag] if self.flag is not None else data.id[x[0]])
+        local_datas = sorted(local_datas, key=lambda x:data[x[0]][self.index_func] if self.index_func is not None else data.id[x[0]])
         return local_datas
 
 class VerticalSplittedPartitioner(BasicPartitioner):
@@ -411,6 +408,8 @@ class VerticalSplittedPartitioner(BasicPartitioner):
 
 class NodeLouvainPartitioner(BasicPartitioner):
     """
+    Partition a graph into several subgraph by louvain algorithms. The input
+    of this partitioner should be of type networkx.Graph
     """
     def __init__(self, num_clients=100):
         self.num_clients = num_clients
@@ -447,3 +446,38 @@ class NodeLouvainPartitioner(BasicPartitioner):
             cid = np.argmin([len(li) for li in local_nodes])
             local_nodes[cid].extend(groups[gi])
         return local_nodes
+#
+# class KMeansPartitioner(BasicPartitioner):
+#     """`Partition the indices of samples in the original dataset
+#         according to their feature similarity.
+#
+#         Args:
+#             num_clients (int, optional): the number of clients
+#             imbalance (float, optional): the degree of imbalance of the amounts of different local_movielens_recommendation data (0<=imbalance<=1)
+#         """
+#
+#     def __init__(self, num_clients=100, index_func=lambda x:x[0]):
+#         self.num_clients = num_clients
+#         self.index_func = index_func
+#
+#     def __str__(self):
+#         name = ""
+#         return name
+#
+#     def __call__(self, data):
+#         features = [self.index_func(d) for d in data]
+#         if len(features)==0: raise NotImplementedError("Feature indexed by {} was not found.".format(self.index_func))
+#         if torch.is_tensor(features[0]):
+#             features = np.array([t.view(-1).cpu().numpy() for t in features])
+#         else:
+#             features = np.array(features)
+#         if len(features[0].shape)>1:
+#             features = np.array([fe.flatten() for fe in features])
+#         from scipy.cluster.vq import kmeans
+#         centers = kmeans(features, self.num_clients)
+#         local_datas = [[] for _ in self.num_clients]
+#         for did, fe in enumerate(features):
+#             cid = int((centers@fe).argmax())
+#             local_datas[cid].append(did)
+#         # local_datas = [di.tolist() for di in local_datas]
+#         return local_datas

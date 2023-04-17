@@ -66,7 +66,7 @@ class TaskPipe(BasicTaskPipe):
 
     def save_task(self, generator):
         party_names = self.gen_client_names(len(generator.local_datas))
-        feddata = {'party_names': party_names,'rawdata_path': generator.root, 'additional_option': generator.additional_option}
+        feddata = {'party_names': party_names,'rawdata_path': generator.rawdata_path, 'additional_option': generator.additional_option}
         for pid in range(len(party_names)):
             feddata[party_names[pid]] = {
                 'data':{
