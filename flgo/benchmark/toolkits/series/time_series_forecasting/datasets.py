@@ -1,4 +1,6 @@
 import gzip
+
+import numpy
 import ujson as json
 import os
 import urllib
@@ -26,6 +28,7 @@ def extract_from_gz(src_file, target_file):
 
 def normalized(rawdata, normalize):
     n, m = rawdata.shape
+    scale = numpy.ones(m)
     if normalize == 0:
         data = rawdata
     elif normalize == 1:
@@ -33,6 +36,7 @@ def normalized(rawdata, normalize):
     elif normalize == 2:
         data = np.zeros((n, m))
         for i in range(m):
+            scale[i] = np.max(np.abs(rawdata[:, i]))
             data[:, i] = rawdata[:, i] / np.max(np.abs(rawdata[:, i]))
     else:
         raise RuntimeError("The parameter 'normalize' can only take values from 0, 1, 2")
@@ -54,11 +58,11 @@ class BuiltinClassDataset(Dataset):
             self.download()
         with open(os.path.join(self.processed_folder, self.file), 'r') as f:
             data = json.load(f)
-        self.x = data['x']
-        self.y = data['y']
+        self.x = torch.tensor(data['x'], dtype=torch.float)
+        self.y = torch.tensor(data['y'], dtype=torch.float)
 
     def __getitem__(self, index):
-        return torch.tensor(self.x[index], dtype=torch.float), torch.tensor(self.y[index], dtype=torch.float)
+        return self.x[index], self.y[index]
 
     def __len__(self):
         return len(self.x)
@@ -113,5 +117,7 @@ class Electricity(BuiltinClassDataset):
             end = idx_set[i] - self.horizon + 1
             start = end - self.window
             X.append(data[start:end, :].tolist())
-            Y.append(data[end:idx_set[i] + 1, :].tolist())
+            Y.append(data[idx_set[i], :].tolist())
         return {'x': X, 'y': Y}
+
+
