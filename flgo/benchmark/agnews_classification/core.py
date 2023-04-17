@@ -3,7 +3,7 @@ import torchtext.datasets
 import os
 import flgo.benchmark
 
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA','SST2')
+path = os.path.join(flgo.benchmark.path, 'RAW_DATA','AG_NEWS')
 
 def build_datapipes(root:str, split:str='train'):
     dp = torchtext.datasets.AG_NEWS(root=root, split=split)
