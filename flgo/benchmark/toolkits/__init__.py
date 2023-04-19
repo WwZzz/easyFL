@@ -10,19 +10,25 @@ import zipfile
 import os
 
 
-def download_from_url(url= None, filepath = '.'):
+def download_from_url(url=None, filepath='.'):
     """Download dataset from url to filepath."""
     if url:urllib.request.urlretrieve(url, filepath)
     return filepath
 
 
-def extract_from_zip(src_path, target_path):
+def extract_from_zip(src_path, target_path, pwd=None):
     """Unzip the .zip file (src_path) to target_path"""
     f = zipfile.ZipFile(src_path)
-    f.extractall(target_path)
+    f.extractall(target_path, pwd=pwd)
     targets = f.namelist()
     f.close()
     return [os.path.join(target_path, tar) for tar in targets]
+
+def extract_one_from_zip(src_path, target_path, file_name, pwd=None):
+    f = zipfile.ZipFile(src_path)
+    f.extract(file_name, target_path, pwd=pwd)
+    f.close()
+
 
 
 def extract_from_gz(src_file, target_file):
