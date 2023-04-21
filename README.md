@@ -176,14 +176,14 @@ We have added many benchmarks covering several different areas such as CV, NLP, 
     <tr>
         <td>Segmentation
         <td>Horizontal
-        <td>Segmentation
+        <td>Coco, SBDataset
         <td>
     </tr>
     <tr>
         <td rowspan=3>NLP
         <td>Classification
         <td>Horizontal
-        <td>Sentiment140
+        <td>Sentiment140, AG_NEWS, sst2
         <td>
     </tr>
     <tr>
@@ -195,7 +195,7 @@ We have added many benchmarks covering several different areas such as CV, NLP, 
     <tr>
         <td>Translation
         <td>Horizontal
-        <td>
+        <td>Multi30k
         <td>
     </tr>
     <tr>
@@ -242,7 +242,7 @@ We have added many benchmarks covering several different areas such as CV, NLP, 
         <td>Synthetic
         <td>Regression
         <td>Horizontal
-        <td>
+        <td>Synthetic, DistributedQP, CUBE
         <td>
     </tr>
     <tr>
