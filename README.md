@@ -97,6 +97,76 @@ flgo.experiment.analyzer.show(analysis_plan)
 | QFedAvg     |<a href='#refer-anchor-11'>[Tian Li et al., 2020]</a>|ICLR 2020|Communication-efficient, Fairness|
 | Scaffold     |<a href='#refer-anchor-12'>[Sai Praneeth Karimireddy et al., 2020]</a>|ICML 2020|Non-I.I.D., Communication Capacity|
 
+### Options
+
+Basic options:
+
+* `task` is to choose the task of splited dataset. Options: name of fedtask (e.g. `mnist_classification_client100_dist0_beta0_noise0`).
+
+* `algorithm` is to choose the FL algorithm. Options: `fedfv`, `fedavg`, `fedprox`, …
+
+* `model` should be the corresponding model of the dataset. Options: `mlp`, `cnn`, `resnet18.`
+
+Server-side options:
+
+* `sample` decides the way to sample clients in each round. Options: `uniform` means uniformly, `md` means choosing with probability.
+
+* `aggregate` decides the way to aggregate clients' model. Options: `uniform`, `weighted_scale`, `weighted_com`
+
+* `num_rounds` is the number of communication rounds.
+
+* `proportion` is the proportion of clients to be selected in each round. 
+
+* `lr_scheduler` is the global learning rate scheduler.
+
+* `learning_rate_decay` is the decay rate of the learning rate.
+
+Client-side options:
+
+* `num_epochs` is the number of local training epochs.
+
+* `num_steps` is the number of local updating steps and the default value is -1. If this term is set larger than 0, `num_epochs` is not valid.
+
+* `learning_rate ` is the step size when locally training.
+
+* `batch_size ` is the size of one batch data during local training. `batch_size = full_batch` if `batch_size==-1` and `batch_size=|Di|*batch_size` if `1>batch_size>0`.
+
+* `optimizer` is to choose the optimizer. Options: `SGD`, `Adam`.
+
+* `weight_decay` is to set ratio for weight decay during the local training process.
+
+* `momentum` is the ratio of the momentum item when the optimizer SGD taking each step. 
+
+Real Machine-Dependent options:
+
+* `seed ` is the initial random seed.
+
+* `gpu ` is the id of the GPU device. (e.g. CPU is used without specifying this term. `--gpu 0` will use device GPU 0, and `--gpu 0 1 2 3` will use the specified 4 GPUs when `num_threads`>0. 
+
+* `server_with_cpu ` is set False as default value,..
+
+* `test_batch_size ` is the batch_size used when evaluating models on validation datasets, which is limited by the free space of the used device.
+
+* `eval_interval ` controls the interval between every two evaluations. 
+
+* `num_threads` is the number of threads in the clients computing session that aims to accelarate the training process.
+
+* `num_workers` is the number of workers of the torch.utils.data.Dataloader
+
+Additional hyper-parameters for particular federated algorithms:
+
+* `algo_para` is used to receive the algorithm-dependent hyper-parameters from command lines. Usage: 1) The hyper-parameter will be set as the default value defined in Server.__init__() if not specifying this term, 2) For algorithms with one or more parameters, use `--algo_para v1 v2 ...` to specify the values for the parameters. The input order depends on the dict `Server.algo_para` defined in `Server.__init__()`.
+
+Logger's setting
+
+* `logger` is used to selected the logger that has the same name with this term.
+
+* `log_level` shares the same meaning with the LEVEL in the python's native module logging.
+
+* `log_file` controls whether to store the running-time information into `.log` in `fedtask/taskname/log/`, default value is false.
+
+* `no_log_console` controls whether to show the running time information on the console, and default value is false.
+
 ### More
 
 To get more information and full-understanding of FLGo please refer to <a href='https://flgo-xmu.github.io/'>our website</a>.
