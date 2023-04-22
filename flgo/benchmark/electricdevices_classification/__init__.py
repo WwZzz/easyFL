@@ -1,5 +1,5 @@
 import flgo.benchmark.toolkits.partition
-import flgo.benchmark.electricdevices_series_classification.model.cnn as cnn
+import flgo.benchmark.electricdevices_classification.model.cnn as cnn
 
 default_partitioner = flgo.benchmark.toolkits.partition.IIDPartitioner
 default_partition_para = {'num_clients':100}
