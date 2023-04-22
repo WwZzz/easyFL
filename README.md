@@ -1,6 +1,20 @@
-# FLGo: A Lightning Framework for Federated Learning
+<div align="center">
+  <img src='docs/img/flgo_icon.png'  width="200"/>
+<h1>FLGo: A Lightning Framework for Federated Learning</h1>
 
+<!-- [![article-red](https://img.shields.io/badge/pypi-v0.0.11-red)](https://pypi.org/project/flgo/)
+[![arxiv-orange](https://img.shields.io/badge/pypi-v0.0.11-red)](https://pypi.org/project/flgo/) -->
+[![PyPI](https://img.shields.io/badge/pypi-v0.0.11-yellow)](https://pypi.org/project/flgo/)
+[![docs](https://img.shields.io/badge/docs-maintaining-green)](https://flgo-xmu.github.io/)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/WwZzz/easyFL/blob/FLGo/LICENSE)
+
+
+</div>
+
+## Introduction
 Our FLGo is a strong and reusable experimental platform for research on federated learning (FL) algorithm, which has provided a few easy-to-use modules to hold out for those who want to do various federated learning experiments. 
+
+<!-- ## Major Feature -->
 
 ## Table of Contents
 - [QuickStart](#QuickStart)
@@ -10,27 +24,78 @@ Our FLGo is a strong and reusable experimental platform for research on federate
 - [References](#References)
 
 ## QuickStart
-* install pytorch
-* install flgo
-    ```sh
-    pip install flgo
-    ```
-* run test.py
+* Install flgo
 ```sh
-python test.py
+pip install flgo
+```
+* If the package is not found, please use the command below to update pip
+```sh
+pip install --upgrade pip
+```
+* Create Your First Federated Task
+
+*Here we take the classical federated benchmark, Federated MNIST, as the example, where the MNIST dataset is splitted into 100 parts identically and independently.*
+```
+import flgo
+import os
+
+# the target path of the task
+task_path = './my_first_task'
+
+# create task configuration
+task_config = {'benchmark':{'name': 'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDPartitioner', 'para':{'num_clients':100}}}
+
+# generate the task if the task doesn't exist
+if not os.path.exist(task_path):
+    flgo.gen_task(task_config, task_path)
+```
+*After running the codes above, a federated dataset is successfully created in the task_path. The visualization of the task is stored in **task_path/res.png** as below*
+
+![result](docs/img/getstart_fig1.png)
+
+* Run FedAvg to Train Your Model
+```
+import flgo.algorithm.fedavg as fedavg
+# create fedavg runner on the task
+runner = flgo.init(task, fedavg, {'gpu':[0,],'log_file':True, 'num_steps':5})
+runner.run()
 ```
 
+* Show Training Result
+  
+*The training result is saved as a record under the dictionary of the task **task_path/record**. We use the built-in analyzer to read and show it.*
 
+```
+import flgo.experiment.analyzer
+# create the analysis plan
+analysis_plan = {
+    'Selector':{'task': task_path, 'header':['fedavg',], },
+    'Painter':{'Curve':[{'args':{'x':'communication_round', 'y':'valid_loss'}}]},
+    'Table':{'min_value':[{'x':'valid_loss'}]},
+}
+
+flgo.experiment.analyzer.show(analysis_plan)
+```
+*We will get a figure as below*
+
+![result](docs/img/getstart_fig2.png)
 
 
 ### Reproduced FL Algorithms
-| Method   |Reference|Publication|
-|----------|---|---|
-| FedAvg   |<a href='#refer-anchor-1'>[McMahan et al., 2017]</a>|AISTATS' 2017|
-| FedAsync |<a href='#refer-anchor-2'></a>||
-| FedBuff  |<a href='#refer-anchor-2'></a>||
-| TiFL     |<a href='#refer-anchor-2'></a>||
-
+| Method   |Reference|Publication| Tag|
+|----------|---|---|---|
+| FedAvg   |<a href='#refer-anchor-1'>[McMahan et al., 2017]</a>|AISTATS' 2017||
+| FedAsync |<a href='#refer-anchor-2'>[Cong Xie et al., 2019]</a>|arxiv|Asynchronous|
+| FedBuff  |<a href='#refer-anchor-3'>[John Nguyen et al., 2022]</a>|AISTATS 2022|Asynchronous|
+| TiFL     |<a href='#refer-anchor-4'>[Zheng Chai et al., 2020]</a>|HPDC 2020|Communication-efficiency, responsiveness|
+| AFL      |<a href='#refer-anchor-5'>[Mehryar Mohri et al., 2019]</a>|ICML 2019|Fairness|
+| FedFv     |<a href='#refer-anchor-6'>[Zheng Wang et al., 2019]</a>|IJCAI 2021|Fairness|
+| FedMgda+     |<a href='#refer-anchor-7'>[Zeou Hu et al., 2022]</a>|IEEE TNSE 2022|Fairness, robustness|
+| FedProx     |<a href='#refer-anchor-8'>[Tian Li et al., 2020]</a>|MLSys 2020|Non-I.I.D., Incomplete Training|
+| Mifa     |<a href='#refer-anchor-9'>[Xinran Gu et al., 2021]</a>|NeurIPS 2021|Client Availability|
+| PowerofChoice     |<a href='#refer-anchor-10'>[Yae Jee Cho et al., 2020]</a>|arxiv|Biased Sampling, Fast-Convergence|
+| QFedAvg     |<a href='#refer-anchor-11'>[Tian Li et al., 2020]</a>|ICLR 2020|Communication-efficient, Fairness|
+| Scaffold     |<a href='#refer-anchor-12'>[Sai Praneeth Karimireddy et al., 2020]</a>|ICML 2020|Non-I.I.D., Communication Capacity|
 
 ### Options
 
@@ -102,9 +167,18 @@ Logger's setting
 
 * `no_log_console` controls whether to show the running time information on the console, and default value is false.
 
+### More
+
+To get more information and full-understanding of FLGo please refer to <a href='https://flgo-xmu.github.io/'>our website</a>.
+
+In the website, we offer :
+
+- API docs: Detailed introduction of packages, classes and methods.
+- Tutorial: Materials that help user to master FLGo.
+
 ## Architecture
 
-We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`, `fedtask`, `simulator` and `utils`.
+We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`, `fedtask`, `system_simulator` and `utils`.
 ```
 ├─ algorithm
 │  ├─ fedavg.py                   //fedavg algorithm
@@ -134,7 +208,7 @@ We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`
 │  ├─ res_config.yml                  //hyperparameter file of analyzer.py
 │  ├─ run_config.yml                  //hyperparameter file of runner.py
 |  └─ runner.py                    //the class for generating experimental commands based on hyperparameter combinations and processor scheduling for all experimental 
-├─ simulator                     //system heterogeneity simulation module
+├─ system_simulator                     //system heterogeneity simulation module
 │  ├─ base.py							//the base class for simulate system heterogeneity
 │  ├─ default_simulator.py				//the default class for simulate system heterogeneity
 |  └─ ...
@@ -148,12 +222,114 @@ We seperate the FL system into four parts:`algorithm`, `benchmark`, `experiment`
 
 We have added many benchmarks covering several different areas such as CV, NLP, etc
 
+<table>
+    <tr>
+        <td>
+        <td>Task
+        <td>Scenario
+        <td>Datasets
+        <td>
+    </tr>
+    <tr>
+        <td rowspan=3>CV
+        <td>Classification
+        <td>Horizontal & Vertical
+        <td>CIFAR10\100, MNIST, FashionMNIST,FEMNIST, EMNIST, SVHN
+        <td>
+    </tr>
+    <tr>
+        <td>Detection
+        <td>Horizontal
+        <td>Coco, VOC
+        <td>
+    </tr>
+    <tr>
+        <td>Segmentation
+        <td>Horizontal
+        <td>Coco, SBDataset
+        <td>
+    </tr>
+    <tr>
+        <td rowspan=3>NLP
+        <td>Classification
+        <td>Horizontal
+        <td>Sentiment140, AG_NEWS, sst2
+        <td>
+    </tr>
+    <tr>
+        <td>Text Prediction
+        <td>Horizontal
+        <td>Shakespeare, Reddit
+        <td>
+    </tr>
+    <tr>
+        <td>Translation
+        <td>Horizontal
+        <td>Multi30k
+        <td>
+    </tr>
+    <tr>
+        <td rowspan=3>Graph
+        <td>Node Classification
+        <td>Horizontal
+        <td>Cora, Citeseer, Pubmed
+        <td>
+    </tr>
+    <tr>
+        <td>Link Prediction
+        <td>Horizontal
+        <td>Cora, Citeseer, Pubmed
+        <td>
+    </tr>
+    <tr>
+        <td>Graph Classification
+        <td>Horizontal
+        <td>Enzymes, Mutag
+        <td>
+    </tr>
+    <tr>
+        <td>Recommendation
+        <td>Rating Prediction
+        <td>Horizontal & Vertical
+        <td>Ciao, Movielens, Epinions, Filmtrust, Douban
+        <td>
+    </tr>
+    <tr>
+        <td>Series
+        <td>Time series forecasting
+        <td>Horizontal
+        <td>Electricity, Exchange Rate
+        <td>
+    </tr>
+    <tr>
+        <td>Tabular
+        <td>Classification
+        <td>Horizontal
+        <td>Adult, Bank Marketing
+        <td>
+    </tr>
+    <tr>
+        <td>Synthetic
+        <td>Regression
+        <td>Horizontal
+        <td>Synthetic, DistributedQP, CUBE
+        <td>
+    </tr>
+    <tr>
+        <td>
+        <td>
+        <td>
+        <td>
+        <td>
+    </tr>
+
+</table>
+
 ### Fedtask
 
 We define each task as a combination of the federated dataset of a particular distribution and the experimental results on it. The raw dataset is processed into .json file, following LEAF (https://github.com/TalwalkarLab/leaf). The architecture of the data.json file is described as below:  
 
-```python
-"""
+```
 # store the raw data
 {
     'store': 'XY'
@@ -190,7 +366,6 @@ We define each task as a combination of the federated dataset of a particular di
      },...,
     'dtest': [...]
 }
-"""
 ```
 
 Run the file `./generate_fedtask.py` to get the splited dataset (.json file).
@@ -210,26 +385,31 @@ The whole FL system starts with the `main.py`, which runs `server.run()` after i
 
 The clients reponse to the server after the server `communicate_with()` them, who first `unpack()` the received package and then train the model with their local dataset by `train()`. After training the model, the clients `pack()` send package (e.g. parameters, loss, gradient,... ) to the server through `reply()`.     
 
-Further details of this module are described in `algorithm/README.md`.
 
 ### Experiment
 
 The experiment module contains experiment command generation and scheduling operation, which can help FL researchers more conveniently conduct experiments in the field of federated learning.
 
-### simulator
+### System_simulator
 
-The simulator module is used to realize the simulation of heterogeneous systems, and we set multiple states such as network speed and availability to better simulate the system heterogeneity of federated learning parties.
+The system_simulator module is used to realize the simulation of heterogeneous systems, and we set multiple states such as network speed and availability to better simulate the system heterogeneity of federated learning parties.
 
 ### Utils
 
-Utils is composed of commonly used operations: model-level operation (we convert model layers and parameters to dictionary type and apply it in the whole FL system). Further details are described in `utils/README.md`.
+Utils is composed of commonly used operations: model-level operation (we convert model layers and parameters to dictionary type and apply it in the whole FL system). 
 
 ## Citation
 
 Please cite our paper in your publications if this code helps your research.
 
 ```
-
+@article{2023flgo,
+  title={FLGo: A Lightning Framework for Federated Learning},
+  author={},
+  journal={},
+  year={2023},
+  publisher={}
+}
 ```
 
 ## Contacts
@@ -241,4 +421,48 @@ Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
 <div id='refer-anchor-1'></div>
 
 \[McMahan. et al., 2017\] [Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2017.](https://arxiv.org/abs/1602.05629)
+
+<div id='refer-anchor-2'></div>
+
+\[Cong Xie. et al., 2019\] [Cong Xie, Sanmi Koyejo, Indranil Gupta. Asynchronous Federated Optimization. ](https://arxiv.org/abs/1903.03934)
+
+<div id='refer-anchor-3'></div>
+
+\[John Nguyen. et al., 2022\] [John Nguyen, Kshitiz Malik, Hongyuan Zhan, Ashkan Yousefpour, Michael Rabbat, Mani Malek, Dzmitry Huba. Federated Learning with Buffered Asynchronous Aggregation. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2022.](https://arxiv.org/abs/2106.06639)
+
+<div id='refer-anchor-4'></div>
+
+\[Zheng Chai. et al., 2020\] [Zheng Chai, Ahsan Ali, Syed Zawad, Stacey Truex, Ali Anwar, Nathalie Baracaldo, Yi Zhou, Heiko Ludwig, Feng Yan, Yue Cheng. TiFL: A Tier-based Federated Learning System.In International Symposium on High-Performance Parallel and Distributed Computing(HPDC), 2020](https://arxiv.org/abs/2106.06639)
+
+<div id='refer-anchor-5'></div>
+
+\[Mehryar Mohri. et al., 2019\] [Mehryar Mohri, Gary Sivek, Ananda Theertha Suresh. Agnostic Federated Learning.In International Conference on Machine Learning(ICML), 2019](https://arxiv.org/abs/1902.00146)
+
+<div id='refer-anchor-6'></div>
+
+\[Zheng Wang. et al., 2021\] [Zheng Wang, Xiaoliang Fan, Jianzhong Qi, Chenglu Wen, Cheng Wang, Rongshan Yu. Federated Learning with Fair Averaging. In International Joint Conference on Artificial Intelligence, 2021](https://arxiv.org/abs/2104.14937#)
+
+<div id='refer-anchor-7'></div>
+
+\[Zeou Hu. et al., 2022\] [Zeou Hu, Kiarash Shaloudegi, Guojun Zhang, Yaoliang Yu. Federated Learning Meets Multi-objective Optimization. In IEEE Transactions on Network Science and Engineering, 2022](https://arxiv.org/abs/2006.11489)
+
+<div id='refer-anchor-8'></div>
+
+\[Tian Li. et al., 2020\] [Tian Li, Anit Kumar Sahu, Manzil Zaheer, Maziar Sanjabi, Ameet Talwalkar, Virginia Smith. Federated Optimization in Heterogeneous Networks. In Conference on Machine Learning and Systems, 2020](https://arxiv.org/abs/1812.06127)
+
+<div id='refer-anchor-9'></div>
+
+\[Xinran Gu. et al., 2021\] [Xinran Gu, Kaixuan Huang, Jingzhao Zhang, Longbo Huang. Fast Federated Learning in the Presence of Arbitrary Device Unavailability. In Neural Information Processing Systems(NeurIPS), 2021](https://arxiv.org/abs/2106.04159)
+
+<div id='refer-anchor-10'></div>
+
+\[Yae Jee Cho. et al., 2020\] [Yae Jee Cho, Jianyu Wang, Gauri Joshi. Client Selection in Federated Learning: Convergence Analysis and Power-of-Choice Selection Strategies. ](https://arxiv.org/abs/2010.01243)
+
+<div id='refer-anchor-11'></div>
+
+\[Tian Li. et al., 2020\] [Tian Li, Maziar Sanjabi, Ahmad Beirami, Virginia Smith. Fair Resource Allocation in Federated Learning. In International Conference on Learning Representations, 2020](https://arxiv.org/abs/1905.10497)
+
+<div id='refer-anchor-12'></div>
+
+\[Sai Praneeth Karimireddy. et al., 2020\] [Sai Praneeth Karimireddy, Satyen Kale, Mehryar Mohri, Sashank J. Reddi, Sebastian U. Stich, Ananda Theertha Suresh. SCAFFOLD: Stochastic Controlled Averaging for Federated Learning. In International Conference on Machine Learning, 2020](https://arxiv.org/abs/1910.06378)
 
