@@ -85,8 +85,7 @@ class BuiltinClassPipe(BasicTaskPipe):
         """
         Args:
             task_path (str): the path of the task
-            builtin_class (class): class in torchvision.datasets
-            transform (torchvision.transforms.*): the transform
+            builtin_class (class): dataset class
         """
         super(BuiltinClassPipe, self).__init__(task_path)
         self.builtin_class = buildin_class
