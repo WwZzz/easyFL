@@ -319,6 +319,13 @@ class BasicServer(BasicParty):
             pool.join()
             packages_received_from_clients = list(map(lambda x: x.get(), packages_received_from_clients))
             self.model = self.model.to(self.device)
+            for pkg in packages_received_from_clients:
+                for k,v in pkg.items():
+                    if hasattr(v, 'to'):
+                        try:
+                            pkg[k] = v.to(self.device)
+                        except:
+                            continue
         for i, client_id in enumerate(communicate_clients): received_package_buffer[client_id] = packages_received_from_clients[i]
         packages_received_from_clients = [received_package_buffer[cid] for cid in selected_clients if
                                           received_package_buffer[cid]]
