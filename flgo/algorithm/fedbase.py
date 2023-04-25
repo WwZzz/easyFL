@@ -288,7 +288,7 @@ class BasicServer(BasicParty):
             for client_id in communicate_clients:
                 server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
-                response_from_client_id = self.communicate_with(client_id, package=server_pkg)
+                response_from_client_id = self.communicate_with(self.clients[client_id].id, package=server_pkg)
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel with torch.multiprocessing
@@ -297,7 +297,7 @@ class BasicServer(BasicParty):
                 server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
                 self.clients[client_id].update_device(self.gv.apply_for_device())
-                args = (int(client_id), server_pkg)
+                args = (int(self.clients[client_id].id), server_pkg)
                 packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
             pool.close()
             pool.join()

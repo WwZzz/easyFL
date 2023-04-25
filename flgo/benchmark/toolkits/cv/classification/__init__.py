@@ -94,6 +94,10 @@ class BuiltinClassPipe(BasicTaskPipe):
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
         feddata = {'client_names': client_names, 'server_data': list(range(len(generator.test_data))),  'rawdata_path': generator.rawdata_path, 'additional_option': generator.additional_option, 'train_additional_option':generator.train_additional_option, 'test_additional_option':generator.test_additional_option, }
+        if hasattr(generator, 'topology'):
+            feddata['topology'] = generator.topology
+        if hasattr(generator, 'num_edge_servers'):
+            feddata['num_edge_servers'] = generator.num_edge_servers
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
         if hasattr(generator.partitioner, 'local_perturbation'): feddata['local_perturbation'] = generator.partitioner.local_perturbation
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:

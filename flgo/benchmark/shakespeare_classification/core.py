@@ -8,7 +8,7 @@ import collections
 import re
 import os
 import os.path
-import json
+import ujson as json
 import flgo.benchmark
 import os.path
 def download_from_url(url= None, filepath = '.'):

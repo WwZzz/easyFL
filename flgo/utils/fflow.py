@@ -272,6 +272,10 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
     os.environ['PYTHONHASHSEED'] = str(seed)
     # load configuration
     gen_option = load_configuration(config)
+    # hier option
+    num_edge_servers = config['num_edge_servers'] if 'num_edge_servers' in config.keys() else 0
+    topology = config['topology'] if 'topology' in config.keys() else None
+
     if type(gen_option['benchmark']) is not dict: gen_option['benchmark']={'name':gen_option['benchmark']}
     if 'para' not in gen_option['benchmark'].keys(): gen_option['benchmark']['para'] = {}
     if 'partitioner' in gen_option.keys():
@@ -315,6 +319,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
             partitioner = None
     # generate federated task
     task_generator.generate()
+    set_topology(task_generator, topology, num_edge_servers)
     # save the generated federated benchmark
     # initialize task pipe
     if task_path=='': task_path = os.path.join('.', task_generator.task_name)
@@ -336,7 +341,7 @@ def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:in
         print("Failed to saving splited dataset.")
     # save visualization
     try:
-        visualize_func = getattr(bmk_module,'visualize')
+        visualize_func = getattr(bmk_module, 'visualize')
         visualize_func(task_generator, partitioner, task_path)
     except:
         pass
@@ -410,7 +415,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     gv = GlobalVariable()
     # init logger
     if Logger is None:
-        if scene=='horizontal':
+        if scene=='horizontal' or scene=='hierarchical':
             Logger = flgo.experiment.logger.simple_logger.SimpleLogger
         elif scene=='vertical':
             Logger = flgo.experiment.logger.vertical_logger.VerticalLogger
@@ -461,8 +466,16 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     gv.clock = flgo.simulator.base.ElemClock()
     gv.simulator = Simulator(objects, option)
     gv.clock.register_simulator(simulator=gv.simulator)
+    participants_idx = 1
 
-    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects)
+    # 参与的客户端索引应该灵活设置，并不一定从1开始
+    if scene == 'hierarchical':
+        i = 0
+        while 'Client' not in objects[i].name:
+            i += 1
+        participants_idx = i
+
+    gv.logger.register_variable(coordinator=objects[0], participants=objects[participants_idx:], option=option, clock=gv.clock, scene=scene, objects = objects)
     gv.logger.initialize()
     gv.logger.info('Ready to start.')
 
@@ -789,5 +802,95 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
             rec = json.loads(s_inf)
         res.append(rec)
     return res
+
+def create_benchmark_template(target_path, config):
+    """config = {'name':,'type':}"""
+
+    benchmark_path = os.path.join(target_path, config['name'])
+    model_dir = os.path.join(benchmark_path, 'model')
+    core_path = os.path.join(benchmark_path, 'core.py')
+    init_path = os.path.join(benchmark_path, '__init__.py')
+    default_model_path = os.path.join(model_dir, 'default_model.py')
+
+    if config['type'] == 'cv.image_classification':
+        core_content = "from flgo.benchmark.toolkits.cv.classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator\n" \
+                       "import flgo.benchmark\n" \
+                       "import os\n\n\n" \
+                       "def get_builtin_class(*args, **kwargs):\n" \
+                       "\t\"\"\"Please define your dataset here as PyTorch's Dataset format\"\"\"\n" \
+                       "\tmy_builtin_class = None\n" \
+                       "\treturn my_builtin_class\n\n\n" \
+                       "def get_transform(*args, **kwargs):\n" \
+                       "\t\"\"\"Please set up your transform here, or None if you don't need it\"\"\"\n" \
+                       "\tmy_transform = None\n" \
+                       "\treturn my_transform\n\n\n" \
+                       "def get_path(*args, **kwargs):\n" \
+                       "\t\"\"\"Set your dataset storage path here\"\"\"\n" \
+                       "\tmy_path = None\n" \
+                       "\treturn my_path\n\n\n" \
+                       "builtin_class = get_builtin_class()\n" \
+                       "transform = get_transform()\n" \
+                       "path = get_path()\n\n" \
+                       "TaskCalculator = GeneralCalculator\n\n\n" \
+                       "class TaskGenerator(BuiltinClassGenerator):\n" \
+                       "\tdef __init__(self, rawdata_path=path):\n" \
+                       "\t\tsuper(TaskGenerator, self).__init__(os.path.split(os.path.dirname(__file__))[-1], rawdata_path, builtin_class, transform)\n\n\n" \
+                       "class TaskPipe(BuiltinClassPipe):\n" \
+                       "\tdef __init__(self, task_path):\n" \
+                       "\t\tsuper(TaskPipe, self).__init__(task_path, builtin_class, transform)\n"
+        init_content = "import flgo.benchmark.toolkits.visualization\n" \
+                       "from .model import default_model\n" \
+                       "import flgo.benchmark.toolkits.partition\n\n" \
+                       "default_partitioner = flgo.benchmark.toolkits.partition.IIDPartitioner\n" \
+                       "default_partition_para = {'num_clients': 100}\n" \
+                       "visualize = flgo.benchmark.toolkits.visualization.visualize_by_class\n"
+    else:
+        core_content = ""
+        init_content = ""
+    model_content = "import flgo\n" \
+                    "from flgo.utils.fmodule import FModule\n\n\n" \
+                    "def get_model(*args, **kwargs):\n" \
+                    "\t\"\"\"Define your model here and use it as the return value\"\"\"\n" \
+                    "\tmodel = None\n" \
+                    "\treturn model\n\n\n" \
+                    "class Model(FModule):\n" \
+                    "\tdef __init__(self):\n" \
+                    "\t\tsuper(Model, self).__init__()\n" \
+                    "\t\tself.model = get_model()\n\n" \
+                    "\tdef forward(*args, **kwargs):\n" \
+                    "\t\treturn self.model(*args, **kwargs)\n\n\n" \
+                    "def init_global_module(object):\n" \
+                    "\tif 'Server' in object.get_name():\n" \
+                    "\t\tobject.set_model(Model().to(object.device))\n\n\n" \
+                    "def init_local_module(object):\n" \
+                    "\tpass\n\n\n" \
+                    "def init_dataset(object):\n" \
+                    "\tpass\n"
+
+    if not os.path.exists(target_path):
+        os.mkdir(target_path)
+    if not os.path.exists(benchmark_path):
+        os.mkdir(benchmark_path)
+    if not os.path.exists(model_dir):
+        os.mkdir(model_dir)
+    with open(core_path, 'w') as f:
+        f.write(core_content)
+    with open(default_model_path, 'w') as f:
+        f.write(model_content)
+    with open(init_path, 'w') as f:
+        f.write(init_content)
+
+def set_topology(generator, topology, num_edge_servers=0):
+    if num_edge_servers == 0:
+        return generator
+    if topology is None:
+        num_clients = generator.num_clients
+        topology = [[] for i in range(num_edge_servers)]
+        for i in range(num_clients):
+            es_id = random.randint(0, num_edge_servers - 1)
+            topology[es_id].append(i)
+    setattr(generator, 'topology', topology)
+    setattr(generator, 'num_edge_servers', num_edge_servers)
+    return generator
 
 

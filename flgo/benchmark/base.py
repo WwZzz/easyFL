@@ -150,6 +150,7 @@ class BasicTaskGenerator(AbstractTaskGenerator):
         else: self.partitioner.num_parties = 'unknown'
         return '_'.join(['B-' + self.benchmark, 'P-' + str(self.partitioner), 'N-' + str(self.partitioner.num_parties)])
 
+
 class BasicTaskPipe(AbstractTaskPipe):
     r"""
     Store the partition information of TaskGenerator into the disk
@@ -219,6 +220,29 @@ class BasicTaskPipe(AbstractTaskPipe):
                 objects.append(obj)
             for party in objects:
                 party.register_objects(objects)
+        elif scene=='hierarchical':
+            topology = self.feddata['topology']
+            cloud_server = algorithm.Server(running_time_option)
+            edge_servers = [algorithm.EdgeServer(running_time_option) for _ in range(self.feddata['num_edge_servers'])]
+            clients = [algorithm.Client(running_time_option) for _ in range(len(self.feddata['client_names']))]
+            for cid, c in enumerate(clients):
+                c.id = cid
+                c.name = self.feddata['client_names'][cid]
+            edge_server_ids = range(-2, -(len(edge_servers) + 2), -1)
+            for i, es in enumerate(edge_servers):
+                es.id = edge_server_ids[i]
+                es.name = "EdgeServer{}".format(str(i))
+            cloud_server.id = -1
+            cloud_server.name = 'server'
+            cloud_server.register_edge_servers(edge_servers)
+            for es in edge_servers: es.register_server(cloud_server)
+            for i, clients_id in enumerate(topology):
+                subclients = [clients[j] for j in clients_id]
+                edge_servers[i].register_clients(subclients)
+                for client in subclients: client.register_server(edge_servers[i])
+            objects = [cloud_server]
+            objects.extend(edge_servers)
+            objects.extend(clients)
         return objects
 
     def save_info(self, generator):
@@ -247,6 +271,7 @@ class BasicTaskPipe(AbstractTaskPipe):
         the federated scenario
         """
         for ob in objects:
+            if ob.name not in task_data.keys(): continue
             ob_data = task_data[ob.name]
             for data_name, data in ob_data.items():
                 ob.set_data(data, data_name)
@@ -427,3 +452,5 @@ class XYHorizontalTaskPipe(BasicTaskPipe):
 #         client_names = self.gen_client_names(len(generator.local_datas))
 #         feddata = {'client_names': client_names, 'server': {'data': generator.test_data}}
 #         pass
+
+
