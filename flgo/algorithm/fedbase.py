@@ -618,6 +618,7 @@ class BasicClient(BasicParty):
         # local_movielens_recommendation calculator
         self.device = self.gv.apply_for_device()
         self.calculator = self.gv.TaskCalculator(self.device, option['optimizer'])
+        self._train_loader = None
         # hyper-parameters for training
         self.optimizer_name = option['optimizer']
         self.learning_rate = option['learning_rate']
@@ -827,16 +828,20 @@ class BasicClient(BasicParty):
         Returns:
             a batch of data
         """
+        if self._train_loader is None:
+            self._train_loader = self.calculator.get_dataloader(self.train_data, batch_size=self.batch_size,
+                                                                   num_workers=self.loader_num_workers,
+                                                                   pin_memory=self.option['pin_memory'])
         try:
             batch_data = next(self.data_loader)
         except Exception as e:
-            self.data_loader = iter(self.calculator.get_dataloader(self.train_data, batch_size=self.batch_size,
-                                                                   num_workers=self.loader_num_workers,
-                                                                   pin_memory=self.option['pin_memory']))
+            self.data_loader = iter(self._train_loader)
             batch_data = next(self.data_loader)
         # clear local_movielens_recommendation DataLoader when finishing local_movielens_recommendation training
         self.current_steps = (self.current_steps + 1) % self.num_steps
-        if self.current_steps == 0: self.data_loader = None
+        if self.current_steps == 0:
+            self.data_loader = None
+            self._train_loader = None
         return batch_data
 
     def update_device(self, dev):
