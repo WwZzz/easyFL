@@ -8,7 +8,10 @@ import collections
 import re
 import os
 import os.path
-import json
+try:
+    import ujson as json
+except:
+    import json
 import flgo.benchmark
 import os.path
 def download_from_url(url= None, filepath = '.'):
@@ -317,7 +320,7 @@ class TaskCalculator(BasicTaskCalculator):
         return {'loss': loss}
 
     @torch.no_grad()
-    def test(self, model, dataset, batch_size=64, num_workers=0):
+    def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
         """
         Metric = [mean_accuracy, mean_loss]
         Args:
@@ -327,7 +330,7 @@ class TaskCalculator(BasicTaskCalculator):
         """
         model.eval()
         if batch_size==-1:batch_size=len(dataset)
-        data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers)
+        data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
         total_loss = 0.0
         num_correct = 0
         for batch_id, batch_data in enumerate(data_loader):
@@ -343,7 +346,7 @@ class TaskCalculator(BasicTaskCalculator):
     def to_device(self, data):
         return data[0].to(self.device), data[1].to(self.device)
 
-    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0):
+    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
-        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory)

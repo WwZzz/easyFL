@@ -4,7 +4,7 @@ import flgo.benchmark
 import os.path
 
 # task configuration
-transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
+transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.262))])
 path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'CIFAR10')
 builtin_class = torchvision.datasets.CIFAR10
 

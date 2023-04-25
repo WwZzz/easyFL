@@ -306,6 +306,7 @@ class BasicServer(BasicParty):
                 response_from_client_id = self.communicate_with(self.clients[client_id].id, package=server_pkg)
                 packages_received_from_clients.append(response_from_client_id)
         else:
+            self.model = self.model.to(torch.device('cpu'))
             # computing in parallel with torch.multiprocessing
             pool = mp.Pool(self.num_parallels)
             for client_id in communicate_clients:
@@ -317,6 +318,14 @@ class BasicServer(BasicParty):
             pool.close()
             pool.join()
             packages_received_from_clients = list(map(lambda x: x.get(), packages_received_from_clients))
+            self.model = self.model.to(self.device)
+            for pkg in packages_received_from_clients:
+                for k,v in pkg.items():
+                    if hasattr(v, 'to'):
+                        try:
+                            pkg[k] = v.to(self.device)
+                        except:
+                            continue
         for i, client_id in enumerate(communicate_clients): received_package_buffer[client_id] = packages_received_from_clients[i]
         packages_received_from_clients = [received_package_buffer[cid] for cid in selected_clients if
                                           received_package_buffer[cid]]

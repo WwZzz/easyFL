@@ -392,7 +392,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     setup_seed(seed=option['seed'])
     option['task'] = task
     option['algorithm'] = (algorithm.__name__).split('.')[-1]
-    option['server_with_cpu'] = True if (option['num_parallels']>1 and len(option['gpu'])>1) else option['server_with_cpu']
+    # option['server_with_cpu'] = True if (option['num_parallels']>1 and len(option['gpu'])>1) else option['server_with_cpu']
     # init task info
     if not os.path.exists(task):
         raise FileExistsError("Fedtask '{}' doesn't exist. Please generate the specified task by flgo.gen_task().")
