@@ -111,8 +111,8 @@ def read_option_from_command():
     parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.1)
     parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=float, default='64')
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
-    parser.add_argument('--momentum', help='momentum of local_movielens_recommendation update', type=float, default=0)
-    parser.add_argument('--weight_decay', help='weight decay for the training process', type=float, default=0)
+    parser.add_argument('--momentum', help='momentum of local_movielens_recommendation update', type=float, default=0.0)
+    parser.add_argument('--weight_decay', help='weight decay for the training process', type=float, default=0.0)
     # algorithm-dependent hyper-parameters
     parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
 

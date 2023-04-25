@@ -252,8 +252,8 @@ class BasicServer(BasicParty):
                 # check if early stopping
                 if self.gv.logger.early_stop(): break
                 self.current_round += 1
-            # decay learning rate
-            self.global_lr_scheduler(self.current_round)
+                # decay learning rate
+                self.global_lr_scheduler(self.current_round)
         self.gv.logger.info("=================End==================")
         self.gv.logger.time_end('Total Time Cost')
         # save results as .json file
