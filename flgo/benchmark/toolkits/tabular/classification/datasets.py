@@ -26,7 +26,7 @@ def extract_from_zip(src_file, target_directory):
     file.close()
 
 
-def preprocessing(data, names, column_type, default_dic=None):
+def preprocessing(data, names, column_type, truelabel, default_dic=None):
     res = [[] for i in range(len(data))]
     for index, type in enumerate(column_type):
         id = names[index]
@@ -40,10 +40,10 @@ def preprocessing(data, names, column_type, default_dic=None):
         elif id == 'label':
             for i in range(len(data)):
                 value = data[id][i]
-                if value == '<=50K':
-                    res[i].append(0)
-                else:
+                if value == truelabel:
                     res[i].append(1)
+                else:
+                    res[i].append(0)
         else:
             if default_dic is None:
                 keys = data[id].unique()
@@ -59,6 +59,7 @@ def preprocessing(data, names, column_type, default_dic=None):
                 temp = [0] * key_dic[value] + [1] + [0] * (len(key_dic) - key_dic[value] - 1)
                 res[i] = res[i] + temp
     return res
+
 
 class BuiltinClassDataset(Dataset):
 
@@ -97,6 +98,7 @@ class Adult(BuiltinClassDataset):
              'race', 'sex', 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country', 'label']
     column_type = ['continuous', 8, 'continuous', 16, 'continuous', 7, 14, 6, 5, 2, 'continuous', 'continuous',
                    'continuous', 42, 2]
+    true_label = '<=50k'
 
     def __init__(self, root, train=True):
         self.url = {
@@ -143,7 +145,7 @@ class Adult(BuiltinClassDataset):
         if self.train is False:
             raw_data.drop(index=[0], inplace=True)
             raw_data = raw_data.reset_index(drop=True)
-        processed_data = preprocessing(raw_data, Adult.names, Adult.column_type, self.default_dic)
+        processed_data = preprocessing(raw_data, Adult.names, Adult.column_type, Adult.true_label, self.default_dic)
         processed_data = np.array(processed_data)
         dits = {'x':processed_data[:, :-1].tolist(), 'y':processed_data[:, -1].tolist()}
         file_name = 'adult_train_data.json' if self.train is True else 'adult_test_data.json'
@@ -152,8 +154,7 @@ class Adult(BuiltinClassDataset):
 
 
 
-# import flgo
-# pat = os.path.join(flgo.benchmark.path,'RAW_DATA', 'bankmarketing')
+
 
 class BankMarketing(BuiltinClassDataset):
     """
@@ -164,6 +165,7 @@ class BankMarketing(BuiltinClassDataset):
              "day", "month", "duration", "campaign", "pdays", "previous", "poutcome", "label"]
     column_type = ['continuous', 12, 3, 4, 2, 'continuous', 2, 2, 3, 'continuous', 12, 'continuous',
                    'continuous', 'continuous', 'continuous', 4, 2]
+    true_label = 'yes'
 
     def __init__(self, root, train=True):
         self.url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank.zip'
@@ -187,7 +189,7 @@ class BankMarketing(BuiltinClassDataset):
     def to_json(self, path):
         raw_data = pd.read_csv(path, sep=';', header=0, names=BankMarketing.names)
         raw_data.loc[raw_data['pdays'] == -1, ['pdays']] = 99999999
-        processed_data = preprocessing(raw_data, BankMarketing.names, BankMarketing.column_type)
+        processed_data = preprocessing(raw_data, BankMarketing.names, BankMarketing.column_type, BankMarketing.true_label)
         processed_data = np.array(processed_data)
         num = len(processed_data)
         index = [i for i in range(num)]
@@ -201,3 +203,53 @@ class BankMarketing(BuiltinClassDataset):
         with open(os.path.join(self.processed_folder, 'bankmarketing_test_data.json'), 'w') as f:
             json.dump(test_dic, f)
 
+
+
+# import flgo
+# pat = os.path.join(flgo.benchmark.path,'RAW_DATA', 'heart_disease_classification')
+
+class HeartDisease(BuiltinClassDataset):
+    """
+    在download中将原始数据进行分片并划分为训练集和测试集，分别存储到train_data.json和test_data.json两个文件中
+    文件路径默认设置为 self.processed_folder/XX_data.json
+    """
+    names = ["age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalach", "exang",
+             "oldpeak", "slope", "ca", "thal", "label"]
+    column_type = ['continuous', 2, 4, 'continuous', 'continuous', 2, 3, 'continuous', 2, 'continuous', 3, 3,
+                   3, 4]
+    true_label = 1
+    def __init__(self, root, train=True):
+        self.url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data'
+        self.train = train
+        self.file = 'heart_disease_'
+        self.root = root
+        super().__init__(root, train)
+
+
+    def download(self):
+        os.makedirs(self.raw_folder, exist_ok=True)
+        os.makedirs(self.processed_folder, exist_ok=True)
+        src_path = os.path.join(self.raw_folder, 'processed.cleveland.data')
+        if not os.path.exists(src_path):
+            download_from_url(self.url, src_path)
+        self.to_json(src_path)
+
+    def to_json(self, path):
+        raw_data = pd.read_csv(path, header=0, names=HeartDisease.names)
+        raw_data.loc[raw_data['label'] > 0, ['label']] = 1
+        processed_data = preprocessing(raw_data, HeartDisease.names, HeartDisease.column_type, HeartDisease.true_label)
+        processed_data = np.array(processed_data)
+        num = len(processed_data)
+        index = [i for i in range(num)]
+        train_num = int(num * 0.8)
+        train = random.sample(index, train_num)
+        test = [i for i in range(num) if i not in train]
+        train_dic = {'x':processed_data[train, :-1].tolist(), 'y':processed_data[train, -1].tolist()}
+        test_dic = {'x':processed_data[test, :-1].tolist(), 'y':processed_data[test, -1].tolist()}
+        with open(os.path.join(self.processed_folder, 'heart_disease_train_data.json'), 'w') as f:
+            json.dump(train_dic, f)
+        with open(os.path.join(self.processed_folder, 'heart_disease_test_data.json'), 'w') as f:
+            json.dump(test_dic, f)
+
+
+# a = HeartDisease(pat)
