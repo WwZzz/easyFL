@@ -248,7 +248,7 @@ def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dic
     except:
         pass
 
-def gen_task_by_config(config={}, task_path:str='', rawdata_path:str='', seed:int=0):
+def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0):
     r"""
     Generate a federated task that is specified by the benchmark information and the partition information, where the generated task will be stored in the task_path and the raw data will be downloaded into the rawdata_path.
 
@@ -392,7 +392,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     setup_seed(seed=option['seed'])
     option['task'] = task
     option['algorithm'] = (algorithm.__name__).split('.')[-1]
-    option['server_with_cpu'] = True if option['num_parallels']>1 else option['server_with_cpu']
+    option['server_with_cpu'] = True if (option['num_parallels']>1 and len(option['gpu'])>1) else option['server_with_cpu']
     # init task info
     if not os.path.exists(task):
         raise FileExistsError("Fedtask '{}' doesn't exist. Please generate the specified task by flgo.gen_task().")
@@ -656,6 +656,7 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
     if len(runner_args)==0:return
     args = []
     if type(runner_args[0]) is dict:
+        keys = ['task', 'algorithm', 'option', 'model', 'Logger', 'Simulator', 'scene']
         for a in runner_args:
             tmp = collections.defaultdict(lambda:None, a)
             if tmp['task'] is None or tmp['algorithm'] is None:
@@ -699,7 +700,7 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
                 tmp['Simulator'] = flgo.simulator.DefaultSimulator
             if tmp['scene'] is None:
                 tmp['scene'] = 'horizontal'
-            args.append(list(tmp.values()))
+            args.append([tmp[k] for k in keys])
     elif type(runner_args[0]) is tuple or type(runner_args[0]) is list:
         for a in runner_args:
             if len(a)<2: raise RuntimeError('the args of runner should at least contain task and algorithm.')

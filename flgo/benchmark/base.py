@@ -247,9 +247,10 @@ class BasicTaskPipe(AbstractTaskPipe):
         the federated scenario
         """
         for ob in objects:
-            ob_data = task_data[ob.name]
-            for data_name, data in ob_data.items():
-                ob.set_data(data, data_name)
+            if ob.name in task_data.keys():
+                ob_data = task_data[ob.name]
+                for data_name, data in ob_data.items():
+                    ob.set_data(data, data_name)
 
     def split_dataset(self, dataset, p=0.0):
         r"""

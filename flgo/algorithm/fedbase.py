@@ -128,6 +128,21 @@ class BasicParty:
         if id is not None:
             self.id = id
 
+    def set_message(self, mtype:Any, package:dict={})->dict:
+        """Set the message type of a package.
+
+        Args:
+            mtype (Any): the message type
+            package (dict): a dict
+
+        Returns:
+            package_with_mtype (dict): a dict with the message type
+        """
+        if type(package) is not dict:
+            raise TypeError('The type of the package should be dict')
+        package.update({'__mtype__': mtype})
+        return package
+
     def register_objects(self, parties:list, parties_name='parties'):
         r"""
         Set self's attribute party_names (e.g. parties as default) to be parties if
@@ -280,15 +295,15 @@ class BasicServer(BasicParty):
         received_package_buffer = {}
         communicate_clients = list(set(selected_clients))
         # prepare packages for clients
-        for cid in communicate_clients:
-            received_package_buffer[cid] = None
+        for client_id in communicate_clients:
+            received_package_buffer[client_id] = None
         # communicate with selected clients
         if self.num_parallels <= 1:
             # computing iteratively
             for client_id in communicate_clients:
                 server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
-                response_from_client_id = self.communicate_with(client_id, package=server_pkg)
+                response_from_client_id = self.communicate_with(self.clients[client_id].id, package=server_pkg)
                 packages_received_from_clients.append(response_from_client_id)
         else:
             # computing in parallel with torch.multiprocessing
@@ -297,12 +312,12 @@ class BasicServer(BasicParty):
                 server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
                 self.clients[client_id].update_device(self.gv.apply_for_device())
-                args = (int(client_id), server_pkg)
+                args = (self.clients[client_id].id, server_pkg)
                 packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
             pool.close()
             pool.join()
             packages_received_from_clients = list(map(lambda x: x.get(), packages_received_from_clients))
-        for i, cid in enumerate(communicate_clients): received_package_buffer[cid] = packages_received_from_clients[i]
+        for i, client_id in enumerate(communicate_clients): received_package_buffer[client_id] = packages_received_from_clients[i]
         packages_received_from_clients = [received_package_buffer[cid] for cid in selected_clients if
                                           received_package_buffer[cid]]
         self.received_clients = selected_clients
@@ -580,7 +595,6 @@ class BasicServer(BasicParty):
         self.clients_per_round = max(int(self.num_clients * self.proportion), 1)
         self.selected_clients = []
         self.dropped_clients = []
-
 
 class BasicClient(BasicParty):
     def __init__(self, option={}):

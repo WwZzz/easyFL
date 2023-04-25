@@ -1,6 +1,5 @@
-from .utils.fflow import init, gen_task_by_config, gen_task_by_para, tune, run_in_parallel, multi_init_and_run
+from .utils.fflow import init, gen_task, gen_task_by_para, tune, run_in_parallel, multi_init_and_run
 
-gen_task = gen_task_by_config
 communicator = None
 
 class VirtualCommunicator:
