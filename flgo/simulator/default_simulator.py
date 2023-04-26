@@ -62,7 +62,7 @@ def y_max_first_client_availability(simulator, beta=0.1):
     label_num = len(label_counter(simulator.server.test_data))
     probs = []
     for c in simulator.clients:
-        c_counter = label_counter(c.train_data + c.valid_data)
+        c_counter = label_counter((c.train_data + c.valid_data) if c.valid_data is not None else c.train_data)
         c_label = [lb for lb in c_counter.keys()]
         probs.append((beta * min(c_label) / max(1, label_num - 1)) + (1 - beta))
     simulator.set_variable(simulator.all_clients, 'prob_available', probs)
