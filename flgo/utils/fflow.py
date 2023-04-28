@@ -89,7 +89,6 @@ def setup_seed(seed):
     torch.manual_seed(12+seed)
     torch.cuda.manual_seed_all(123+seed)
 
-
 def read_option_from_command():
     r"""
     Generate running-time configurations for flgo.init with default values from command lines
