@@ -77,13 +77,18 @@ def setup_seed(seed):
     Args:
         seed (int): the random seed
     """
+    if seed <0:
+        torch.backends.cudnn.enabled = False
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.use_deterministic_algorithms(True)
+        seed = -seed
     random.seed(1+seed)
     np.random.seed(21+seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     torch.manual_seed(12+seed)
     torch.cuda.manual_seed_all(123+seed)
-    torch.backends.cudnn.enabled = False
-    torch.backends.cudnn.deterministic = True
+
 
 def read_option_from_command():
     r"""
