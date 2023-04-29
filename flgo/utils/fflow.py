@@ -1,4 +1,5 @@
 import collections
+import shutil
 import sys
 import copy
 import multiprocessing
@@ -173,6 +174,19 @@ def load_configuration(config={}):
         return config
     else:
         raise TypeError('The input config should be either a dict or a filename.')
+
+def gen_benchmark_from_file(benchmark:str, config_file:str, target_path='.',data_type:str='cv', task_type:str='classification'):
+    if not os.path.exists(config_file): raise FileNotFoundError('File {} not found.'.format(config_file))
+    target_path = os.path.abspath(target_path)
+    bmk_path = os.path.join(target_path, benchmark)
+    if os.path.exists(bmk_path): raise FileExistsError('Task {} already exists'.format(bmk_path))
+    if data_type.lower() =='cv':
+        if task_type == 'classification':
+            temp_path = os.path.join(flgo.benchmark.path, 'toolkits', 'cv', 'classification', 'temp')
+            shutil.copytree(temp_path, bmk_path)
+    shutil.copyfile(config_file, os.path.join(bmk_path, 'config.py'))
+    bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
+    return bmk_module
 
 def gen_task_by_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dict={}, task_path: str='', rawdata_path:str='', seed:int=0):
     r"""
