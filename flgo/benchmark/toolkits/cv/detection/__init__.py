@@ -1,8 +1,18 @@
+import os
 import torch.utils.data
 from flgo.benchmark.base import BasicTaskCalculator
+import flgo.benchmark.toolkits.cv.classification
 from flgo.benchmark.toolkits.cv.classification import BuiltinClassPipe as ClsPipe
 from flgo.benchmark.toolkits.cv.classification import BuiltinClassGenerator
-import numpy as np
+import flgo.benchmark.base
+try:
+    import ujson as json
+except:
+    import json
+
+FromDatasetGenerator = flgo.benchmark.base.FromDatasetGenerator
+
+FromDatasetPipe = flgo.benchmark.toolkits.cv.classification.FromDatasetPipe
 
 class BuiltinClassPipe(ClsPipe):
     class TaskDataset(torch.utils.data.Subset):
