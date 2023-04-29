@@ -118,7 +118,7 @@ class BasicTaskGenerator(AbstractTaskGenerator):
 
     def load_data(self, *args, **kwargs):
         """Download and load dataset into memory."""
-        raise NotImplementedError
+        return
 
     def partition(self, *args, **kwargs):
         """Partition the data into different local_movielens_recommendation datasets"""
@@ -301,7 +301,6 @@ class BasicTaskPipe(AbstractTaskPipe):
         """
         return [('Client{:0>' + str(len(str(num_clients))) + 'd}').format(i) for i in range(num_clients)]
 
-
 class BasicTaskCalculator(AbstractTaskCalculator):
     r"""
     Support task-specific computation when optimizing models, such
@@ -361,27 +360,6 @@ class BasicTaskCalculator(AbstractTaskCalculator):
     def set_collect_fn(self, collect_fn:Callable)->None:
         self.collect_fn = collect_fn
 
-# class HorizontalTaskPipe(BasicTaskPipe):
-#     def generate_objects(self, running_time_option):
-#         # init clients
-#         client_path = '%s.%s' % ('algorithm', running_time_option['algorithm'])
-#         Client = getattr(importlib.import_module(client_path), 'Client')
-#         clients = [Client(running_time_option) for _ in range(len(self.feddata['client_names']))]
-#         for cid, c in enumerate(clients):
-#             c.id = cid
-#             c.name = self.feddata['client_names'][cid]
-#         # init server
-#         server_path = '%s.%s' % ('algorithm', running_time_option['algorithm'])
-#         server_module = importlib.import_module(server_path)
-#         server = getattr(server_module, 'Server')(running_time_option)
-#         server.name = 'server'
-#         server.register_clients(clients)
-#         for c in clients: c.register_server(server)
-#         objects = [server]
-#         objects.extend(clients)
-#         return objects
-
-
 class XYHorizontalTaskPipe(BasicTaskPipe):
     """
     This pipe is for supervised learning where each sample contains a feature $x_i$ and a label $y_i$
@@ -422,9 +400,27 @@ class XYHorizontalTaskPipe(BasicTaskPipe):
                 task_data[cname][key] = self.feddata[cname][key]
         return task_data
 
-# class IDXHorizontalTaskPipe(HorizontalTaskPipe):
-#     TaskDataset = torch.utils.data.Subset
-#     def save_task(self, generator):
-#         client_names = self.gen_client_names(len(generator.local_datas))
-#         feddata = {'client_names': client_names, 'server': {'data': generator.test_data}}
-#         pass
+class FromDatasetGenerator(BasicTaskGenerator):
+    def __init__(self, benchmark, train_data, test_data=None):
+        super(FromDatasetGenerator, self).__init__(benchmark=benchmark, rawdata_path='')
+        self.train_data = train_data
+        self.test_data = test_data
+
+    def generate(self, *args, **kwarg):
+        self.prepare_data_for_partition()
+        self.partition()
+
+    def partition(self, *args, **kwargs):
+        self.local_datas = self.partitioner(self.train_data)
+        self.num_clients = len(self.local_datas)
+
+    def prepare_data_for_partition(self):
+        """Transform the attribution self.train_data into the format that can be received by partitioner"""
+        return
+
+class FromDatasetPipe(BasicTaskPipe):
+    TaskDataset = None
+    def __init__(self, task_path, train_data, test_data):
+        super(FromDatasetPipe, self).__init__(task_path)
+        self.train_data = train_data
+        self.test_data = test_data

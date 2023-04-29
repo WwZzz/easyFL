@@ -1,9 +1,75 @@
 import random
+import os
+try:
+    import ujson as json
+except:
+    import json
 import torch.utils.data
-import json
-from flgo.benchmark.base import *
+import flgo.benchmark.base
 
-class BuiltinClassGenerator(BasicTaskGenerator):
+FromDatasetGenerator = flgo.benchmark.base.FromDatasetGenerator
+
+class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
+    class TaskDataset(torch.utils.data.Subset):
+        def __init__(self, dataset, indices, perturbation=None, pin_memory=False):
+            super().__init__(dataset, indices)
+            self.dataset = dataset
+            self.indices = indices
+            self.perturbation = {idx:p for idx, p in zip(indices, perturbation)} if perturbation is not None else None
+            self.pin_memory = pin_memory
+            if not self.pin_memory:
+                self.X = None
+                self.Y = None
+            else:
+                self.X = torch.stack([self.dataset[i][0] for i in self.indices])
+                self.Y = torch.LongTensor([self.dataset[i][1] for i in self.indices])
+
+        def __getitem__(self, idx):
+            if self.X is not None:
+                if self.perturbation is None:
+                    return self.X[idx], self.Y[idx]
+                else:
+                    return self.X[idx]+self.perturbation[self.indices[idx]], self.Y[idx]
+            else:
+                if self.perturbation is None:
+                    if isinstance(idx, list):
+                        return self.dataset[[self.indices[i] for i in idx]]
+                    return self.dataset[self.indices[idx]]
+                else:
+                    return self.dataset[self.indices[idx]][0] + self.perturbation[self.indices[idx]],  self.dataset[self.indices[idx]][1]
+
+    def __init__(self, task_path, train_data, test_data):
+        super(FromDatasetPipe, self).__init__(task_path, train_data, test_data)
+
+    def save_task(self, generator):
+        client_names = self.gen_client_names(len(generator.local_datas))
+        feddata = {'client_names': client_names}
+        for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
+        if hasattr(generator.partitioner, 'local_perturbation'): feddata['local_perturbation'] = generator.partitioner.local_perturbation
+        with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
+            json.dump(feddata, outf)
+        return
+
+    def load_data(self, running_time_option) -> dict:
+        train_data = self.train_data
+        test_data = self.test_data
+        # rearrange data for server
+        server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
+        task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}
+        # rearrange data for clients
+        local_perturbation = self.feddata['local_perturbation'] if 'local_perturbation' in self.feddata.keys() else [None for _ in self.feddata['client_names']]
+        for cid, cname in enumerate(self.feddata['client_names']):
+            cpert = None if  local_perturbation[cid] is None else [torch.tensor(t) for t in local_perturbation[cid]]
+            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert, running_time_option['pin_memory'])
+            cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
+            if running_time_option['train_holdout']>0 and running_time_option['local_test']:
+                cdata_valid, cdata_test = self.split_dataset(cdata_valid, 0.5)
+            else:
+                cdata_test = None
+            task_data[cname] = {'train':cdata_train, 'valid':cdata_valid, 'test': cdata_test}
+        return task_data
+
+class BuiltinClassGenerator(flgo.benchmark.base.BasicTaskGenerator):
     r"""
     Generator for the dataset in torchvision.datasets.
 
@@ -43,7 +109,7 @@ class BuiltinClassGenerator(BasicTaskGenerator):
         self.local_datas = self.partitioner(self.train_data)
         self.num_clients = len(self.local_datas)
 
-class BuiltinClassPipe(BasicTaskPipe):
+class BuiltinClassPipe(flgo.benchmark.base.BasicTaskPipe):
     r"""
     TaskPipe for the dataset in torchvision.datasets.
 
@@ -133,7 +199,7 @@ class BuiltinClassPipe(BasicTaskPipe):
             task_data[cname] = {'train':cdata_train, 'valid':cdata_valid, 'test': cdata_test}
         return task_data
 
-class GeneralCalculator(BasicTaskCalculator):
+class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
     r"""
     Calculator for the dataset in torchvision.datasets.
 
