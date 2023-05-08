@@ -234,7 +234,7 @@ class ActiveParty(PassiveParty):
         """
         self._data_type='train'
         self.crt_batch = self.get_batch_data()
-        activations = self.communicate([pid for pid in range(len(self.parties))], mtype=0)['activation']
+        activations = self.communicate([p.id for p in self.parties], mtype=0)['activation']
         self.defusions = self.update_global_module(activations, self.global_module)
         _ = self.communicate([pid for pid in range(len(self.parties))], mtype=1)
         return True
