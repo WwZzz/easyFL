@@ -627,6 +627,7 @@ class BasicClient(BasicParty):
         self.batch_size = option['batch_size']
         self.num_steps = option['num_steps']
         self.num_epochs = option['num_epochs']
+        self.clip_grad = option['clip_grad']
         self.model = None
         self.test_batch_size = option['test_batch_size']
         self.loader_num_workers = option['num_workers']
@@ -660,6 +661,7 @@ class BasicClient(BasicParty):
             # calculate the loss of the model on batched dataset through task-specified calculator
             loss = self.calculator.compute_loss(model, batch_data)['loss']
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         return
 
