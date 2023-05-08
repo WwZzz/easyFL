@@ -257,7 +257,7 @@ def gen_task_from_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:d
         task_pipe.save_info(task_generator)
         # save task
         task_pipe.save_task(task_generator)
-        print('Task {} has been successfully generated.'.format(task_generator.task_name))
+        print('Task {} has been successfully generated.'.format(task_pipe.task_path))
     except Exception as e:
         print(e)
         task_pipe.remove_task()
@@ -350,7 +350,7 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0):
         task_pipe.save_info(task_generator)
         # save task
         task_pipe.save_task(task_generator)
-        print('Task {} has been successfully generated.'.format(task_generator.task_name))
+        print('Task {} has been successfully generated.'.format(task_pipe.task_path))
     except Exception as e:
         print(e)
         task_pipe.remove_task()
