@@ -58,5 +58,5 @@ The architecture of MNIST is
 
 The details of implementing a customized benchmark are in Tutorial.3
 """
-
-path = '/'.join(__file__.split('/')[:-1])
+import os.path
+path = os.path.dirname(__file__)
