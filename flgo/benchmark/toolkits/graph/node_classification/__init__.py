@@ -192,6 +192,7 @@ class GeneralCalculator(BasicTaskCalculator):
         dataset.change_mask_for_test()
         loader = self.DataLoader([dataset.data], batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
         total_loss = 0
+        total_correct = 0
         total_num_samples = 0
         for batch in loader:
             tdata = self.data_to_device(batch)
@@ -199,10 +200,11 @@ class GeneralCalculator(BasicTaskCalculator):
             loss = self.criterion(outputs[tdata.test_mask], tdata.y[tdata.test_mask])
             num_samples = len(tdata.x)
             total_loss += num_samples * loss
+            total_correct += outputs[tdata.test_mask].max(1)[1].eq(tdata.y[tdata.test_mask]).sum().item()
             total_num_samples += num_samples
         total_loss = total_loss.item()
         dataset.restore_mask()
-        return {'loss': total_loss / total_num_samples}
+        return {'loss': total_loss / total_num_samples, 'accuracy':1.0*total_correct/total_num_samples}
 
     def data_to_device(self, data):
         return data.to(self.device)
