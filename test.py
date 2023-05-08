@@ -16,7 +16,7 @@ if __name__ == '__main__':
     # generate federated task if task doesn't exist
     if not os.path.exists(task): flgo.gen_task(gen_config, task_path=task)
     # running fedavg on the specified task
-    runner = flgo.init(task, fedavg, {'gpu':[0,],'log_file':True, 'num_steps':5})
+    runner = flgo.init(task, fedavg, {'gpu':[0,],'log_file':True, 'num_epochs':1})
     runner.run()
     # visualize the experimental result
     flgo.experiment.analyzer.show(analysis_plan)
