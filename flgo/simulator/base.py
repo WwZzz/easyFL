@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from collections.abc import Iterable
 from abc import ABCMeta, abstractmethod
 import functools
 import torch
@@ -339,7 +340,7 @@ class BasicSimulator(AbstractSimulator):
             values (list): a list of things
         """
         if type(client_ids) is not list: client_ids = [client_ids]
-        if type(values) is not list: values = [values]
+        if not isinstance(values, Iterable): values = [values]
         assert len(client_ids) == len(values)
         for cid, v in zip(client_ids, values):
             self.variables[cid][varname] = v
