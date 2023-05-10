@@ -191,6 +191,10 @@ def homogeneous_client_connectivity(simulator, gamma=0.05):
     probs = [gamma for _ in simulator.clients]
     simulator.set_variable(simulator.all_clients, 'prob_drop', probs)
 
+def uniform_client_connectivity(simulator, gamma=0.5):
+    probs = [np.random.uniform(0,1) if np.random.rand()<gamma else 0.0 for _ in simulator.all_clients]
+    simulator.set_variable(simulator.all_clients, 'prob_drop', probs)
+
 ################################### Initial Completeness Mode ##########################################
 def ideal_client_completeness(simulator, *args, **kwargs):
     simulator.set_variable(simulator.all_clients, 'working_amount', [c.num_steps for c in simulator.clients])
@@ -286,6 +290,7 @@ availability_modes = {
 connectivity_modes = {
     'IDL': ideal_client_connectivity,
     'HOMO': homogeneous_client_connectivity,
+    'UNI': uniform_client_connectivity,
 }
 
 completeness_modes = {
