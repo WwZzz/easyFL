@@ -23,7 +23,7 @@ def visualize_by_class(generator, partitioner, task_path:str):
     if hasattr(partitioner, 'dirichlet_dist'):
         client_dist = generator.partitioner.dirichlet_dist.tolist()
         data_columns = [sum(cprop) for cprop in client_dist]
-        row_map = {k: i for k, i in zip(np.argsort(data_columns), [_ for _ in range(generator.partitioner.num_parties)])}
+        row_map = {k: i for k, i in zip(np.argsort(data_columns), [_ for _ in range(generator.partitioner.num_clients)])}
         for cid, cprop in enumerate(client_dist):
             offset = 0
             y_bottom = row_map[cid] - client_height / 2.0
@@ -34,7 +34,7 @@ def visualize_by_class(generator, partitioner, task_path:str):
                 offset += cprop[lbi]
     else:
         data_columns = [len(cidx) for cidx in generator.local_datas]
-        row_map = {k: i for k, i in zip(np.argsort(data_columns), [_ for _ in range(generator.partitioner.num_parties)])}
+        row_map = {k: i for k, i in zip(np.argsort(data_columns), [_ for _ in range(generator.partitioner.num_clients)])}
         for cid, cidxs in enumerate(generator.local_datas):
             labels = [int(generator.train_data[did][-1]) for did in cidxs]
             lb_counter = collections.Counter(labels)
@@ -44,8 +44,9 @@ def visualize_by_class(generator, partitioner, task_path:str):
             for lbi in range(num_classes):
                 plt.fill_between([offset, offset + lb_counter[lbi]], y_bottom, y_top, facecolor=colors[lbi%len(colors)])
                 offset += lb_counter[lbi]
+    print(11111)
     plt.xlim(0, max(data_columns))
-    plt.ylim(-0.5, generator.partitioner.num_parties - 0.5)
+    plt.ylim(-0.5, generator.partitioner.num_clients - 0.5)
     plt.ylabel('Client ID')
     plt.xlabel('Number of Samples')
     plt.savefig(os.path.join(task_path, 'res.png'))
