@@ -431,7 +431,44 @@ class XYHorizontalTaskPipe(BasicTaskPipe):
         for cid, cname in enumerate(self.feddata['client_names']):
             cdata = local_datas[cid]
             cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
-            task_data[cname] = {'train': cdata_train, 'val': cdata_val}
+            if running_time_option['local_test'] and cdata_val is not None:
+                cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
+            else:
+                cdata_test = None
+            task_data[cname] = {'train': cdata_train, 'val': cdata_val, 'test': cdata_test}
+            for key in self.feddata[cname]:
+                if key == 'data':
+                    continue
+                task_data[cname][key] = self.feddata[cname][key]
+        return task_data
+
+class XHorizontalTaskPipe(BasicTaskPipe):
+    TaskDataset = torch.utils.data.TensorDataset
+    def save_task(self, generator):
+        client_names = self.gen_client_names(len(generator.local_datas))
+        feddata = {'client_names': client_names, 'server': {'data': generator.test_data}}
+        for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid]}
+        with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
+            json.dump(feddata, outf)
+
+    def load_data(self, running_time_option) -> dict:
+        test_data = self.feddata['server']['data']
+        test_data = self.TaskDataset(torch.tensor(test_data['x']))
+        local_datas = [self.TaskDataset(torch.tensor(self.feddata[cname]['data']['x']), ) for cname in self.feddata['client_names']]
+        server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
+        task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
+        for key in self.feddata['server'].keys():
+            if key == 'data':
+                continue
+            task_data['server'][key] = self.feddata['server'][key]
+        for cid, cname in enumerate(self.feddata['client_names']):
+            cdata = local_datas[cid]
+            cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
+            if running_time_option['local_test'] and cdata_val is not None:
+                cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
+            else:
+                cdata_test = None
+            task_data[cname] = {'train': cdata_train, 'val': cdata_val, 'test':cdata_test}
             for key in self.feddata[cname]:
                 if key == 'data':
                     continue

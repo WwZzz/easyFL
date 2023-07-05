@@ -6,7 +6,6 @@ except:
     import json
 import torch.utils.data
 import flgo.benchmark.base
-import random
 
 FromDatasetGenerator = flgo.benchmark.base.FromDatasetGenerator
 
