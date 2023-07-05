@@ -133,7 +133,7 @@ class TaskGenerator(BuiltinClassGenerator):
         super(TaskGenerator, self).__init__(benchmark=os.path.split(os.path.dirname(__file__))[-1], rawdata_path=rawdata_path,
                                             builtin_class=builtin_class, train_transform=train_transform, test_transform=test_transform, num_classes = 21)
         self.additional_option = {'mode':'segmentation'}
-        self.train_additional_option = {'image_set':'train_noval'}
+        self.train_additional_option = {'image_set':'train'}
         self.test_additional_option = {'image_set':'val'}
 
 class TaskPipe(BuiltinClassPipe):

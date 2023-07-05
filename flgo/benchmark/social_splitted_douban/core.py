@@ -128,19 +128,19 @@ class TaskPipe(BasicTaskPipe):
                 ratings_train = pdata['ratings_train']
                 tmp = pd.DataFrame(ratings_train)
                 train_data = []
-                valid_data = []
-                valid_ratio = running_time_option['train_holdout']
+                val_data = []
+                val_ratio = running_time_option['train_holdout']
                 for uid in users:
                     udata = tmp[tmp[0]==uid].values.tolist()
-                    train_size = max(int(len(udata)*(1-valid_ratio)), 1)
+                    train_size = max(int(len(udata)*(1-val_ratio)), 1)
                     utrain = udata[:train_size]
                     uvalid = udata[train_size:]
                     train_data.extend(utrain)
-                    valid_data.extend(uvalid)
+                    val_data.extend(uvalid)
                 train_data = self.TaskDataset(train_data)
-                valid_data = self.TaskDataset(valid_data) if len(valid_data)>0 else None
+                val_data = self.TaskDataset(val_data) if len(val_data)>0 else None
                 test_data = self.TaskDataset(test_data)
-                task_data[party_name] = {'userID': pdata['userID'], 'itemID':pdata['itemID'], 'train':train_data, 'valid':valid_data, 'test':test_data}
+                task_data[party_name] = {'userID': pdata['userID'], 'itemID':pdata['itemID'], 'train':train_data, 'val':val_data, 'test':test_data}
             else:
                 social_links = pdata['links']
                 edge_index = torch.tensor([[l[0] for l in social_links], [l[1] for l in social_links]], dtype=torch.int64)

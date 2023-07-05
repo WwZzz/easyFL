@@ -12,9 +12,9 @@ class VerticalLogger(BasicLogger):
         self.info('Current_time:{}'.format(self.clock.current_time))
         self.output['time'].append(self.clock.current_time)
         test_metric = self.coordinator.test('test')
-        valid_metric = self.coordinator.test('valid')
+        val_metric = self.coordinator.test('val')
         for met_name, met_val in test_metric.items():
             self.output['test_' + met_name].append(met_val)
-        for met_name, met_test in valid_metric.items():
-            self.output['valid_' + met_name].append(met_val)
+        for met_name, met_test in val_metric.items():
+            self.output['val_' + met_name].append(met_val)
         self.show_current_output()

@@ -16,13 +16,13 @@ class SimpleLogger(BasicLogger):
         test_metric = self.coordinator.test()
         for met_name, met_val in test_metric.items():
             self.output['test_' + met_name].append(met_val)
-        valid_metrics = self.coordinator.global_test(flag='valid')
+        val_metrics = self.coordinator.global_test(flag='val')
         local_data_vols = [c.datavol for c in self.participants]
         total_data_vol = sum(local_data_vols)
-        for met_name, met_val in valid_metrics.items():
-            self.output['valid_'+met_name+'_dist'].append(met_val)
-            self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(local_data_vols, met_val)]) / total_data_vol)
-            self.output['mean_valid_' + met_name].append(np.mean(met_val))
-            self.output['std_valid_' + met_name].append(np.std(met_val))
+        for met_name, met_val in val_metrics.items():
+            self.output['val_'+met_name+'_dist'].append(met_val)
+            self.output['val_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(local_data_vols, met_val)]) / total_data_vol)
+            self.output['mean_val_' + met_name].append(np.mean(met_val))
+            self.output['std_val_' + met_name].append(np.std(met_val))
         # output to stdout
         self.show_current_output()

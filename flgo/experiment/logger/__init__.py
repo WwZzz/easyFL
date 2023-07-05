@@ -25,7 +25,7 @@ Example:
 
 Then the customized Logger will be used to record running-time variables.
 
-The Logger is also used to enable early stopping, where 'valid_loss' must be a key in self.output if
+The Logger is also used to enable early stopping, where 'val_loss' must be a key in self.output if
 early stopping is enabled. We also provide several preset loggers like BasicLogger, SimpleLogger, TuneLogger.
 """
 import torch.multiprocessing
@@ -2164,7 +2164,7 @@ class BasicLogger(Logger):
             self.filehandler.setLevel(self._LEVEL[self.option['log_level'].upper()])
             self.addHandler(self.filehandler)
         # options of early stopping
-        self._es_key = 'valid_loss'
+        self._es_key = 'val_loss'
         self._es_patience = 20
         self._es_counter = 0
         self._es_best_score = None
@@ -2243,7 +2243,7 @@ class BasicLogger(Logger):
             setattr(self, k, v)
         return
 
-    def show_current_output(self, yes_key=['train', 'test', 'valid'], no_key=['dist']):
+    def show_current_output(self, yes_key=['train', 'test', 'val'], no_key=['dist']):
         for key, val in self.output.items():
             a = [(yk in key) for yk in yes_key]
             nf = [(nk not in key) for nk in no_key]
@@ -2324,6 +2324,9 @@ class BasicLogger(Logger):
         test_metric = self.coordinator.test()
         for met_name, met_val in test_metric.items():
             self.output['test_' + met_name].append(met_val)
+        val_metric = self.coordinator.test(flag='val')
+        for met_name, met_val in val_metric.items():
+            self.output['val_' + met_name].append(met_val)
         # calculate weighted averaging of metrics on training datasets across participants
         local_data_vols = [c.datavol for c in self.participants]
         total_data_vol = sum(local_data_vols)
@@ -2332,12 +2335,18 @@ class BasicLogger(Logger):
             self.output['train_' + met_name + '_dist'].append(met_val)
             self.output['train_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(local_data_vols, met_val)]) / total_data_vol)
         # calculate weighted averaging and other statistics of metrics on validation datasets across clients
-        valid_metrics = self.coordinator.global_test(flag='valid')
-        for met_name, met_val in valid_metrics.items():
-            self.output['valid_'+met_name+'_dist'].append(met_val)
-            self.output['valid_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(local_data_vols, met_val)]) / total_data_vol)
-            self.output['mean_valid_' + met_name].append(np.mean(met_val))
-            self.output['std_valid_' + met_name].append(np.std(met_val))
+        local_val_metrics = self.coordinator.global_test(flag='val')
+        for met_name, met_val in local_val_metrics.items():
+            self.output['local_val_'+met_name+'_dist'].append(met_val)
+            self.output['local_val_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(local_data_vols, met_val)]) / total_data_vol)
+            self.output['mean_local_val_' + met_name].append(np.mean(met_val))
+            self.output['std_local_val_' + met_name].append(np.std(met_val))
+        local_test_metrics = self.coordinator.global_test(flag='test')
+        for met_name, met_val in local_test_metrics.items():
+            self.output['local_test_'+met_name+'_dist'].append(met_val)
+            self.output['local_test_' + met_name].append(1.0 * sum([client_vol * client_met for client_vol, client_met in zip(local_data_vols, met_val)]) / total_data_vol)
+            self.output['mean_local_test_' + met_name].append(np.mean(met_val))
+            self.output['std_local_test_' + met_name].append(np.std(met_val))
         # output to stdout
         self.show_current_output()
 

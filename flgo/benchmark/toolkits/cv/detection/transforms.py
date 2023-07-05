@@ -525,16 +525,16 @@ def _copy_paste(
     boxes = out_target["boxes"]
     degenerate_boxes = boxes[:, 2:] <= boxes[:, :2]
     if degenerate_boxes.any():
-        valid_targets = ~degenerate_boxes.any(dim=1)
+        val_targets = ~degenerate_boxes.any(dim=1)
 
-        out_target["boxes"] = boxes[valid_targets]
-        out_target["masks"] = out_target["masks"][valid_targets]
-        out_target["labels"] = out_target["labels"][valid_targets]
+        out_target["boxes"] = boxes[val_targets]
+        out_target["masks"] = out_target["masks"][val_targets]
+        out_target["labels"] = out_target["labels"][val_targets]
 
         if "area" in out_target:
-            out_target["area"] = out_target["area"][valid_targets]
-        if "iscrowd" in out_target and len(out_target["iscrowd"]) == len(valid_targets):
-            out_target["iscrowd"] = out_target["iscrowd"][valid_targets]
+            out_target["area"] = out_target["area"][val_targets]
+        if "iscrowd" in out_target and len(out_target["iscrowd"]) == len(val_targets):
+            out_target["iscrowd"] = out_target["iscrowd"][val_targets]
 
     return image, out_target
 

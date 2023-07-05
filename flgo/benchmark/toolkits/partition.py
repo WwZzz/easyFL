@@ -135,7 +135,7 @@ class DirichletPartitioner(BasicPartitioner):
         error_bar (float, optional): the allowed error when the generated distribution mismatches the distirbution that is actually wanted, since there may be no solution for particular imbalance and alpha.
         index_func (func, optional): to index the distribution-dependent (i.e. label) attribute in each sample.
     """
-    def __init__(self, num_clients=100, alpha=1.0, error_bar=1e-6, imbalance=0, index_func=lambda x:x[-1]):
+    def __init__(self, num_clients=100, alpha=1.0, error_bar=1e-6, imbalance=0, index_func=lambda X:[xi[-1] for xi in X]):
         self.num_clients = num_clients
         self.alpha = alpha
         self.imbalance = imbalance
@@ -148,7 +148,7 @@ class DirichletPartitioner(BasicPartitioner):
         return name
 
     def __call__(self, data):
-        attrs = [self.index_func(d) for d in data]
+        attrs = self.index_func(data)
         num_attrs = len(set(attrs))
         samples_per_client = self.data_imbalance_generator(self.num_clients, len(data), self.imbalance)
         # count the label distribution
@@ -226,7 +226,7 @@ class DiversityPartitioner(BasicPartitioner):
         imbalance (float, optional): the degree of imbalance of the amounts of different local_movielens_recommendation data (0<=imbalance<=1)
         index_func (int, optional): the index of the distribution-dependent (i.e. label) attribute in each sample.
     """
-    def __init__(self, num_clients=100, diversity=1.0, index_func=lambda x:x[-1]):
+    def __init__(self, num_clients=100, diversity=1.0, index_func=lambda X:[xi[-1] for xi in X]):
         self.num_clients = num_clients
         self.diversity = diversity
         self.index_func = index_func
@@ -236,7 +236,7 @@ class DiversityPartitioner(BasicPartitioner):
         return name
 
     def __call__(self, data):
-        labels = [self.index_func(d) for d in data]
+        labels = self.index_func(data)
         num_classes = len(set(labels))
         dpairs = [[did, lb] for did, lb in zip(list(range(len(data))), labels)]
         num = max(int(self.diversity * num_classes), 1)
@@ -285,7 +285,7 @@ class GaussianPerturbationPartitioner(BasicPartitioner):
         scale (float, optional): the standard deviation of noise
         index_func (int, optional): the index of the feature to be processed for each sample.
     """
-    def __init__(self, num_clients=100, imbalance=0.0, sigma=0.1, scale=0.1, index_func=lambda x:x[0]):
+    def __init__(self, num_clients=100, imbalance=0.0, sigma=0.1, scale=0.1, index_func=lambda X:[xi[0] for xi in X]):
         self.num_clients = num_clients
         self.imbalance = imbalance
         self.sigma = sigma
@@ -298,7 +298,7 @@ class GaussianPerturbationPartitioner(BasicPartitioner):
         return name
 
     def __call__(self, data):
-        shape = tuple(np.array(self.index_func(data[0]).shape))
+        shape = tuple(np.array(self.index_func(data)[0].shape))
         samples_per_client = self.data_imbalance_generator(self.num_clients, len(data), self.imbalance)
         d_idxs = np.random.permutation(len(data))
         local_datas = np.split(d_idxs, np.cumsum(samples_per_client))[:-1]
@@ -321,7 +321,7 @@ class IDPartitioner(BasicPartitioner):
         num_clients (int, optional): the number of clients
         priority (str, optional): The value should be in set ('random', 'max', 'min'). If the number of clients is smaller than the total number of all the clients, this term will decide the selected clients according to their local_movielens_recommendation data sizes.
     """
-    def __init__(self, num_clients=-1, priority='random', index_func=lambda x:x.id):
+    def __init__(self, num_clients=-1, priority='random', index_func=lambda X:X.id):
         self.num_clients = int(num_clients)
         self.priorty = priority
         self.index_func = index_func
@@ -331,7 +331,7 @@ class IDPartitioner(BasicPartitioner):
 
     def __call__(self, data):
         all_data = list(range(len(data)))
-        data_owners = [self.index_func(d) for d in data]
+        data_owners = self.index_func(data)
         local_datas = collections.defaultdict(list)
         for idx in range(len(all_data)):
             local_datas[data_owners[idx]].append(idx)
@@ -419,6 +419,14 @@ class NodeLouvainPartitioner(BasicPartitioner):
         return name
 
     def __call__(self, data):
+        r"""
+        Partition graph data by Louvain algorithm and similar nodes (i.e. being of the same community) will be
+        allocated one client.
+        Args:
+            data (networkx.Graph):
+        Returns:
+            local_nodes (List): the local nodes id owned by each client (e.g. [[1,2], [3,4]])
+        """
         local_nodes = [[] for _ in range(self.num_clients)]
         self.node_groups = community.community_louvain.best_partition(data)
         groups = collections.defaultdict(list)
@@ -446,6 +454,24 @@ class NodeLouvainPartitioner(BasicPartitioner):
             cid = np.argmin([len(li) for li in local_nodes])
             local_nodes[cid].extend(groups[gi])
         return local_nodes
+
+class BasicHierPartitioner(BasicPartitioner):
+    def __init__(self, Partitioner1=IIDPartitioner, pargs1:dict ={'num_clients':5}, Partitioner2=IIDPartitioner, pargs2:dict = {'num_clients':20}):
+        self.p1 = Partitioner1(**pargs1)
+        self.p2 = Partitioner2(**pargs2)
+
+    def __call__(self, data):
+        edge_servers_data = self.p1(data)
+        res = []
+        for edge_data_idx in edge_servers_data:
+            edge_data = [data[did] for did in edge_data_idx]
+            edge_local_datas = self.p2(edge_data)
+            for cid in range(len(edge_local_datas)):
+                for k in range(len(edge_local_datas[cid])):
+                    edge_local_datas[cid][k] = edge_data_idx[edge_local_datas[cid][k]]
+            res.append(edge_local_datas)
+        return res
+
 #
 # class KMeansPartitioner(BasicPartitioner):
 #     """`Partition the indices of samples in the original dataset

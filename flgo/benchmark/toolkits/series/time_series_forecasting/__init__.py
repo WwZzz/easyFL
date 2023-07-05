@@ -117,19 +117,19 @@ class BuiltinClassPipe(BasicTaskPipe):
         test_data = self.builtin_class(**test_default_init_para)
         test_data = self.TaskDataset(test_data, list(range(len(test_data))), None, running_time_option['pin_memory'])
         # rearrange data for server
-        server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
-        task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}
+        server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
+        task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
         # rearrange data for clients
         local_perturbation = self.feddata['local_perturbation'] if 'local_perturbation' in self.feddata.keys() else [None for _ in self.feddata['client_names']]
         for cid, cname in enumerate(self.feddata['client_names']):
             cpert = None if  local_perturbation[cid] is None else [torch.tensor(t) for t in local_perturbation[cid]]
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert, running_time_option['pin_memory'])
-            cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
+            cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
             if running_time_option['train_holdout']>0 and running_time_option['local_test']:
-                cdata_valid, cdata_test = self.split_dataset(cdata_valid, 0.5)
+                cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
             else:
                 cdata_test = None
-            task_data[cname] = {'train':cdata_train, 'valid':cdata_valid, 'test': cdata_test}
+            task_data[cname] = {'train':cdata_train, 'val':cdata_val, 'test': cdata_test}
         return task_data
 
 class GeneralCalculator(BasicTaskCalculator):

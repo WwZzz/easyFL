@@ -11,7 +11,7 @@ Painter:
   Curve:
     - args:
         x: communication_round
-        y: valid_loss
+        y: val_loss
       fig_option:
         xlabel: communication round
         ylabel: valid loss

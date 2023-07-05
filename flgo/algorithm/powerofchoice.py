@@ -11,7 +11,6 @@ class Server(BasicServer):
     def initialize(self, *args, **kwargs):
         self.init_algo_para({'d': self.num_clients})
 
-    @ss.with_availability
     def sample(self):
         # create candidate set A
         num_candidate = min(self.d, len(self.available_clients))

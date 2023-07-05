@@ -1,18 +1,22 @@
-import torch_geometric
-import flgo.benchmark
-from flgo.benchmark.toolkits.graph.graph_classification import BuiltinClassPipe, GeneralCalculator, BuiltinClassGenerator
 import os
+from flgo.benchmark.toolkits.graph.graph_classification import GeneralCalculator, FromDatasetPipe, FromDatasetGenerator
+from .config import train_data
+try:
+    from .config import test_data
+except:
+    test_data = None
+try:
+    from .config import val_data
+except:
+    val_data = None
 
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'MUTAG')
-builtin_class = torch_geometric.datasets.TUDataset
+class TaskGenerator(FromDatasetGenerator):
+    def __init__(self):
+        super(TaskGenerator, self).__init__(benchmark=os.path.split(os.path.dirname(__file__))[-1],
+                                            train_data=train_data, val_data=val_data, test_data=test_data)
+
+class TaskPipe(FromDatasetPipe):
+    def __init__(self, task_path):
+        super(TaskPipe, self).__init__(task_path, train_data=train_data, val_data=val_data, test_data=test_data)
+
 TaskCalculator = GeneralCalculator
-
-class TaskGenerator(BuiltinClassGenerator):
-    def __init__(self, rawdata_path=path):
-        super(TaskGenerator, self).__init__(benchmark=os.path.split(os.path.dirname(__file__))[-1],rawdata_path=rawdata_path,
-                                            builtin_class=builtin_class)
-        self.additional_option = {'name': 'MUTAG'}
-
-class TaskPipe(BuiltinClassPipe):
-    def __init__(self, task_name):
-        super(TaskPipe, self).__init__(task_name, buildin_class=builtin_class, transform=None)

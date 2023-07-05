@@ -87,16 +87,16 @@ class TaskPipe(BasicTaskPipe):
         test_data.ids = list(range(len(test_data)))
         train_sidxs = list(range(len(train_data)))
         random.shuffle(train_sidxs)
-        valid_sample_idxs = train_sidxs[:int(len(train_data)* running_time_option['train_holdout'])]
+        val_sample_idxs = train_sidxs[:int(len(train_data)* running_time_option['train_holdout'])]
         train_sample_idxs = train_sidxs[int(len(train_data)* running_time_option['train_holdout']):]
         task_data = {}
         for pid, party_name in enumerate(self.feddata['party_names']):
             pdata = self.feddata[party_name]['data']
             with_label, pt_feature, train_idxs, test_idxs = pdata['with_label'], pdata['pt_feature'], pdata['train'], pdata['test']
             local_train_data = self.TaskDataset(train_data, pt_feature, with_label, train_sample_idxs)
-            local_valid_data = self.TaskDataset(train_data, pt_feature, with_label, valid_sample_idxs)
+            local_val_data = self.TaskDataset(train_data, pt_feature, with_label, val_sample_idxs)
             local_test_data = self.TaskDataset(test_data, pt_feature, with_label, test_idxs)
-            task_data[party_name] = {'train':local_train_data, 'valid':local_valid_data, 'test':local_test_data}
+            task_data[party_name] = {'train':local_train_data, 'val':local_val_data, 'test':local_test_data}
         return task_data
 
 class TaskCalculator(BasicTaskCalculator):

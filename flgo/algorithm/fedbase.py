@@ -10,7 +10,6 @@ import numpy as np
 from flgo.utils import fmodule
 import flgo.simulator.base as ss
 
-
 # The BasicParty
 class BasicParty:
     def __init__(self, *args, **kwargs):
@@ -80,7 +79,7 @@ class BasicParty:
                 else:
                     self.num_steps = self.num_epochs * math.ceil(self.datavol / self.batch_size)
 
-    def get_data(self, flag:str='valid')->Any:
+    def get_data(self, flag:str='val')->Any:
         r"""
         Get self's attibute '{flag}_data' if this attribute exists.
 
@@ -197,7 +196,7 @@ class BasicServer(BasicParty):
     def __init__(self, option={}):
         super().__init__()
         self.test_data = None
-        self.valid_data = None
+        self.val_data = None
         self.train_data = None
         self.model = None
         self.clients = []
@@ -233,6 +232,7 @@ class BasicServer(BasicParty):
         """
         self.gv.logger.time_start('Total Time Cost')
         if self.eval_interval>0:
+            # evaluating initial model performance
             self.gv.logger.info("--------------Initial Evaluation--------------")
             self.gv.logger.time_start('Eval Time Cost')
             self.gv.logger.log_once()
@@ -276,7 +276,6 @@ class BasicServer(BasicParty):
         self.model = self.aggregate(models)
         return len(models) > 0
 
-    @ss.with_dropout
     @ss.with_clock
     def communicate(self, selected_clients, mtype=0, asynchronous=False):
         """
@@ -332,7 +331,6 @@ class BasicServer(BasicParty):
         self.received_clients = selected_clients
         return self.unpack(packages_received_from_clients)
 
-    @ss.with_latency
     def communicate_with(self, target_id, package={}):
         r"""Communicate with the object under system simulator that simulates the
         network latency. Send the package to target object according to its id,
@@ -400,7 +398,6 @@ class BasicServer(BasicParty):
             for c in self.clients:
                 c.set_learning_rate(self.lr)
 
-    @ss.with_availability
     def sample(self):
         r"""
         Sample the clients. There are three types of sampling manners:
@@ -484,7 +481,7 @@ class BasicServer(BasicParty):
             p = [pk / sump for pk in p]
             return fmodule._model_sum([model_k * pk for model_k, pk in zip(models, p)])
 
-    def global_test(self, model=None, flag:str='valid'):
+    def global_test(self, model=None, flag:str='val'):
         r"""
         Collect local_movielens_recommendation testing result of all the clients.
 
@@ -612,7 +609,7 @@ class BasicClient(BasicParty):
         # create local_movielens_recommendation dataset
         self.data_loader = None
         self.test_data = None
-        self.valid_data = None
+        self.val_data = None
         self.train_data = None
         self.model = None
         # local_movielens_recommendation calculator
@@ -641,7 +638,6 @@ class BasicClient(BasicParty):
         self.option = option
         self.actions = {0: self.reply}
 
-    @ss.with_completeness
     @fmodule.with_multi_gpus
     def train(self, model):
         r"""
@@ -666,7 +662,7 @@ class BasicClient(BasicParty):
         return
 
     @fmodule.with_multi_gpus
-    def test(self, model, flag='valid'):
+    def test(self, model, flag='val'):
         r"""
         Evaluate the model on the dataset owned by the client
 
@@ -680,7 +676,6 @@ class BasicClient(BasicParty):
         dataset = getattr(self, flag + '_data') if hasattr(self, flag + '_data') else None
         if dataset is None: return {}
         return self.calculator.test(model, dataset, min(self.test_batch_size, len(dataset)), self.option['num_workers'])
-
 
     def unpack(self, received_pkg):
         r"""
@@ -768,7 +763,7 @@ class BasicClient(BasicParty):
         """
         return self.test(model, 'train')['loss']
 
-    def valid_loss(self, model):
+    def val_loss(self, model):
         r"""
         Get the loss value of the model on local_movielens_recommendation validating data
 

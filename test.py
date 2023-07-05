@@ -9,8 +9,16 @@ gen_config = {
 }
 analysis_plan = {
     'Selector':{'task':'./my_task', 'header':['fedavg',], },
-    'Painter':{'Curve':[{'args':{'x':'communication_round', 'y':'valid_loss'}}]},
-    'Table':{'min_value':[{'x':'valid_loss'}]},
+    'Painter':{
+        'Curve':[
+            {
+                'args':{'x':'communication_round', 'y':'val_loss'},
+                'obj_option':{'color':'r'},
+                'fig_option':{'xlabel': 'communication round', 'ylabel':'val_loss', 'title':'fedavg on {}'.format(task)}
+            }
+        ]
+    },
+    'Table':{'min_value':[{'x':'val_loss'}]},
 }
 if __name__ == '__main__':
     # generate federated task if task doesn't exist

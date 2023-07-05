@@ -51,9 +51,9 @@ class Server(BasicServer):
         models = self.communicate(self.selected_clients)['model']
         self.model = self.aggregate(models)
         # update accuracy of each tier
-        valid_accs = np.array(self.global_test(flag='valid')['accuracy'])
+        val_accs = np.array(self.global_test(flag='val')['accuracy'])
         for t in self.tiers:
-            self.tiers[t]['accuracy'] = (valid_accs[self.tiers[t]['clients']]).mean()
+            self.tiers[t]['accuracy'] = (val_accs[self.tiers[t]['clients']]).mean()
         return
 
     def sample(self):

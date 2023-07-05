@@ -1,6 +1,7 @@
 import torch
 from torch_geometric.data import Data, DataLoader
 from flgo.benchmark.toolkits.graph.node_classification import BuiltinClassGenerator as NodeClassGenerator
+import flgo.benchmark.base
 import os
 try:
     import ujson as json
@@ -8,6 +9,52 @@ except:
     import json
 from flgo.benchmark.base import BasicTaskPipe, BasicTaskCalculator
 import random
+
+FromDatasetGenerator = flgo.benchmark.base.FromDatasetGenerator
+
+class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
+    class TaskDataset(torch.utils.data.Subset):
+        def __init__(self, dataset, indices, pin_memory=False):
+            super().__init__(dataset, indices)
+            self.dataset = dataset
+            self.indices = indices
+            self.pin_memory = pin_memory
+
+        def __getitem__(self, idx):
+            return self.dataset[self.indices[idx]]
+
+    def save_task(self, generator):
+        client_names = self.gen_client_names(len(generator.local_datas))
+        feddata = {'client_names': client_names,
+                   'server_data': list(range(len(generator.test_data))),
+                   }
+        for cid in range(len(client_names)):
+            feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
+        with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
+            json.dump(feddata, outf)
+        return
+
+    def load_data(self, running_time_option) -> dict:
+        train_data = self.train_data
+        test_data = self.test_data
+        val_data = self.val_data
+        # rearrange data for server
+        if val_data is None:
+            server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
+        else:
+            server_data_test = test_data
+            server_data_val = val_data
+        task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
+        # rearrange data for clients
+        for cid, cname in enumerate(self.feddata['client_names']):
+            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], running_time_option['pin_memory'])
+            cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
+            if running_time_option['train_holdout']>0 and running_time_option['local_test']:
+                cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
+            else:
+                cdata_test = None
+            task_data[cname] = {'train':cdata_train, 'val':cdata_val, 'test': cdata_test}
+        return task_data
 
 class BuiltinClassGenerator(NodeClassGenerator):
     def load_data(self):
@@ -63,24 +110,24 @@ class BuiltinClassPipe(BasicTaskPipe):
         # load the datasets
         dataset = self.builtin_class(**default_init_para)
         k = int(len(self.feddata['test_idxs'])*running_time_option['test_holdout'])
-        valid_idxs = self.feddata['test_idxs'][:k]
+        val_idxs = self.feddata['test_idxs'][:k]
         test_idxs = self.feddata['test_idxs'][k:]
         server_data_test = dataset[test_idxs]
-        server_data_valid = dataset[valid_idxs]
-        task_data = {'server': {'test': server_data_test if len(test_idxs)>0 else None, 'valid': server_data_valid if len(valid_idxs)>0 else None}}
+        server_data_val = dataset[val_idxs]
+        task_data = {'server': {'test': server_data_test if len(test_idxs)>0 else None, 'val': server_data_val if len(val_idxs)>0 else None}}
         # rearrange data for clients
         for cid, cname in enumerate(self.feddata['client_names']):
             cdata_all = self.feddata[cname]['data']
             ck = int(running_time_option['train_holdout']*len(cdata_all))
-            cdata_valid = cdata_all[:ck]
+            cdata_val = cdata_all[:ck]
             cdata_train = cdata_all[ck:]
             if running_time_option['train_holdout'] > 0 and running_time_option['local_test']:
                 ck2 = int(0.5*ck)
-                cdata_test = cdata_valid[ck2:]
-                cdata_valid = cdata_valid[:ck2]
+                cdata_test = cdata_val[ck2:]
+                cdata_val = cdata_val[:ck2]
             else:
                 cdata_test = []
-            task_data[cname] = {'train': dataset[cdata_train] if len(cdata_train)>0 else None, 'valid': dataset[cdata_valid] if len(cdata_valid)>0 else None, 'test': dataset[cdata_test] if len(cdata_test)>0 else None}
+            task_data[cname] = {'train': dataset[cdata_train] if len(cdata_train)>0 else None, 'val': dataset[cdata_val] if len(cdata_val)>0 else None, 'test': dataset[cdata_test] if len(cdata_test)>0 else None}
         return task_data
 
 class GeneralCalculator(BasicTaskCalculator):

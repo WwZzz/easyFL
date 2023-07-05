@@ -50,7 +50,7 @@ class PassiveParty(BasicParty):
             passive_package (dict): the package that contains the activation to be sent to the active party
         """
         batch_ids = package['batch']
-        tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
+        tmp = {'train': self.train_data, 'val': self.val_data, 'test':self.test_data}
         dataset = tmp[package['data_type']]
         # select samples in batch
         self.activation = self.local_module(dataset.get_batch_by_id(batch_ids)[0].to(self.device))
@@ -92,7 +92,7 @@ class PassiveParty(BasicParty):
             passive_package (dict): the package that contains the activation to be sent to the active party
         """
         batch_ids = package['batch']
-        tmp = {'train': self.train_data, 'valid': self.valid_data, 'test':self.test_data}
+        tmp = {'train': self.train_data, 'val': self.val_data, 'test':self.test_data}
         dataset = tmp[package['data_type']]
         # select samples in batch
         self.activation = self.local_module(dataset.get_batch_by_id(batch_ids)[0].to(self.device))
@@ -322,7 +322,7 @@ class ActiveParty(PassiveParty):
             result (dict): a dict that contains the testing result
         """
         self.set_model_mode('eval')
-        flag_dict = {'test':self.test_data, 'train':self.train_data, 'valid':self.valid_data}
+        flag_dict = {'test':self.test_data, 'train':self.train_data, 'val':self.val_data}
         dataset = flag_dict[flag]
         self._data_type = flag
         dataloader = self.calculator.get_dataloader(dataset, batch_size=128)

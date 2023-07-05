@@ -34,17 +34,18 @@ import flgo.utils.fmodule
 import flgo.experiment.logger.simple_logger
 import flgo.experiment.logger.tune_logger
 import flgo.experiment.logger.vertical_logger
+import flgo.experiment.logger.dec_logger
+import flgo.experiment.logger.hier_logger
 import flgo.experiment.logger
 import flgo.experiment.device_scheduler
 from flgo.simulator.base import BasicSimulator
 import flgo.benchmark.toolkits.partition
 import flgo.algorithm
 
-
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available'] # sampling options for the default sampling method in flgo.algorihtm.fedbase
 agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for the default aggregating method in flgo.algorihtm.fedbase
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
-default_option_dict = {'pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': -1, 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False,'seed': 0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
+default_option_dict = {'pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': -1, 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False,'seed': 0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
 class GlobalVariable:
     """This class is to create a shared space for sharing variables across
@@ -119,6 +120,7 @@ def read_option_from_command():
     parser.add_argument('--clip_grad', help='clipping gradients if the max norm of gradients ||g|| > clip_norm > 0', type=float, default=0.0)
     parser.add_argument('--momentum', help='momentum of local_movielens_recommendation update', type=float, default=0.0)
     parser.add_argument('--weight_decay', help='weight decay for the training process', type=float, default=0.0)
+    parser.add_argument('--num_edge_rounds', help='number of edge rounds in hierFL', type=int, default=5)
     # algorithm-dependent hyper-parameters
     parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
 
@@ -177,16 +179,109 @@ def load_configuration(config={}):
         raise TypeError('The input config should be either a dict or a filename.')
 
 def gen_benchmark_from_file(benchmark:str, config_file:str, target_path='.',data_type:str='cv', task_type:str='classification'):
+    r"""
+        Create customized benchmarks from configurations. The configuration is a .py file that describes the datasets and the model,
+        where there must exist a function named `get_model` and a variable `train_data`. `val_data` and test_data are two optional
+        variables in the configuration.
+    Args:
+        benchmark (str): the name of the benchmark
+        config_file (str): the path of the configuration file
+        target_path: (str): the path to store the benchmark
+        data_type (str): the type of dataset that should be in the list ['cv', 'nlp', 'graph', 'rec', 'series', 'tabular']
+        task_type (str): the type of the task (e.g. classification, regression...)
+    Returns:
+        bmk_module (str): the module name of the generated benchmark
+    """
     if not os.path.exists(config_file): raise FileNotFoundError('File {} not found.'.format(config_file))
     target_path = os.path.abspath(target_path)
     bmk_path = os.path.join(target_path, benchmark)
-    if os.path.exists(bmk_path): raise FileExistsError('Task {} already exists'.format(bmk_path))
-    if data_type.lower() =='cv':
-        if task_type == 'classification':
-            temp_path = os.path.join(flgo.benchmark.path, 'toolkits', 'cv', 'classification', 'temp')
-            shutil.copytree(temp_path, bmk_path)
+    if os.path.exists(bmk_path): raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
+    temp_path = os.path.join(flgo.benchmark.path, 'toolkits', data_type, task_type, 'temp')
+    if not os.path.exists(temp_path):
+        raise NotImplementedError('There is no support to automatically generation of {}.{}. More other types are comming soon...'.format(data_type, task_type))
     else:
-        raise NotImplementedError('FLGo currently only support automatically generate cv.classification task. More other types are comming soon...')
+        shutil.copytree(temp_path, bmk_path)
+    shutil.copyfile(config_file, os.path.join(bmk_path, 'config.py'))
+    bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
+    return bmk_module
+
+def gen_benchmark(benchmark:str, config_file:str, target_path='.',data_type:str='cv', task_type:str='classification'):
+    r"""
+        Create customized benchmarks from configurations. The configuration is a .py file that describes the datasets and the model,
+        where there must exist a function named `get_model` and a variable `train_data`. `val_data` and test_data are two optional
+        variables in the configuration.
+    Args:
+        benchmark (str): the name of the benchmark
+        config_file (str): the path of the configuration file
+        target_path: (str): the path to store the benchmark
+        data_type (str): the type of dataset that should be in the list ['cv', 'nlp', 'graph', 'rec', 'series', 'tabular']
+        task_type (str): the type of the task (e.g. classification, regression...)
+    Returns:
+        bmk_module (str): the module name of the generated benchmark
+    """
+    if not os.path.exists(config_file): raise FileNotFoundError('File {} not found.'.format(config_file))
+    target_path = os.path.abspath(target_path)
+    bmk_path = os.path.join(target_path, benchmark)
+    if os.path.exists(bmk_path): raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
+    temp_path = os.path.join(flgo.benchmark.path, 'toolkits', data_type, task_type, 'temp')
+    if not os.path.exists(temp_path):
+        raise NotImplementedError('There is no support to automatically generation of {}.{}. More other types are comming soon...'.format(data_type, task_type))
+    else:
+        shutil.copytree(temp_path, bmk_path)
+    shutil.copyfile(config_file, os.path.join(bmk_path, 'config.py'))
+    bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
+    return bmk_module
+
+def gen_decentralized_benchmark(benchmark:str, config_file:str, target_path = '.', data_type:str='cv', task_type:str='classification'):
+    r"""
+        Create customized benchmarks from configurations. The configuration is a .py file that describes the datasets and the model,
+        where there must exist a function named `get_model` and a variable `train_data`. `val_data` and test_data are two optional
+        variables in the configuration.
+    Args:
+        benchmark (str): the name of the benchmark
+        config_file (str): the path of the configuration file
+        target_path: (str): the path to store the benchmark
+        data_type (str): the type of dataset that should be in the list ['cv', 'nlp', 'graph', 'rec', 'series', 'tabular']
+        task_type (str): the type of the task (e.g. classification, regression...)
+    Returns:
+        bmk_module (str): the module name of the generated benchmark
+    """
+    if not os.path.exists(config_file): raise FileNotFoundError('File {} not found.'.format(config_file))
+    target_path = os.path.abspath(target_path)
+    bmk_path = os.path.join(target_path, benchmark)
+    if os.path.exists(bmk_path): raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
+    temp_path = os.path.join(flgo.benchmark.path, 'toolkits', data_type, task_type, 'dec_temp')
+    if not os.path.exists(temp_path):
+        raise NotImplementedError('There is no support to automatically generation of {}.{}. More other types are comming soon...'.format(data_type, task_type))
+    else:
+        shutil.copytree(temp_path, bmk_path)
+    shutil.copyfile(config_file, os.path.join(bmk_path, 'config.py'))
+    bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
+    return bmk_module
+
+def gen_hierarchical_benchmark(benchmark:str, config_file:str, target_path = '.', data_type:str='cv', task_type:str='classification'):
+    r"""
+        Create customized benchmarks from configurations. The configuration is a .py file that describes the datasets and the model,
+        where there must exist a function named `get_model` and a variable `train_data`. `val_data` and test_data are two optional
+        variables in the configuration.
+    Args:
+        benchmark (str): the name of the benchmark
+        config_file (str): the path of the configuration file
+        target_path: (str): the path to store the benchmark
+        data_type (str): the type of dataset that should be in the list ['cv', 'nlp', 'graph', 'rec', 'series', 'tabular']
+        task_type (str): the type of the task (e.g. classification, regression...)
+    Returns:
+        bmk_module (str): the module name of the generated benchmark
+    """
+    if not os.path.exists(config_file): raise FileNotFoundError('File {} not found.'.format(config_file))
+    target_path = os.path.abspath(target_path)
+    bmk_path = os.path.join(target_path, benchmark)
+    if os.path.exists(bmk_path): raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
+    temp_path = os.path.join(flgo.benchmark.path, 'toolkits', data_type, task_type, 'hier_temp')
+    if not os.path.exists(temp_path):
+        raise NotImplementedError('There is no support to automatically generation of {}.{}. More other types are comming soon...'.format(data_type, task_type))
+    else:
+        shutil.copytree(temp_path, bmk_path)
     shutil.copyfile(config_file, os.path.join(bmk_path, 'config.py'))
     bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
     return bmk_module
@@ -356,11 +451,12 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0):
         task_pipe.remove_task()
         print("Failed to saving splited dataset.")
     # save visualization
-    try:
-        visualize_func = getattr(bmk_module,'visualize')
-        visualize_func(task_generator, partitioner, task_path)
-    except:
-        pass
+    if hasattr(bmk_module, 'visualize'):
+        try:
+            visualize_func = getattr(bmk_module,'visualize')
+            visualize_func(task_generator, partitioner, task_path)
+        except Exception as e:
+            print('Warning: Failed to visualize the partitioned result where there exists error {}'.format(e))
 
 def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = None, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal'):
     r"""
@@ -435,12 +531,19 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
             Logger = flgo.experiment.logger.simple_logger.SimpleLogger
         elif scene=='vertical':
             Logger = flgo.experiment.logger.vertical_logger.VerticalLogger
+        elif scene=='decentralized':
+            Logger = flgo.experiment.logger.dec_logger.DecLogger
+        elif scene=='hierarchical':
+            Logger = flgo.experiment.logger.hier_logger.HierLogger
     gv.logger = Logger(task=task, option=option, name=str(id(gv))+str(Logger), level=option['log_level'])
-
     # init device
     gv.dev_list = [torch.device('cpu')] if (option['gpu'] is None or len(option['gpu'])==0) else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
     gv.logger.info('Initializing devices: '+','.join([str(dev) for dev in gv.dev_list])+' will be used for this running.')
     # init task
+    gv.logger.info('BENCHMARK:\t{}'.format(benchmark))
+    gv.logger.info('TASK:\t\t\t{}'.format(task))
+    gv.logger.info('MODEL:\t\t{}'.format(model.__name__))
+    gv.logger.info('ALGORITHM:\t{}'.format(option['algorithm']))
     core_module = '.'.join([benchmark, 'core'])
     gv.TaskPipe = getattr(importlib.import_module(core_module), 'TaskPipe')
     task_pipe = gv.TaskPipe(task)
@@ -457,7 +560,28 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
             tmp.append(c)
         except:
             continue
+    # init simulator
+    if scene=='horizontal':
+        for c in obj_class:
+            if 'Client' in c:
+                class_client = getattr(algorithm, c)
+                if option['completeness']!='IDL':
+                    class_client.train = flgo.simulator.base.with_completeness(class_client.train)
+            elif 'Server' in c:
+                class_server = getattr(algorithm, c)
+                if option['availability']!='IDL':
+                    class_server.sample = flgo.simulator.base.with_availability(class_server.sample)
+                if option['responsiveness']!='IDL':
+                    class_server.communicate_with = flgo.simulator.base.with_latency(class_server.communicate_with)
+                if option['connectivity']!='IDL':
+                    class_server.communicate = flgo.simulator.base.with_dropout(class_server.communicate)
     objects = task_pipe.generate_objects(option, algorithm, scene=scene)
+    obj_classes = collections.defaultdict(int)
+    for obj in objects: obj_classes[obj.__class__]+=1
+    creating_str = []
+    for k,v in obj_classes.items(): creating_str.append("{} {}".format(v, k))
+    creating_str = ', '.join(creating_str)
+    gv.logger.info('SCENE:\t\t{} FL with '.format(scene)+creating_str)
     task_pipe.distribute(task_data, objects)
 
     # init model
@@ -477,12 +601,12 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     for ob in objects: ob.initialize()
 
     # init virtual system environment
-    gv.logger.info('Use `{}` as the system simulator'.format(str(Simulator)))
+    gv.logger.info('SIMULATOR:\t{}'.format(str(Simulator)))
     # flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
-    gv.clock = flgo.simulator.base.ElemClock()
-    gv.simulator = Simulator(objects, option)
-    gv.clock.register_simulator(simulator=gv.simulator)
 
+    gv.clock = flgo.simulator.base.ElemClock()
+    gv.simulator = Simulator(objects, option) if scene == 'horizontal' else None
+    gv.clock.register_simulator(simulator=gv.simulator)
     gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects)
     gv.logger.initialize()
     gv.logger.info('Ready to start.')
@@ -496,7 +620,8 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
             continue
     for ob in objects:
         ob.gv = gv
-    gv.simulator.gv = gv
+    if gv.simulator is not None:
+        gv.simulator.gv = gv
     gv.clock.gv = gv
     gv.logger.gv = gv
     return objects[0]
@@ -566,7 +691,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     if scheduler is None:
         scheduler = flgo.experiment.device_scheduler.BasicScheduler(device_ids)
     outputs = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
-    optimal_idx = int(np.argmin([min(output['valid_loss']) for output in outputs]))
+    optimal_idx = int(np.argmin([min(output['val_loss']) for output in outputs]))
     optimal_para = options[optimal_idx]
     print("The optimal combination of hyper-parameters is:")
     print('-----------------------------------------------')
@@ -574,7 +699,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
         if k=='gpu': continue
         print("{}\t|{}".format(k,v))
     print('-----------------------------------------------')
-    op_round = np.argmin(outputs[optimal_idx]['valid_loss'])
+    op_round = np.argmin(outputs[optimal_idx]['val_loss'])
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
     print('The minimal validation loss occurs at the round {}'.format(op_round))
 
@@ -811,5 +936,3 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
             rec = json.loads(s_inf)
         res.append(rec)
     return res
-
-

@@ -53,8 +53,8 @@ import flgo.experiment.analyzer
 # create the analysis plan
 analysis_plan = {
     'Selector':{'task': task_path, 'header':['fedavg',], },
-    'Painter':{'Curve':[{'args':{'x':'communication_round', 'y':'valid_loss'}}]},
-    'Table':{'min_value':[{'x':'valid_loss'}]},
+    'Painter':{'Curve':[{'args':{'x':'communication_round', 'y':'val_loss'}}]},
+    'Table':{'min_value':[{'x':'val_loss'}]},
 }
 
 flgo.experiment.analyzer.show(analysis_plan)

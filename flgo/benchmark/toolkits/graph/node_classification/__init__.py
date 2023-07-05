@@ -3,8 +3,115 @@ import torch_geometric.transforms as T
 from torch_geometric.utils import mask_to_index, index_to_mask, from_networkx
 import torch_geometric.utils
 import collections
+import flgo
 from flgo.benchmark.base import *
 import networkx as nx
+import random
+
+class FromDatasetGenerator(flgo.benchmark.base.FromDatasetGenerator):
+    def prepare_data_for_partition(self):
+        return torch_geometric.utils.to_networkx(self.train_data, to_undirected=self.train_data.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
+
+class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
+    class TaskDataset(torch.utils.data.Dataset):
+        def __init__(self, data, split='test'):
+            if data is None: return None
+            self.split = split
+            self.data = data
+            if self.split== 'val':
+                self.mask = self.data.val_mask
+            elif self.split== 'train':
+                self.mask = self.data.train_mask
+            else:
+                self.mask = self.data.test_mask
+            if len(self.mask)==0: return None
+            self.test_mask = self.data.test_mask
+
+        def change_mask_for_test(self):
+            # train, test, val
+            self.data.test_mask = self.mask
+
+        def restore_mask(self):
+            self.data.test_mask = self.test_mask
+
+        def __getitem__(self, item):
+            return self.data
+
+        def __len__(self):
+            return len(self.mask)
+    def save_task(self, generator):
+        client_names = self.gen_client_names(len(generator.local_datas))
+        feddata = {'client_names': client_names,}
+        for cid in range(len(client_names)):
+            feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
+        with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
+            json.dump(feddata, outf)
+        return
+
+    def load_data(self, running_time_option) -> dict:
+        transductive = self.train_data.transductive if hasattr(self.train_data, 'transductive') else True
+        if self.test_data is not None:
+            if self.val_data is None:
+                if running_time_option['test_holdout']>0:
+                    all_nodes = list(range(self.test_data.num_nodes))
+                    random.shuffle(all_nodes)
+                    k = int(self.test_data.num_nodes * running_time_option['test_holdout'])
+                    val_nodes = all_nodes[:k]
+                    test_nodes = all_nodes[k:]
+                    if transductive:
+                        test_mask = torch.BoolTensor([0 for _ in range(len(all_nodes))])
+                        val_mask = torch.BoolTensor([0 for _ in range(len(all_nodes))])
+                        val_mask[val_nodes] = True
+                        test_mask[test_nodes] = True
+                        self.test_data.val_mask = val_mask
+                        self.test_data.test_mask = test_mask
+                        server_test_data = self.TaskDataset(self.test_data, 'test')
+                        server_val_data = self.TaskDataset(self.test_data, 'val')
+                    else:
+                        val_mask = torch.BoolTensor([0 for _ in range(len(all_nodes))])
+                        val_mask[val_nodes] = True
+                        val_data = self.test_data.subgraph(val_mask)
+                        val_data.val_mask = torch.BoolTensor([1 for _ in range(val_data.num_nodes)])
+                        test_mask = torch.BoolTensor([0 for _ in range(len(all_nodes))])
+                        test_mask[test_nodes] = True
+                        self.test_data.tesk_mask = test_mask
+                        server_val_data = self.TaskDataset(val_data, 'val')
+                        server_test_data = self.TaskDataset(self.test_data, 'test')
+            else:
+                self.test_data.test_mask = torch.BoolTensor([1 for _ in range(self.test_data.num_nodes)])
+                self.val_data.val_mask = torch.BoolTensor([1 for _ in range(self.val_data.num_nodes)])
+                server_test_data = self.TaskDataset(self.test_data, 'test')
+                server_val_data = self.TaskDataset(self.val_data, 'val')
+        elif self.val_data is not None:
+            self.val_data.val_mask = torch.BoolTensor([1 for _ in range(self.val_data.num_nodes)])
+            server_test_data = None
+            server_val_data = self.TaskDataset(self.val_data, 'val')
+        else:
+            server_test_data = server_val_data = None
+        task_data = {'server': {'test':server_test_data, 'val':server_val_data}}
+        # rearrange data for clients
+        num_val = running_time_option['train_holdout']
+        if running_time_option['local_test']:
+            num_val = 0.5 * num_val
+            num_test = num_val
+        else:
+            num_test = 0.0
+        for cid, cname in enumerate(self.feddata['client_names']):
+            cnodes = self.feddata[cname]['data']
+            cmask = torch.BoolTensor([0 for _ in range(self.train_data.num_nodes)])
+            cmask[cnodes] = True
+            cdata = self.train_data.subgraph(cmask)
+            cdata = T.RandomNodeSplit(num_val=num_val, num_test=num_test)(cdata)
+            if transductive:
+                task_data[cname] = {'train': self.TaskDataset(cdata, 'train'), 'val': self.TaskDataset(cdata, 'val') if torch.any(cdata.val_mask) else None, 'test':self.TaskDataset(cdata, 'test') if torch.any(cdata.test_mask) else None}
+            else:
+                c_local_nodes = list(range(cdata.num_nodes))
+                random.shuffle(c_local_nodes)
+                ctrain_data = cdata.subgraph(cdata.train_mask)
+                cval_data = cdata.subgraph(cdata.train_mask+cdata.val_mask)
+                ctest_data = cdata
+                task_data[cname] = {'train': self.TaskDataset(ctrain_data, 'train'), 'val': self.TaskDataset(cval_data, 'val') if num_val>0 else None, 'test': self.TaskDataset(ctest_data,'test') if num_test>0 else None}
+        return task_data
 
 class BuiltinClassGenerator(BasicTaskGenerator):
     def __init__(self, benchmark, rawdata_path, builtin_class, transform=None, pre_transform=None, test_rate=0.2, transductive=True):
@@ -40,13 +147,13 @@ class BuiltinClassGenerator(BasicTaskGenerator):
 
 class BuiltinClassPipe(BasicTaskPipe):
     class TaskDataset(torch.utils.data.Dataset):
-        def __init__(self, data, flag='test'):
+        def __init__(self, data, split='test'):
             if data is None: return None
-            self.flag = flag
+            self.split = split
             self.data = data
-            if flag=='valid':
+            if self.split== 'val':
                 self.mask = self.data.val_mask
-            elif flag=='train':
+            elif self.split== 'train':
                 self.mask = self.data.train_mask
             else:
                 self.mask = self.data.test_mask
@@ -103,53 +210,53 @@ class BuiltinClassPipe(BasicTaskPipe):
             random.shuffle(test_nodes)
             k = int(len(test_nodes)*running_time_option['test_holdout'])
             test_nodes = test_nodes[k:]
-            valid_nodes = test_nodes[:k]
+            val_nodes = test_nodes[:k]
             if self.feddata['transductive']:
                 test_data = from_networkx(nx.subgraph(G, all_nodes))
                 test_nodes = [all_nodes.index(i) for i in test_nodes]
-                valid_nodes = [all_nodes.index(i) for i in valid_nodes]
+                val_nodes = [all_nodes.index(i) for i in val_nodes]
                 test_mask = torch.BoolTensor([0 for _ in range(len(all_nodes))])
                 val_mask = torch.BoolTensor([0 for _ in range(len(all_nodes))])
                 test_mask[test_nodes] = True
-                val_mask[valid_nodes] = True
+                val_mask[val_nodes] = True
                 test_data.test_mask = test_mask
                 test_data.val_mask = val_mask
-                valid_data = test_data
+                val_data = test_data
             else:
                 test_data = from_networkx(nx.subgraph(G, test_nodes))
-                valid_data = from_networkx(nx.subgraph(G, valid_nodes))
+                val_data = from_networkx(nx.subgraph(G, val_nodes))
         else:
             test_data = None
-            valid_data = None
-        task_data = {'server': {'test':self.TaskDataset(test_data, 'test'), 'valid':self.TaskDataset(valid_data,'valid')}}
+            val_data = None
+        task_data = {'server': {'test':self.TaskDataset(test_data, 'test'), 'val':self.TaskDataset(val_data,'val')}}
         # rearrange data for clients
         for cid, cname in enumerate(self.feddata['client_names']):
             all_local_nodes = self.feddata[cname]['data']
             k2 = int(running_time_option['train_holdout']*len(all_local_nodes))
             k1 = int(0.5*running_time_option['train_holdout']*len(all_local_nodes)) if running_time_option['local_test'] else 0
             local_test_nodes = all_local_nodes[:k1]
-            local_valid_nodes = all_local_nodes[k1:k2]
+            local_val_nodes = all_local_nodes[k1:k2]
             local_train_nodes = all_local_nodes[k2:]
             if self.feddata['transductive']:
                 cdata = from_networkx(nx.subgraph(G, all_local_nodes))
                 local_test_nodes = [all_local_nodes.index(i) for i in local_test_nodes]
                 local_train_nodes = [all_local_nodes.index(i) for i in local_train_nodes]
-                local_valid_nodes = [all_local_nodes.index(i) for i in local_valid_nodes]
+                local_val_nodes = [all_local_nodes.index(i) for i in local_val_nodes]
                 train_mask = torch.BoolTensor([0 for _ in range(len(all_local_nodes))])
                 test_mask = torch.BoolTensor([0 for _ in range(len(all_local_nodes))])
                 val_mask = torch.BoolTensor([0 for _ in range(len(all_local_nodes))])
                 test_mask[local_test_nodes] = True
-                val_mask[local_valid_nodes] = True
+                val_mask[local_val_nodes] = True
                 train_mask[local_train_nodes] = True
                 cdata.test_mask = test_mask
                 cdata.train_mask = train_mask
                 cdata.val_mask = val_mask
-                task_data[cname] = {'train': self.TaskDataset(cdata, 'train'), 'valid': self.TaskDataset(cdata, 'valid'), 'test':self.TaskDataset(cdata, 'test')}
+                task_data[cname] = {'train': self.TaskDataset(cdata, 'train'), 'val': self.TaskDataset(cdata, 'val'), 'test':self.TaskDataset(cdata, 'test')}
             else:
                 ctest_data = from_networkx(nx.subgraph(G, local_test_nodes))
-                cvalid_data = from_networkx(nx.subgraph(G, local_valid_nodes))
+                cval_data = from_networkx(nx.subgraph(G, local_val_nodes))
                 ctrain_data = from_networkx(nx.subgraph(G, local_train_nodes))
-                task_data[cname] = {'train': self.TaskDataset(ctrain_data, 'train'), 'valid': self.TaskDataset(cvalid_data, 'valid') if len(local_valid_nodes)>0 else None, 'test': self.TaskDataset(ctest_data,'test') if len(local_test_nodes)>0 else None}
+                task_data[cname] = {'train': self.TaskDataset(ctrain_data, 'train'), 'val': self.TaskDataset(cval_data, 'val') if len(local_val_nodes)>0 else None, 'test': self.TaskDataset(ctest_data,'test') if len(local_test_nodes)>0 else None}
         return task_data
 
 """

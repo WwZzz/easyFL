@@ -48,7 +48,7 @@ class Server(BasicServer):
             res.append(max(p[i] + lmbd, 0))
         return res
 
-    def global_test(self, flag='valid'):
+    def global_test(self, flag='val'):
         """
         Validate accuracies and losses on clients' local_movielens_recommendation datasets
         Args:
@@ -65,7 +65,7 @@ class Server(BasicServer):
 
     def test(self, model=None, flag='test'):
         if model == None: model = self.result_model
-        data = self.test_data if flag == 'test' else self.valid_data
+        data = self.test_data if flag == 'test' else self.val_data
         if data is None:
             return {}
         else:

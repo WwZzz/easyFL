@@ -215,26 +215,26 @@ class BasicSimulator(AbstractSimulator):
     def __init__(self, objects, *args, **kwargs):
         if len(objects)>0:
             self.server = objects[0]
-            self.clients = objects[1:]
+            self.clients = {c.id:c for c in objects[1:]}
         else:
             self.server = None
             self.clients = []
-        self.all_clients = list(range(len(self.clients)))
+        self.all_clients = list(self.clients.keys())
         self.random_module = np.random.RandomState(0)
         # client states and the variables
-        self.client_states = ['idle' for _ in self.clients]
+        self.client_states = {cid:'idle' for cid in self.clients}
         self.roundwise_fixed_availability = False
         self.availability_latest_round = -1
-        self.variables = [{
+        self.variables = {c.id:{
             'prob_available': 1.,
             'prob_unavailable': 0.,
             'prob_drop': 0.,
             'working_amount': c.num_steps,
             'latency': 0,
-        } for c in self.clients]
+        } for c in self.clients.values()}
         for var in self._VAR_NAMES:
             self.set_variable(self.all_clients, var, [self.variables[cid][var] for cid in self.all_clients])
-        self.state_counter = [{'dropped_counter': 0, 'latency_counter': 0, } for _ in self.clients]
+        self.state_counter = {c:{'dropped_counter': 0, 'latency_counter': 0, } for c in self.clients}
 
     def get_client_with_state(self, state='idle'):
         r"""
@@ -246,7 +246,7 @@ class BasicSimulator(AbstractSimulator):
         Returns:
             a list of clients whose states are state
         """
-        return [cid for cid, cstate in enumerate(self.client_states) if cstate == state]
+        return [cid for cid, cstate in self.client_states.items() if cstate == state]
 
     def set_client_state(self, client_ids, state):
         r"""
@@ -289,6 +289,16 @@ class BasicSimulator(AbstractSimulator):
         for cid in client_ids:
             self.state_counter[cid]['dropped_counter'] = self.state_counter[cid]['latency_counter'] = 0
         return
+
+    def get_clients(self, client_ids:list=None):
+        """
+        Args:
+            client_ids (list): a list of client ids
+        Returns:
+            res (list): a list of client object
+        """
+        if client_ids is None: return [self.clients[cid] for cid in self.all_clients]
+        return [self.clients[cid] for cid in client_ids]
 
     @property
     def idle_clients(self):
@@ -422,7 +432,6 @@ def with_availability(sample):
         ...         ...
     ```
     """
-    @functools.wraps(sample)
     def sample_with_availability(self):
         available_clients = self.gv.simulator.idle_clients
         # ensure that there is at least one client to be available at the current moment
@@ -558,11 +567,15 @@ def with_clock(communicate):
             return res
         # Convert the unpacked packages to a list of packages of each client.
         pkgs = [{key: vi[id] for key, vi in res.items()} for id in range(len(list(res.values())[0]))] if len(selected_clients)>0 else []
+        if pkgs[0].get('__cid', None) is None:
+            for cid, pkg in zip(selected_clients, pkgs):
+                pkg['__cid'] = cid
         # Put the packages from selected clients into clock only if when there are effective selected clients
         if len(selected_clients)>0:
             # Set selected clients' states as `working`
             self.gv.simulator.set_client_state(selected_clients, 'working')
-            for pi in pkgs: self.gv.clock.put(pi, pi['__t'])
+            for pi in pkgs:
+                self.gv.clock.put(pi, pi.get('__t', 0))
         # Receiving packages in asynchronous\synchronous way
         # Wait for client packages. If communicating in asynchronous way, the waiting time is 0.
         if asynchronous:
@@ -573,7 +586,7 @@ def with_clock(communicate):
             # Wait all the selected clients for no more than `tolerance_for_latency` time units.
             # Check if anyone had dropped out or will be overdue
             max_latency = max(self.gv.simulator.get_variable(selected_clients, 'latency'))
-            any_drop, any_overdue = (len(self._dropped_selected_clients) > 0), (max_latency >  tolerance_for_latency)
+            any_drop, any_overdue = (hasattr(self, '_dropped_selected_clients') and len(self._dropped_selected_clients) > 0), (max_latency >  tolerance_for_latency)
             # Compute delta of time for the communication.
             delta_t = tolerance_for_latency if any_drop or any_overdue else max_latency
             # Receive packages within due

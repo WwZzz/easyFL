@@ -60,7 +60,7 @@ class ConvertCocoPolysToMask:
 
 
 def _coco_remove_images_without_annotations(dataset, cat_list=None):
-    def _has_valid_annotation(anno):
+    def _has_val_annotation(anno):
         # if it's empty, there is no annotation
         if len(anno) == 0:
             return False
@@ -78,7 +78,7 @@ def _coco_remove_images_without_annotations(dataset, cat_list=None):
         anno = dataset.coco.loadAnns(ann_ids)
         if cat_list:
             anno = [obj for obj in anno if obj["category_id"] in cat_list]
-        if _has_valid_annotation(anno):
+        if _has_val_annotation(anno):
             ids.append(ds_idx)
 
     dataset = torch.utils.data.Subset(dataset, ids)

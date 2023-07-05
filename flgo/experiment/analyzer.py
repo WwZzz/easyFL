@@ -25,7 +25,7 @@ Example 2: How to define a Painter?
     {...,
     'Painter':{
             'Curve':[
-                {'args':{'x':'communication_round', 'y':'valid_loss'}, },
+                {'args':{'x':'communication_round', 'y':'val_loss'}, },
                 {...}
             ]
         },
@@ -36,7 +36,7 @@ Example 3: How to define a Table?
     {...,
     'Table':{
             'min_value':[
-                {'x':'valid_loss'},
+                {'x':'val_loss'},
                 ...
                 ]
         }
@@ -60,7 +60,7 @@ import json
 from flgo.utils.fflow import load_configuration
 
 def option2filter(option: dict):
-    valid_keys = {
+    val_keys = {
         'learning_rate': 'LR',
         'batch_size': 'B',
         'num_rounds': 'R',
@@ -105,7 +105,7 @@ class Record:
         for round in range(1, num_rounds + 1):
             if eval_interval > 0 and (round == 0 or round % eval_interval == 0):
                 x.append(round)
-            if self.data['option']['early_stop'] > 0 and 'valid_loss' in self.data.keys() and len(x) >= len(self.data['valid_loss']):
+            if self.data['option']['early_stop'] > 0 and 'val_loss' in self.data.keys() and len(x) >= len(self.data['val_loss']):
                 break
         self.data['communication_round'] = x
 
@@ -375,7 +375,7 @@ class Painter:
         Example:
         ```python
             >>> p=Painter(records)
-            >>> p.create_figure(Curve, {'args':{'x':'communication_round', 'y':'valid_loss'}})
+            >>> p.create_figure(Curve, {'args':{'x':'communication_round', 'y':'val_loss'}})
         ```
         """
         object_class = eval(object_class) if type(object_class) is str else object_class
@@ -625,7 +625,7 @@ class Table:
         Example:
         ```python
             >>> tb = Table(records)
-            >>> tb.add_column(min_value, col_option={'x':'valid_loss'})
+            >>> tb.add_column(min_value, col_option={'x':'val_loss'})
             >>> tb.print()
         ```
         """
@@ -672,9 +672,9 @@ def show(config, save_figure=False, save_text=False, path='.', seed=0):
         >>> # only records of fedavg running on the task 'my_task' with learning rate lr<=0.01 will be selected
         >>> selector_config = {'task':'./my_task', 'header':['fedavg'], 'filter':['LR':'<=0.1']}
         >>> # draw the learning curve on the validation dataset
-        >>> painter_config = {'Curve':[{'args':{'x':'communication_round', 'y':'valid_loss'}}]}
+        >>> painter_config = {'Curve':[{'args':{'x':'communication_round', 'y':'val_loss'}}]}
         >>> # show the minimal value of validation loss
-        >>> table_config = {'min_value':[{'x':'valid_loss'}]}
+        >>> table_config = {'min_value':[{'x':'val_loss'}]}
         >>> # create analysis plan
         >>> analysis_plan = {'Selector':selector_config, 'Painter':painter_config, 'Table':table_config}
         >>> # call this function

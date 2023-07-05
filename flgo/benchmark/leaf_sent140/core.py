@@ -211,13 +211,13 @@ class TaskPipe(BasicTaskPipe):
         train_data = SENTIMENT140(root=self.feddata['rawdata_path'], train=True)
         test_data = SENTIMENT140(root=self.feddata['rawdata_path'], train=False)
         # rearrange data for server
-        server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
-        task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}
+        server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
+        task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
         # rearrange data for clients
         for cid, cname in enumerate(self.feddata['client_names']):
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'])
-            cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
-            task_data[cname] = {'train': cdata_train, 'valid': cdata_valid}
+            cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
+            task_data[cname] = {'train': cdata_train, 'val': cdata_val}
         return task_data
 
 class TaskCalculator(BasicTaskCalculator):

@@ -111,21 +111,21 @@ class BuiltinClassPipe(BasicTaskPipe):
         test_idxs = list(range(len(self.test_data)))
         k = int(len(self.test_data)*(1-running_time_option['test_holdout']))
         server_test_idxs = test_idxs[:k]
-        server_valid_idxs = test_idxs[k:]
+        server_val_idxs = test_idxs[k:]
         server_test_data = self.TaskDataset(self.test_data, server_test_idxs) if len(server_test_idxs)>0 else None
-        server_valid_data = self.TaskDataset(self.test_data, server_valid_idxs) if len(server_valid_idxs)>0 else None
-        task_data = {'server':{'test':server_test_data, 'valid':server_valid_data}}
+        server_val_data = self.TaskDataset(self.test_data, server_val_idxs) if len(server_val_idxs)>0 else None
+        task_data = {'server':{'test':server_test_data, 'val':server_val_data}}
         for cid, cname in enumerate(self.feddata['client_names']):
             cdata_idxs = self.feddata[cname]['data']
             k1 = int(len(cdata_idxs)*(1-running_time_option['train_holdout']))
             k2 = int((1-0.5*running_time_option['train_holdout'])*len(cdata_idxs)) if running_time_option['local_test'] else int(len(cdata_idxs))
             cdata_train_idxs = cdata_idxs[:k1]
-            cdata_valid_idxs = cdata_idxs[k1:k2]
+            cdata_val_idxs = cdata_idxs[k1:k2]
             cdata_test_idxs = cdata_idxs[k2:]
             cdata_train = self.TaskDataset(self.train_data, cdata_train_idxs) if len(cdata_train_idxs)>0 else None
-            cdata_valid = self.TaskDataset(self.train_data, cdata_valid_idxs) if len(cdata_valid_idxs)>0 else None
+            cdata_val = self.TaskDataset(self.train_data, cdata_val_idxs) if len(cdata_val_idxs)>0 else None
             cdata_test = self.TaskDataset(self.train_data, cdata_test_idxs) if len(cdata_test_idxs)>0 else None
-            task_data[cname] = {'train':cdata_train, 'valid':cdata_valid, 'test':cdata_test}
+            task_data[cname] = {'train':cdata_train, 'val':cdata_val, 'test':cdata_test}
         return task_data
 
 class GeneralCalculator(BasicTaskCalculator):

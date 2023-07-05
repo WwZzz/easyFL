@@ -1,16 +1,79 @@
 import copy
-import community.community_louvain
 import networkx as nx
 import torch_geometric
 from torch_geometric.transforms import RandomLinkSplit
 import torch_geometric.transforms as T
 from torch_geometric.utils import negative_sampling, from_networkx
 import torch_geometric.utils
-import collections
+import torch
+import flgo.benchmark.base
+import os
+try:
+    import ujson as json
+except:
+    import json
+from sklearn.metrics import roc_auc_score, average_precision_score
 
-from flgo.benchmark.base import *
+class FromDatasetGenerator(flgo.benchmark.base.FromDatasetGenerator):
+    def prepare_data_for_partition(self):
+        return torch_geometric.utils.to_networkx(self.train_data, to_undirected=self.train_data.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
 
-class BuiltinClassGenerator(BasicTaskGenerator):
+class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
+    def save_task(self, generator):
+        client_names = self.gen_client_names(len(generator.local_datas))
+        feddata = {'client_names': client_names,}
+        for cid in range(len(client_names)):
+            feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
+        with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
+            json.dump(feddata, outf)
+        return
+
+    def load_data(self, running_time_option) -> dict:
+        train_data = self.train_data
+        neg_sampling_ratio = train_data.neg_sampling_ratio if hasattr(train_data, 'neg_sampling_ratio') else 1.0
+        disjoint_train_ratio = train_data.disjoint_train_ratio if hasattr(train_data, 'disjoint_train_ratio') else 0.0
+        test_data = self.test_data
+        val_data = self.val_data
+        server_test_data = test_data
+        server_val_data = val_data
+        if server_test_data is not None:
+            if val_data is None:
+                if running_time_option['test_holdout']>0:
+                    num_test,num_val = 1 - running_time_option['test_holdout'], running_time_option['test_holdout'] * 0.2
+                else:
+                    num_test, num_val = 0.2,0.0
+                # split test_data
+                server_val_data, _, server_test_data = T.RandomLinkSplit(
+                    neg_sampling_ratio=neg_sampling_ratio, is_undirected=server_test_data.is_undirected(),
+                    num_test=num_test, num_val=num_val)(server_test_data)
+                if num_val==0.0: server_val_data = None
+            else:
+                _tmp1, _tmp2, server_test_data = T.RandomLinkSplit(
+                        neg_sampling_ratio=neg_sampling_ratio, is_undirected=server_test_data.is_undirected(),
+                        num_test=0.2, num_val=0.0)(server_test_data)
+                _tmp1, _tmp2, server_val_data = T.RandomLinkSplit(
+                    neg_sampling_ratio=neg_sampling_ratio, is_undirected=server_val_data.is_undirected(),
+                    num_test=0.2, num_val=0.0)(server_val_data)
+        elif server_val_data is not None:
+            _tmp1, _tmp2, server_val_data = T.RandomLinkSplit(
+                neg_sampling_ratio=neg_sampling_ratio, is_undirected=server_val_data.is_undirected(),
+                num_test=0.2, num_val=0.0)(server_val_data)
+        task_data = {'server': {'test': server_test_data, 'val': server_val_data}}
+        G = torch_geometric.utils.to_networkx(train_data, to_undirected=train_data.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
+        num_val = running_time_option['train_holdout']
+        if num_val>0 and running_time_option['local_test']:
+            num_test, num_val = 0.5*num_val, 0.5*num_val
+        else:
+            num_test = 0.0
+        for cid, cname in enumerate(self.feddata['client_names']):
+            c_dataset = from_networkx(nx.subgraph(G, self.feddata[cname]['data']))
+            ctrans = T.RandomLinkSplit(neg_sampling_ratio=neg_sampling_ratio, is_undirected=c_dataset.is_undirected(), num_test=num_test, num_val=num_val,
+                                        add_negative_train_samples=False, disjoint_train_ratio=disjoint_train_ratio)
+            cdata_train, cdata_val, cdata_test = ctrans(c_dataset)
+            task_data[cname] = {'train': cdata_train, 'val': cdata_val if len(cdata_val.edge_label)>0 else None, 'test':cdata_test if len(cdata_test.edge_label)>0 else None}
+        return task_data
+
+class BuiltinClassGenerator(flgo.benchmark.base.BasicTaskGenerator):
     def __init__(self, benchmark, rawdata_path, builtin_class, transform=None, pre_transform=None, test_rate=0.2, test_node_split=True, disjoint_train_ratio=0.3, neg_sampling_ratio=1.0):
         super(BuiltinClassGenerator, self).__init__(benchmark, rawdata_path)
         self.builtin_class = builtin_class
@@ -44,7 +107,7 @@ class BuiltinClassGenerator(BasicTaskGenerator):
     def get_task_name(self):
         return '_'.join(['B-' + self.benchmark, 'P-None', 'N-' + str(self.num_clients)])
 
-class BuiltinClassPipe(BasicTaskPipe):
+class BuiltinClassPipe(flgo.benchmark.base.BasicTaskPipe):
     def __init__(self, task_name, builtin_class, transform=None, pre_transform=None):
         super(BuiltinClassPipe, self).__init__(task_name)
         self.builtin_class = builtin_class
@@ -76,12 +139,12 @@ class BuiltinClassPipe(BasicTaskPipe):
         self.G = torch_geometric.utils.to_networkx(self.dataset, to_undirected=self.dataset.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
         if self.feddata['test_rate']>0:
             test_dataset = from_networkx(nx.subgraph(self.G, self.feddata['server_data']))
-            server_valid_data,_,server_test_data = T.RandomLinkSplit(neg_sampling_ratio=self.feddata['neg_sampling_ratio'],is_undirected=self.dataset.is_undirected(),num_test=1-running_time_option['test_holdout'], num_val=0.0, add_negative_train_samples=True)(test_dataset)
-            if len(server_valid_data.edge_label)==0:server_valid_data = None
+            server_val_data,_,server_test_data = T.RandomLinkSplit(neg_sampling_ratio=self.feddata['neg_sampling_ratio'],is_undirected=self.dataset.is_undirected(),num_test=1-running_time_option['test_holdout'], num_val=0.0, add_negative_train_samples=True)(test_dataset)
+            if len(server_val_data.edge_label)==0:server_val_data = None
             if len(server_test_data.edge_label)==0:server_test_data = None
         else:
-            server_test_data,server_valid_data = None,None
-        task_data = {'server': {'test': server_test_data, 'valid': server_valid_data}}
+            server_test_data,server_val_data = None,None
+        task_data = {'server': {'test': server_test_data, 'val': server_val_data}}
         # rearrange data for clients
         if running_time_option['local_test']:
             num_val = running_time_option['train_holdout']*0.5
@@ -93,18 +156,18 @@ class BuiltinClassPipe(BasicTaskPipe):
             c_dataset = from_networkx(nx.subgraph(self.G, self.feddata[cname]['data']))
             ctrans = RandomLinkSplit(neg_sampling_ratio=self.feddata['neg_sampling_ratio'],is_undirected=self.dataset.is_undirected(), num_test=num_test, num_val=num_val,
                                         add_negative_train_samples=False, disjoint_train_ratio=self.feddata['disjoint_train_ratio'])
-            cdata_train, cdata_valid, cdata_test = ctrans(c_dataset)
-            task_data[cname] = {'train': cdata_train, 'valid': cdata_valid if len(cdata_valid.edge_label)>0 else None, 'test':cdata_test if len(cdata_test.edge_label)>0 else None}
+            cdata_train, cdata_val, cdata_test = ctrans(c_dataset)
+            task_data[cname] = {'train': cdata_train, 'val': cdata_val if len(cdata_val.edge_label)>0 else None, 'test':cdata_test if len(cdata_test.edge_label)>0 else None}
         return task_data
 
-class GeneralCalculator(BasicTaskCalculator):
+class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
     def __init__(self, device, optimizer_name='sgd'):
         super(GeneralCalculator, self).__init__(device, optimizer_name)
         self.criterion = torch.nn.BCEWithLogitsLoss()
         self.DataLoader = torch_geometric.loader.DataLoader
 
     def compute_loss(self, model, data):
-        tdata = self.data_to_device(data)
+        tdata = self.to_device(data)
         z = model.encode(tdata.x, tdata.edge_label_index)
         neg_edge_index = negative_sampling(
             edge_index=tdata.edge_index, num_nodes=tdata.num_nodes,
@@ -124,19 +187,19 @@ class GeneralCalculator(BasicTaskCalculator):
 
     @torch.no_grad()
     def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
-        total_loss = 0
-        total_num_samples = 0
-        tdata = self.data_to_device(dataset)
+        res = {}
+        tdata = self.to_device(dataset)
         z = model.encode(tdata.x, tdata.edge_index)
         outputs = model.decode(z, tdata.edge_label_index).view(-1)
         loss = self.criterion(outputs, tdata.edge_label)
-        num_samples = len(tdata.x)
-        total_loss += num_samples * loss
-        total_num_samples += num_samples
-        total_loss = total_loss.item()
-        return {'loss': total_loss / total_num_samples}
+        res['loss'] = loss.item()
+        sigmoid_out = outputs.sigmoid()
+        res['ap'] = average_precision_score(tdata.edge_label.cpu().numpy(), sigmoid_out.cpu().numpy())
+        if len(set(tdata.edge_label.cpu().tolist()))>1:
+            res['roc_auc'] = roc_auc_score(tdata.edge_label.cpu().numpy(), sigmoid_out.cpu().numpy())
+        return res
 
-    def data_to_device(self, data):
+    def to_device(self, data):
         return data.to(self.device)
 
     def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False):

@@ -1,17 +1,14 @@
 import importlib
 import shutil
 from abc import ABCMeta, abstractmethod
-import random
 import os
 from typing import Callable
-
 try:
     import ujson as json
 except:
     import json
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
+import random
 from torch.utils.data import Dataset
 
 class AbstractTaskGenerator(metaclass=ABCMeta):
@@ -36,7 +33,6 @@ class AbstractTaskGenerator(metaclass=ABCMeta):
         information about the federated task (e.g. path, partition way, ...)"""
         pass
 
-
 class AbstractTaskPipe(metaclass=ABCMeta):
     r"""
     Abstract Task Pipe
@@ -50,7 +46,6 @@ class AbstractTaskPipe(metaclass=ABCMeta):
     def load_task(self, *args, **kwargs):
         """Load a federated task from disk"""
         pass
-
 
 class AbstractTaskCalculator(metaclass=ABCMeta):
     r"""
@@ -99,7 +94,7 @@ class BasicTaskGenerator(AbstractTaskGenerator):
         self.partitioner = None
         self.train_data = None
         self.test_data = None
-        self.valid_data = None
+        self.val_data = None
         self.task_name = None
         self.para = {}
         self.additional_option = {}
@@ -219,6 +214,49 @@ class BasicTaskPipe(AbstractTaskPipe):
                 objects.append(obj)
             for party in objects:
                 party.register_objects(objects)
+        elif scene=='hierarchical':
+            server = algorithm.Server(running_time_option)
+            server.id = -1
+            server.name = 'server'
+            edge_servers = [algorithm.EdgeServer(running_time_option) for _ in range(self.feddata['num_edge_servers'])]
+            for sid in range(len(edge_servers)):
+                edge_servers[sid].id = sid
+                edge_servers[sid].name = 'edge_server'+str(sid)
+                edge_servers[sid].clients = []
+            server.register_clients(edge_servers)
+            clients = [algorithm.Client(running_time_option) for _ in range(len(self.feddata['client_names']))]
+            edge_server_clients = [[] for _ in edge_servers]
+            for cid, c in enumerate(clients):
+                c.id = cid+len(edge_servers)
+                c.name = self.feddata['client_names'][cid]
+                edge_server_clients[self.feddata['client_group'][c.name]].append(c)
+            for edge_server, client_set in zip(edge_servers,edge_server_clients):
+                edge_server.register_clients(client_set)
+            objects = [server]
+            objects.extend(edge_servers)
+            objects.extend(clients)
+        elif scene=='decentralized':
+            # init clients
+            Client = algorithm.Client
+            clients = [Client(running_time_option) for _ in range(len(self.feddata['client_names']))]
+            for cid, c in enumerate(clients):
+                c.id = cid
+                c.name = self.feddata['client_names'][cid]
+            # init topology of clients
+            topology = self.feddata['topology']
+            for c in clients:
+                c.topology = topology
+            adjacent = self.feddata['adjacent']
+            for cid,c in enumerate(clients):
+                c.clients = [clients[k] for k,nid in enumerate(adjacent[cid]) if nid>0]
+            # init protocol
+            protocol = algorithm.Protocol(running_time_option)
+            protocol.name = 'protocol'
+            # bind clients and server
+            protocol.clients = clients
+            # return objects as list
+            objects = [protocol]
+            objects.extend(clients)
         return objects
 
     def save_info(self, generator):
@@ -384,16 +422,16 @@ class XYHorizontalTaskPipe(BasicTaskPipe):
         local_datas = [self.TaskDataset(torch.tensor(self.feddata[cname]['data']['x']),
                                         torch.tensor(self.feddata[cname]['data']['y'])) for cname in
                        self.feddata['client_names']]
-        server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
-        task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}
+        server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
+        task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
         for key in self.feddata['server'].keys():
             if key == 'data':
                 continue
             task_data['server'][key] = self.feddata['server'][key]
         for cid, cname in enumerate(self.feddata['client_names']):
             cdata = local_datas[cid]
-            cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
-            task_data[cname] = {'train': cdata_train, 'valid': cdata_valid}
+            cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
+            task_data[cname] = {'train': cdata_train, 'val': cdata_val}
             for key in self.feddata[cname]:
                 if key == 'data':
                     continue
@@ -401,26 +439,96 @@ class XYHorizontalTaskPipe(BasicTaskPipe):
         return task_data
 
 class FromDatasetGenerator(BasicTaskGenerator):
-    def __init__(self, benchmark, train_data, test_data=None):
+    r"""
+    This generator will do:
+    1. Directly create train_data and test_data from input;
+    2. Convert the train_data into the scheme that can be partitioned by Partitioner if necessary.
+    """
+    def __init__(self, benchmark, train_data, val_data=None, test_data=None):
         super(FromDatasetGenerator, self).__init__(benchmark=benchmark, rawdata_path='')
         self.train_data = train_data
+        self.val_data = val_data
         self.test_data = test_data
 
     def generate(self, *args, **kwarg):
-        self.prepare_data_for_partition()
         self.partition()
 
     def partition(self, *args, **kwargs):
+        self.train_data = self.prepare_data_for_partition()
         self.local_datas = self.partitioner(self.train_data)
         self.num_clients = len(self.local_datas)
 
     def prepare_data_for_partition(self):
         """Transform the attribution self.train_data into the format that can be received by partitioner"""
-        return
+        return self.train_data
 
 class FromDatasetPipe(BasicTaskPipe):
     TaskDataset = None
-    def __init__(self, task_path, train_data, test_data):
+    def __init__(self, task_path, train_data, val_data = None, test_data=None):
         super(FromDatasetPipe, self).__init__(task_path)
         self.train_data = train_data
+        self.val_data = val_data
         self.test_data = test_data
+
+class DecentralizedFromDatasetPipe(FromDatasetPipe):
+    TaskDataset = None
+    def __init__(self, task_path, train_data, val_data = None, test_data=None):
+        super(DecentralizedFromDatasetPipe, self).__init__(task_path, train_data, val_data, test_data)
+
+    def save_topology(self, feddata:{}):
+        client_names = feddata['client_names']
+        feddata['topology'] = self.topology
+        num_clients = len(client_names)
+        if self.adjacent is None:
+            if self.topology == 'mesh':
+                feddata['adjacent'] = [[1.0 for __ in range(num_clients)] for _ in range(num_clients)]
+                for i in range(num_clients):
+                    feddata['adjacent'][i][i] = 0.0
+            elif self.topology == 'line':
+                feddata['adjacent'] = [[0.0 for __ in range(num_clients)] for _ in range(num_clients)]
+                for i in range(1, num_clients):
+                    feddata['adjacent'][i][((i - 1) % num_clients)] = 1.0
+            elif self.topology == 'ring':
+                feddata['adjacent'] = [[0.0 for __ in range(num_clients)] for _ in range(num_clients)]
+                for i in range(num_clients):
+                    feddata['adjacent'][i][((i - 1) % num_clients)] = 1.0
+            elif self.topology == 'random':
+                feddata['adjacent'] = [[0.0 for __ in range(num_clients)] for _ in range(num_clients)]
+                p = 0.5
+                for i in range(num_clients):
+                    for k in range(num_clients):
+                        if i == k: continue
+                        if random.random() < p:
+                            feddata['adjacent'][i][k] = 1.0
+        return feddata
+
+class HierFromDatasetGenerator(FromDatasetGenerator):
+    def partition(self, *args, **kwargs):
+        self.train_data = self.prepare_data_for_partition()
+        self.local_datas = self.partitioner(self.train_data)
+        self.num_edge_servers = len(self.local_datas)
+        self.num_clients = sum([len(d) for d in self.local_datas])
+
+class HierFromDatasetPipe(FromDatasetPipe):
+    def create_feddata(self, generator):
+        num_clients = sum([len(d) for d in generator.local_datas])
+        client_names = self.gen_client_names(num_clients)
+        feddata = {'client_names': client_names}
+        feddata['client_group'] = {}
+        k = 0
+        client_data = {cname:{} for cname in client_names}
+        for gid in range(len(generator.local_datas)):
+            group_data = generator.local_datas[gid]
+            for i in range(len(group_data)):
+                feddata['client_group'][client_names[k+i]] = gid
+                client_data[client_names[k+i]]['data'] = generator.local_datas[gid][i]
+            k+=len(group_data)
+        feddata['num_edge_servers'] = len(generator.local_datas)
+        feddata.update(client_data)
+        return feddata
+
+    def save_task(self, generator):
+        feddata = self.create_feddata(generator)
+        with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
+            json.dump(feddata, outf)
+        return

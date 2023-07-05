@@ -276,7 +276,7 @@ def _clearExistingHandlers():
 IDENTIFIER = re.compile('^[a-z_][a-z0-9_]*$', re.I)
 
 
-def valid_ident(s):
+def val_ident(s):
     m = IDENTIFIER.match(s)
     if not m:
         raise ValueError('Not a valid Python identifier: %r' % s)
@@ -468,7 +468,7 @@ class BaseConfigurator(object):
             c = self.resolve(c)
         props = config.pop('.', None)
         # Check for valid identifiers
-        kwargs = {k: config[k] for k in config if valid_ident(k)}
+        kwargs = {k: config[k] for k in config if val_ident(k)}
         result = c(**kwargs)
         if props:
             for name, value in props.items():
@@ -730,7 +730,7 @@ class DictConfigurator(BaseConfigurator):
                 config['address'] = self.as_tuple(config['address'])
             factory = klass
         props = config.pop('.', None)
-        kwargs = {k: config[k] for k in config if valid_ident(k)}
+        kwargs = {k: config[k] for k in config if val_ident(k)}
         try:
             result = factory(**kwargs)
         except TypeError as te:

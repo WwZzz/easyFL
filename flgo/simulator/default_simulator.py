@@ -61,8 +61,8 @@ def y_max_first_client_availability(simulator, beta=0.1):
         return collections.Counter([int(dataset[di][-1]) for di in range(len(dataset))])
     label_num = len(label_counter(simulator.server.test_data))
     probs = []
-    for c in simulator.clients:
-        c_counter = label_counter((c.train_data + c.valid_data) if c.valid_data is not None else c.train_data)
+    for c in simulator.get_clients():
+        c_counter = label_counter((c.train_data + c.val_data) if c.val_data is not None else c.train_data)
         c_label = [lb for lb in c_counter.keys()]
         probs.append((beta * min(c_label) / max(1, label_num - 1)) + (1 - beta))
     simulator.set_variable(simulator.all_clients, 'prob_available', probs)
@@ -106,8 +106,8 @@ def y_fewer_first_client_availability(simulator, beta=0.2):
     probs = []
     for c in simulator.server.clients:
         train_set = set([int(c.train_data[di][-1]) for di in range(len(c.train_data))])
-        valid_set = set([int(c.valid_data[di][-1]) for di in range(len(c.valid_data))])
-        label_set = train_set.union(valid_set)
+        val_set = set([int(c.val_data[di][-1]) for di in range(len(c.val_data))])
+        label_set = train_set.union(val_set)
         probs.append(beta * len(label_set) / label_num + (1 - beta))
     simulator.set_variable(simulator.all_clients, 'prob_available', probs)
     simulator.set_variable(simulator.all_clients, 'prob_unavailable', [1 - p for p in probs])
@@ -164,10 +164,10 @@ def sin_lognormal_client_availability(simulator, beta=0.1):
 def y_cycle_client_availability(simulator, beta=0.5):
     # beta = float(mode[mode.find('-') + 1:]) if mode.find('-') != -1 else 0.5
     max_label = max(set([int(simulator.server.test_data[di][-1]) for di in range(len(simulator.server.test_data))]))
-    for c in simulator.clients:
+    for c in simulator.get_clients():
         train_set = set([int(c.train_data[di][-1]) for di in range(len(c.train_data))])
-        valid_set = set([int(c.valid_data[di][-1]) for di in range(len(c.valid_data))])
-        label_set = train_set.union(valid_set)
+        val_set = set([int(c.val_data[di][-1]) for di in range(len(c.val_data))])
+        label_set = train_set.union(val_set)
         c._min_label = min(label_set)
         c._max_label = max(label_set)
     def f(self):
@@ -197,7 +197,7 @@ def uniform_client_connectivity(simulator, gamma=0.5):
 
 ################################### Initial Completeness Mode ##########################################
 def ideal_client_completeness(simulator, *args, **kwargs):
-    simulator.set_variable(simulator.all_clients, 'working_amount', [c.num_steps for c in simulator.clients])
+    simulator.set_variable(simulator.all_clients, 'working_amount', [c.num_steps for c in simulator.get_clients()])
     return
 
 def part_dynamic_uniform_client_completeness(simulator, p=0.5):
@@ -219,7 +219,7 @@ def part_dynamic_uniform_client_completeness(simulator, p=0.5):
     return f
 
 def full_static_unifrom_client_completeness(simulator):
-    working_amounts = [max(1, int(c.num_steps * np.random.rand())) for c in simulator.clients]
+    working_amounts = [max(1, int(c.num_steps * np.random.rand())) for c in simulator.get_clients()]
     simulator.set_variable(simulator.all_clients, 'working_amount', working_amounts)
     return
 
@@ -258,7 +258,7 @@ def arbitrary_static_unifrom_client_completeness(simulator, a=1, b=1):
 ################################### Initial Timeliness Mode ############################################
 def ideal_client_responsiveness(simulator, *args, **kwargs):
     latency = [0 for _ in simulator.clients]
-    for c, lt in zip(simulator.clients, latency): c._latency = lt
+    for c, lt in zip(simulator.clients, latency): simulator.clients[c]._latency = lt
     simulator.set_variable(simulator.all_clients, 'latency', latency)
 
 def lognormal_client_responsiveness(simulator, mean_latency=100, var_latency=10):
@@ -266,12 +266,12 @@ def lognormal_client_responsiveness(simulator, mean_latency=100, var_latency=10)
     sigma = np.sqrt(np.log(1 + var_latency / mean_latency / mean_latency))
     client_latency = np.random.lognormal(mu, sigma, len(simulator.clients))
     latency = [int(ct) for ct in client_latency]
-    for c, lt in zip(simulator.clients, latency): c._latency = lt
+    for c, lt in zip(simulator.clients, latency): simulator.clients[c]._latency = lt
     simulator.set_variable(simulator.all_clients, 'latency', latency)
 
 def uniform_client_responsiveness(simulator, min_latency=0, max_latency=1):
     latency = [np.random.randint(low=min_latency, high=max_latency) for _ in simulator.clients]
-    for c,lt in zip(simulator.clients, latency): c._latency = lt
+    for c,lt in zip(simulator.clients, latency): simulator.clients[c]._latency = lt
     simulator.set_variable(simulator.all_clients, 'latency', latency)
 
 #************************************************************************************************

@@ -55,7 +55,7 @@ class Server(BasicServer):
                     for j in range(len(self.encrypted_item_vectors[item_id])):
                         self.encrypted_item_vectors[item_id][j] = self.encrypted_item_vectors[item_id][j] - eng[item_id][j]*1.0/len(encrypted_grads)
 
-    def global_test(self, model=None, flag:str='valid'):
+    def global_test(self, model=None, flag:str='val'):
         if model is None: model=self.model
         all_metrics = collections.defaultdict(list)
         for c in self.clients:
@@ -65,7 +65,7 @@ class Server(BasicServer):
         return all_metrics
 
     def test(self, model=None, flag='test'):
-        data = self.test_data if flag=='test' else self.valid_data
+        data = self.test_data if flag=='test' else self.val_data
         if data is None: return {}
         # construct user embeddings
         clients = sorted(self.clients, key=lambda x: x.train_data.user_id[0])
@@ -139,8 +139,8 @@ class Client(BasicClient):
             encrypted_gradient = gradient
         return {'encrypted_gradient': encrypted_gradient}
 
-    def test(self, global_model, flag='valid'):
-        data = self.train_data if flag=='train' else self.valid_data
+    def test(self, global_model, flag='val'):
+        data = self.train_data if flag=='train' else self.val_data
         if data is None: return {}
         return self.calculator.test(models=(global_model, self.model), dataset=data, batch_size=self.option['test_batch_size'], pin_memory=self.option['pin_memory'], num_workers=self.option['num_workers'])
 
