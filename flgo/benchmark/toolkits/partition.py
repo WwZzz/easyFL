@@ -448,7 +448,7 @@ class NodeLouvainPartitioner(BasicPartitioner):
             groups[new_group_id] = nodes_in_gi[:min_glen]
             groups[max_gi] = nodes_in_gi[min_glen:]
         # allocate different groups to clients
-        groups_lens = [groups[k] for k in range(len(groups))]
+        groups_lens = [len(groups[k]) for k in range(len(groups))]
         group_ids = np.argsort(groups_lens)
         for gi in group_ids:
             cid = np.argmin([len(li) for li in local_nodes])
