@@ -1,4 +1,4 @@
-from .utils.fflow import init, gen_task, gen_task_from_para, gen_benchmark_from_file, gen_decentralized_benchmark, gen_hierarchical_benchmark, tune, run_in_parallel, multi_init_and_run
+from .utils.fflow import init, gen_task, gen_task_from_para, gen_benchmark_from_file, gen_decentralized_benchmark, gen_hierarchical_benchmark, convert_model,tune, run_in_parallel, multi_init_and_run
 
 communicator = None
 

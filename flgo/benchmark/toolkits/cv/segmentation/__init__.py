@@ -1,6 +1,6 @@
 import random
 import torch.utils.data
-import json
+from tqdm import tqdm
 import flgo.benchmark.base
 from flgo.benchmark.base import *
 from flgo.benchmark.toolkits.cv.segmentation.utils import ConfusionMatrix, collate_fn,cat_list
@@ -265,15 +265,21 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         if batch_size==-1:batch_size=len(dataset)
         data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
         total_loss = 0.0
-        for batch_id, batch_data in enumerate(data_loader):
+        for batch_id, batch_data in tqdm(enumerate(data_loader), desc='Predicting...'):
             batch_data = self.to_device(batch_data)
             outputs = model(batch_data[0])
-            # loss = self.criterion(outputs, batch_data[-1])
+            loss = self.criterion(outputs, batch_data[-1])
             # if type(outputs) is not dict: outputs = {'out': outputs}
             if isinstance(outputs, dict):outputs = outputs['out']
             confmat.update(batch_data[-1].flatten(), outputs.argmax(1).flatten())
-            # total_loss += loss*len(batch_data[0])
-        return {'confuse_mat':confmat}
+            total_loss += loss.item()*len(batch_data[0])
+        acc_global, acc, iu = confmat.compute()
+        mAcc = acc_global.item()*100
+        classAcc = (acc*100).tolist()
+        classIoU = (iu * 100).tolist()
+        mIoU = (iu.mean()*100).item()
+        total_loss = total_loss/len(dataset)
+        return {'loss': total_loss,'mAcc':mAcc, 'classAcc':classAcc, 'mIoU':mIoU, 'classIoU':classIoU}
 
     def to_device(self, data:tuple):
         return data[0].to(self.device), data[1].to(self.device)

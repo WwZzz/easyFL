@@ -11,6 +11,7 @@ import random
 import os
 import os.path
 import warnings
+from typing import *
 try:
     import ujson as json
 except:
@@ -936,3 +937,51 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
             rec = json.loads(s_inf)
         res.append(rec)
     return res
+
+def convert_model(get_model:Callable, model_name='anonymous_model', scene:str='horizontal'):
+    r"""
+    Convert an existing model into a model that can be loaded in flgo.
+    Args:
+        get_model (Callable): this function will return a model of type torch.nn.Module when it is called
+        model_name (str): the name of the model
+        scene (str): the FL scene
+
+    Returns:
+        res_model: the model can be used in flgo.init(..., model=res_model, ...)
+    """
+    class DecoratedModel(flgo.utils.fmodule.FModule):
+        def __init__(self):
+            super().__init__()
+            self.model = get_model()
+
+        def forward(self, *args, **kwargs):
+            return self.model(*args, **kwargs)
+
+    if scene=='horizontal':
+        class AnonymousModel:
+            __name__ = model_name
+
+            @classmethod
+            def init_global_module(self, object):
+                if 'Server' in object.__class__.__name__:
+                    object.model = DecoratedModel().to(object.device)
+
+            @classmethod
+            def init_local_module(self, object):
+                pass
+
+    elif scene=='decentralized':
+        class AnonymousModel:
+            __name__ = model_name
+
+            @classmethod
+            def init_local_module(self, object):
+                if 'Client' in object.__class__.__name__:
+                    object.model = DecoratedModel().to(object.device)
+
+            @classmethod
+            def init_global_module(self, object):
+                pass
+    else:
+        raise NotImplementedError('The current version only support converting model for horizontalFL and DecentralizedFL.')
+    return AnonymousModel()
