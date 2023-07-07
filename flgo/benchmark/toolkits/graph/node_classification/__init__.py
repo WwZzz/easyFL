@@ -24,7 +24,7 @@ class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
                 self.mask = self.data.train_mask
             else:
                 self.mask = self.data.test_mask
-            if len(self.mask)==0: return None
+            if self.mask.sum()==0: return None
             self.test_mask = self.data.test_mask
 
         def change_mask_for_test(self):
@@ -305,7 +305,7 @@ class GeneralCalculator(BasicTaskCalculator):
             tdata = self.data_to_device(batch)
             outputs = model(tdata)
             loss = self.criterion(outputs[tdata.test_mask], tdata.y[tdata.test_mask])
-            num_samples = len(tdata.x)
+            num_samples = tdata.test_mask.sum().item()
             total_loss += num_samples * loss
             total_correct += outputs[tdata.test_mask].max(1)[1].eq(tdata.y[tdata.test_mask]).sum().item()
             total_num_samples += num_samples
