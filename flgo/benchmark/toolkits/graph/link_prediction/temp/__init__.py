@@ -1,3 +1,10 @@
+r"""
+This module is a template for benchmark of link prediction within a graph in horizontalFL. To use this module,
+one can write codes as below
+
+Example::
+
+"""
 from .model import default_model
 import flgo.benchmark.toolkits.visualization
 import flgo.benchmark.toolkits.partition

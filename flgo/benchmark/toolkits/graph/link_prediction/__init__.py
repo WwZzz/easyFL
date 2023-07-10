@@ -16,12 +16,15 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 
 class FromDatasetGenerator(flgo.benchmark.base.FromDatasetGenerator):
     def prepare_data_for_partition(self):
-        return torch_geometric.utils.to_networkx(self.train_data, to_undirected=self.train_data.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
+        edge_attrs=['edge_attr'] if hasattr(self.train_data, 'edge_attr') and self.train_data.edge_attr is not None else None
+        return torch_geometric.utils.to_networkx(self.train_data, to_undirected=self.train_data.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'], edge_attrs=edge_attrs)
 
 class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
         feddata = {'client_names': client_names,}
+        partitioner_name = generator.partitioner.__class__.__name__.lower()
+        feddata['partition_by_edge'] = 'link' in partitioner_name or 'edge' in partitioner_name
         for cid in range(len(client_names)):
             feddata[client_names[cid]] = {'data': generator.local_datas[cid], }
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
@@ -59,16 +62,20 @@ class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
                 neg_sampling_ratio=neg_sampling_ratio, is_undirected=server_val_data.is_undirected(),
                 num_test=0.2, num_val=0.0)(server_val_data)
         task_data = {'server': {'test': server_test_data, 'val': server_val_data}}
-        G = torch_geometric.utils.to_networkx(train_data, to_undirected=train_data.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'])
+        edge_attrs=['edge_attr'] if hasattr(train_data, 'edge_attr') and train_data.edge_attr is not None else None
+        G = torch_geometric.utils.to_networkx(train_data, to_undirected=train_data.is_undirected(), node_attrs=['x', 'y', 'train_mask', 'val_mask', 'test_mask'], edge_attrs=edge_attrs)
         num_val = running_time_option['train_holdout']
         if num_val>0 and running_time_option['local_test']:
             num_test, num_val = 0.5*num_val, 0.5*num_val
         else:
             num_test = 0.0
+        all_edges = list(G.edges)
         for cid, cname in enumerate(self.feddata['client_names']):
-            c_dataset = from_networkx(nx.subgraph(G, self.feddata[cname]['data']))
-            ctrans = T.RandomLinkSplit(neg_sampling_ratio=neg_sampling_ratio, is_undirected=c_dataset.is_undirected(), num_test=num_test, num_val=num_val,
-                                        add_negative_train_samples=False, disjoint_train_ratio=disjoint_train_ratio)
+            if self.feddata['partition_by_edge']:
+                c_dataset = from_networkx(nx.edge_subgraph(G, [all_edges[eid] for eid in self.feddata[cname]['data']]))
+            else:
+                c_dataset = from_networkx(nx.subgraph(G, self.feddata[cname]['data']))
+            ctrans = T.RandomLinkSplit(neg_sampling_ratio=neg_sampling_ratio, is_undirected=c_dataset.is_undirected(), num_test=num_test, num_val=num_val, add_negative_train_samples=False, disjoint_train_ratio=disjoint_train_ratio)
             cdata_train, cdata_val, cdata_test = ctrans(c_dataset)
             task_data[cname] = {'train': cdata_train, 'val': cdata_val if len(cdata_val.edge_label)>0 else None, 'test':cdata_test if len(cdata_test.edge_label)>0 else None}
         return task_data
@@ -167,30 +174,22 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         self.DataLoader = torch_geometric.loader.DataLoader
 
     def compute_loss(self, model, data):
+        model.train()
         tdata = self.to_device(data)
-        z = model.encode(tdata.x, tdata.edge_label_index)
-        neg_edge_index = negative_sampling(
-            edge_index=tdata.edge_index, num_nodes=tdata.num_nodes,
-            num_neg_samples=tdata.edge_label_index.size(1)
-        )
-        edge_label_index = torch.cat(
-            [tdata.edge_label_index, neg_edge_index],
-            dim=-1,
-        )
+        outputs, neg_edge_index = model(tdata)
         edge_label = torch.cat([
             tdata.edge_label,
             tdata.edge_label.new_zeros(neg_edge_index.size(1))
         ], dim=0)
-        outputs = model.decode(z, edge_label_index).view(-1)
         loss = self.criterion(outputs, edge_label)
         return {'loss': loss}
 
     @torch.no_grad()
     def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
         res = {}
+        model.eval()
         tdata = self.to_device(dataset)
-        z = model.encode(tdata.x, tdata.edge_index)
-        outputs = model.decode(z, tdata.edge_label_index).view(-1)
+        outputs = model(tdata)
         loss = self.criterion(outputs, tdata.edge_label)
         res['loss'] = loss.item()
         sigmoid_out = outputs.sigmoid()

@@ -40,6 +40,7 @@ import flgo.experiment.logger.hier_logger
 import flgo.experiment.logger
 import flgo.experiment.device_scheduler
 from flgo.simulator.base import BasicSimulator
+import flgo.benchmark.partition
 import flgo.benchmark.toolkits.partition
 import flgo.algorithm
 
@@ -414,7 +415,7 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0):
         Partitioner = gen_option['partitioner']['name']
         if type(Partitioner) is str:
             if Partitioner in globals().keys(): Partitioner = eval(Partitioner)
-            else: Partitioner = getattr(flgo.benchmark.toolkits.partition, Partitioner)
+            else: Partitioner = getattr(flgo.benchmark.partition, Partitioner)
         partitioner = Partitioner(**gen_option['partitioner']['para'])
         task_generator.register_partitioner(partitioner)
         partitioner.register_generator(task_generator)
