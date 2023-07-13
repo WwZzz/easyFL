@@ -3,31 +3,13 @@ import torch
 import torch.utils.data
 from flgo.benchmark.toolkits.nlp.classification import GeneralCalculator
 from flgo.benchmark.base import FromDatasetPipe, FromDatasetGenerator
-from torchtext.vocab import build_vocab_from_iterator
-from torchtext.data.utils import get_tokenizer, ngrams_iterator
+from torchtext.data.utils import ngrams_iterator
 from torchtext.data.functional import to_map_style_dataset
 try:
     import ujson as json
 except:
     import json
 from .config import train_data
-try:
-    from .config import tokenizer
-except:
-    tokenizer = None
-try:
-    from .config import ngrams
-except:
-    ngrams = 1
-
-def yield_tokens(data_iter, ngrams):
-    for _, text in data_iter:
-        yield ngrams_iterator(tokenizer(text), ngrams)
-
-try:
-    from .config import vocab
-except:
-    vocab = None
 try:
     from .config import test_data
 except:
@@ -37,22 +19,14 @@ try:
 except:
     val_data = None
 
-if tokenizer is None: tokenizer = get_tokenizer('basic_english')
-if vocab is None:
-    vocab = build_vocab_from_iterator(yield_tokens(train_data, ngrams), specials=["<unk>"])
-    vocab.set_default_index(vocab["<unk>"])
-
 def collate_batch(batch):
-    label_list, text_list, offsets = [], [], [0]
-    for (_label, _text) in batch:
-        label_list.append(int(_label)-1)
-        processed_text = torch.tensor(vocab(list(ngrams_iterator(tokenizer(_text), ngrams))), dtype=torch.int64)
+    label_list, text_list = [], []
+    for (_text, _label) in batch:
+        label_list.append(_label)
+        processed_text = torch.tensor(_text, dtype=torch.int64)
         text_list.append(processed_text)
-        offsets.append(processed_text.size(0))
     label_list = torch.tensor(label_list, dtype=torch.int64)
-    offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)
-    text_list = torch.cat(text_list)
-    return label_list, text_list, offsets
+    return text_list, label_list
 
 class TaskGenerator(FromDatasetGenerator):
     def __init__(self):
@@ -60,7 +34,6 @@ class TaskGenerator(FromDatasetGenerator):
                                             train_data=train_data, val_data=val_data, test_data=test_data)
 
     def prepare_data_for_partition(self):
-        self.train_data = self.train_data.map(lambda x: (x[1], x[0]))
         return to_map_style_dataset(self.train_data)
 
 class TaskPipe(FromDatasetPipe):
@@ -70,7 +43,7 @@ class TaskPipe(FromDatasetPipe):
 
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
-        feddata = {'client_names': client_names,}
+        feddata = {'client_names': client_names}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
             json.dump(feddata, outf)

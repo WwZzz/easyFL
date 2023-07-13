@@ -4,21 +4,11 @@ import torch.utils.data
 from typing import *
 from torch import Tensor
 from flgo.benchmark.base import FromDatasetPipe, FromDatasetGenerator, BasicTaskCalculator
-from torchtext.data.functional import to_map_style_dataset
-import math
 try:
     import ujson as json
 except:
     import json
 from .config import train_data
-try:
-    from .config import seq_len
-except:
-    seq_len = 5
-try:
-    from .config import stride
-except:
-    stride = 1
 try:
     from .config import test_data
 except:
@@ -29,9 +19,14 @@ except:
     val_data = None
 
 class TaskGenerator(FromDatasetGenerator):
-    def __init__(self):
+    def __init__(self, seq_len=5, stride=1):
         super(TaskGenerator, self).__init__(benchmark=os.path.split(os.path.dirname(__file__))[-1],
                                             train_data=train_data, val_data=val_data, test_data=test_data)
+        self.seq_len = seq_len
+        self.stride = stride
+
+    def prepare_data_for_partition(self):
+        return list(self.train_data)
 
 def preprocess(data:List[Tensor], seq_len:int=5, stride:int=1):
     if data is None: return None
@@ -61,19 +56,22 @@ class TaskPipe(FromDatasetPipe):
 
     def save_task(self, generator):
         client_names = self.gen_client_names(len(generator.local_datas))
-        feddata = {'client_names': client_names,}
+        feddata = {'client_names': client_names, 'seq_len': generator.seq_len, 'stride':generator.stride}
         for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
         with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
             json.dump(feddata, outf)
         return
 
     def load_data(self, running_time_option) -> dict:
-        server_test_data = self.TaskDataset(preprocess(self.test_data, seq_len=seq_len, stride=stride))
-        server_val_data = self.TaskDataset(preprocess(self.val_data, seq_len=seq_len, stride=stride))
+        seq_len = self.feddata['seq_len']
+        stride = self.feddata['stride']
+        server_test_data = self.TaskDataset(preprocess(list(self.test_data) if self.test_data is not None else None, seq_len=seq_len, stride=stride))
+        server_val_data = self.TaskDataset(preprocess(list(self.val_data) if self.val_data is not None else None, seq_len=seq_len, stride=stride))
         if server_test_data is not None and server_val_data is None:
             server_test_data, server_val_data = self.split_dataset(server_test_data, running_time_option['test_holdout'])
         # rearrange data for server
         task_data = {'server': {'test': server_test_data, 'val': server_val_data}}
+        self.train_data = list(self.train_data)
         for cid, cname in enumerate(self.feddata['client_names']):
             cdata = [self.train_data[did] for did in self.feddata[cname]['data']]
             cdata = self.TaskDataset(preprocess(cdata, seq_len=seq_len, stride=stride))

@@ -8,10 +8,12 @@ import torch
 import torch.nn.functional as F
 import random
 
+# 0. 加载数据集
 language_pair = ['de', 'en']
 path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'MULTI30K')
 train_data, val_data, test_data = Multi30k(split=('train', 'valid', 'test'), language_pair=language_pair)
 
+# 1. 加载tokenizer和词表
 # init tokenizers
 tokenizers = {}
 tokenizers[language_pair[0]] = get_tokenizer('spacy', language='de_core_news_sm')
@@ -19,8 +21,8 @@ tokenizers[language_pair[1]] = get_tokenizer('spacy', language='en_core_web_sm')
 
 #  init vocabs
 vocabs = {}
-UNK_IDX, PAD_IDX, BOS_IDX, EOS_IDX = 0, 1, 2, 3
-special_symbols = ['<unk>', '<pad>', '<bos>', '<eos>']
+PAD_IDX, UNK_IDX, BOS_IDX, EOS_IDX = 0, 1, 2, 3
+special_symbols = ['<pad>', '<unk>', '<bos>', '<eos>']
 for i,ln in enumerate(language_pair):
     # Create torchtext's Vocab object
     tokenizer = tokenizers[ln]
@@ -31,13 +33,33 @@ for i,ln in enumerate(language_pair):
                                            special_first=True)
 for ln in language_pair: vocabs[ln].set_default_index(UNK_IDX)
 
-def init_weights(m):
-    for name, param in m.named_parameters():
-        if 'weight' in name:
-            nn.init.normal_(param.data, mean=0, std=0.01)
-        else:
-            nn.init.constant_(param.data, 0)
+# 2. 把数据集中的字符串(源语言和目标语言)，根据tokenizer和vocab转化为数值向量
+def sequential_transforms(*transforms):
+    def func(txt_input):
+        for transform in transforms:
+            txt_input = transform(txt_input)
+        return txt_input
+    return func
 
+def tensor_transform(token_ids):
+    return torch.cat((torch.tensor([BOS_IDX]),
+                      torch.tensor(token_ids),
+                      torch.tensor([EOS_IDX])))
+
+text_transform = {}
+for ln in language_pair:
+    text_transform[ln] = sequential_transforms(tokenizers[ln],  #Tokenization
+                                               vocabs[ln],  #Numericalization
+                                               tensor_transform) # Add BOS/EOS and create tensor
+
+def apply_transform(x):
+    return text_transform[language_pair[0]](x[0].rstrip("\n")), text_transform[language_pair[1]](x[1].rstrip("\n"))
+
+train_data = train_data.map(apply_transform)
+val_data = val_data.map(apply_transform)
+test_data = test_data.map(apply_transform)
+
+# 3. 定义模型
 def get_model():
     INPUT_DIM = len(vocabs[language_pair[0]])
     OUTPUT_DIM = len(vocabs[language_pair[1]])
@@ -53,6 +75,13 @@ def get_model():
     model = Seq2Seq(enc, dec)
     model.apply(init_weights)
     return model
+
+def init_weights(m):
+    for name, param in m.named_parameters():
+        if 'weight' in name:
+            nn.init.normal_(param.data, mean=0, std=0.01)
+        else:
+            nn.init.constant_(param.data, 0)
 
 class Encoder(nn.Module):
     def __init__(self, input_dim, emb_dim, enc_hid_dim, dec_hid_dim, dropout):

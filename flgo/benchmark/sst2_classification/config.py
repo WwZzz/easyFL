@@ -7,17 +7,27 @@ from torchtext.data.utils import get_tokenizer, ngrams_iterator
 
 path = os.path.join(flgo.benchmark.path, 'RAW_DATA','SST2')
 train_data = torchtext.datasets.SST2(root=path, split='train')
-train_data = train_data.map(lambda x: (x[1]+1, x[0]))
 test_data = torchtext.datasets.SST2(root=path, split='dev')
-test_data = test_data.map(lambda x: (x[1]+1, x[0]))
 ngrams = 2
 tokenizer = get_tokenizer('basic_english')
 def yield_tokens(data_iter, ngrams):
-    for _, text in data_iter:
+    for text,_ in data_iter:
         yield ngrams_iterator(tokenizer(text), ngrams)
 
 vocab = build_vocab_from_iterator(yield_tokens(train_data, ngrams), specials=["<unk>"])
 vocab.set_default_index(vocab["<unk>"])
+
+def text_pipeline(x):
+    return vocab(list(ngrams_iterator(tokenizer(x), ngrams)))
+
+def label_pipeline(x):
+    return int(x)
+
+def apply_transform(x):
+    return text_pipeline(x[0]), label_pipeline(x[1])
+
+train_data = train_data.map(apply_transform)
+test_data = test_data.map(apply_transform)
 
 class TextClassificationModel(torch.nn.Module):
     def __init__(self, vocab_size, embed_dim, num_class):
@@ -32,7 +42,13 @@ class TextClassificationModel(torch.nn.Module):
         self.fc.weight.data.uniform_(-initrange, initrange)
         self.fc.bias.data.zero_()
 
-    def forward(self, text, offsets):
+    def forward(self, text):
+        offsets = [0]
+        for t in text:
+            offsets.append(t.size(0))
+        offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)
+        text = torch.cat(text)
+        offsets = offsets.to(text.device)
         embedded = self.embedding(text, offsets)
         return self.fc(embedded)
 

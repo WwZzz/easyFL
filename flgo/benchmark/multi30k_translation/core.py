@@ -1,32 +1,20 @@
 import os
+import math
 import torch
 import torch.utils.data
 from flgo.benchmark.toolkits.nlp.classification import GeneralCalculator
 from flgo.benchmark.base import FromDatasetPipe, FromDatasetGenerator, BasicTaskCalculator
 from torchtext.data.functional import to_map_style_dataset
+from torch.nn.utils.rnn import pad_sequence
 try:
     import ujson as json
 except:
     import json
 from .config import train_data
-from .config import language_pair, tokenizers, vocabs
-from torch.nn.utils.rnn import pad_sequence
 try:
-    from .config import UNK_IDX
+    from .config import padding_value
 except:
-    UNK_IDX = 0
-try:
-    from .config import PAD_IDX
-except:
-    PAD_IDX = 1
-try:
-    from .config import BOS_IDX
-except:
-    BOS_IDX = 2
-try:
-    from .config import EOS_IDX
-except:
-    EOS_IDX = 3
+    padding_value = 0
 try:
     from .config import test_data
 except:
@@ -36,32 +24,18 @@ try:
 except:
     val_data = None
 
-def sequential_transforms(*transforms):
-    def func(txt_input):
-        for transform in transforms:
-            txt_input = transform(txt_input)
-        return txt_input
-    return func
-
-# function to add BOS/EOS and create tensor for input sequence indices
-def tensor_transform(token_ids):
-    return torch.cat((torch.tensor([BOS_IDX]),
-                      torch.tensor(token_ids),
-                      torch.tensor([EOS_IDX])))
-
-text_transform = {}
-for ln in language_pair:
-    text_transform[ln] = sequential_transforms(tokenizers[ln],  #Tokenization
-                                               vocabs[ln],  #Numericalization
-                                               tensor_transform) # Add BOS/EOS and create tensor
-
 def collate_fn(batch):
     src_batch, tgt_batch = [], []
     for src_sample, tgt_sample in batch:
-        src_batch.append(text_transform[language_pair[0]](src_sample.rstrip("\n")))
-        tgt_batch.append(text_transform[language_pair[1]](tgt_sample.rstrip("\n")))
-    src_batch = pad_sequence(src_batch, padding_value=PAD_IDX)
-    tgt_batch = pad_sequence(tgt_batch, padding_value=PAD_IDX)
+        if isinstance(src_sample, list):
+            src_batch.append(torch.tensor(src_sample, dtype=torch.int64))
+            tgt_batch.append(torch.tensor(tgt_sample, dtype=torch.int64))
+
+        else:
+            src_batch.append(src_sample)
+            tgt_batch.append(tgt_sample)
+    src_batch = pad_sequence(src_batch, padding_value=padding_value)
+    tgt_batch = pad_sequence(tgt_batch, padding_value=padding_value)
     return src_batch, tgt_batch
 
 class TaskGenerator(FromDatasetGenerator):
@@ -138,7 +112,7 @@ class TaskCalculator(BasicTaskCalculator):
         """
         sources, targets = self.to_device(data)
         outputs = model(sources, targets)
-        loss = self.criterion(outputs, targets, PAD_IDX)
+        loss = self.criterion(outputs, targets, padding_value)
         return {'loss': loss}
 
     @torch.no_grad()
@@ -161,7 +135,9 @@ class TaskCalculator(BasicTaskCalculator):
             outputs = model(batch_data[0], batch_data[1])
             batch_mean_loss = self.criterion(outputs, batch_data[1], model.ignore_index if hasattr(model, 'ignore_index') else -100).item()
             total_loss += batch_mean_loss * batch_data[-1].shape[-1]
-        return {'loss':total_loss/len(dataset)}
+        total_loss = total_loss/len(dataset)
+        ppl = math.exp(total_loss)
+        return {'loss':total_loss, 'ppl':ppl}
 
     def to_device(self, data):
         return data[0].to(self.device), data[1].to(self.device)

@@ -101,8 +101,8 @@ class GeneralCalculator(BasicTaskCalculator):
             data: the training dataset
         Returns: dict of train-one-step's result, which should at least contains the key 'loss'
         """
-        label, text, offsets = self.to_device(data)
-        outputs = model(text, offsets)
+        text, label  = self.to_device(data)
+        outputs = model(text)
         loss = self.criterion(outputs, label)
         return {'loss': loss}
 
@@ -124,16 +124,25 @@ class GeneralCalculator(BasicTaskCalculator):
         num_correct = 0
         for batch_id, batch_data in enumerate(data_loader):
             batch_data = self.to_device(batch_data)
-            outputs = model(batch_data[1], batch_data[2])
-            batch_mean_loss = self.criterion(outputs, batch_data[0]).item()
+            outputs = model(batch_data[0])
+            batch_mean_loss = self.criterion(outputs, batch_data[1]).item()
             # y_pred = outputs.data.max(1, keepdim=True)[1]
             # correct = y_pred.eq(batch_data[-1].data.view_as(y_pred)).long().cpu().sum()
-            num_correct += (outputs.argmax(1)==batch_data[0]).sum().item()
-            total_loss += batch_mean_loss * len(batch_data[-1])
+            num_correct += (outputs.argmax(1)==batch_data[1]).sum().item()
+            total_loss += batch_mean_loss * len(batch_data[0])
         return {'accuracy': 1.0*num_correct/len(dataset), 'loss':total_loss/len(dataset)}
 
     def to_device(self, data):
-        return data[0].to(self.device), data[1].to(self.device), data[2].to(self.device)
+        res = []
+        for i in range(len(data)):
+            if isinstance(data[i], torch.Tensor):
+                di = data[i].to(self.device)
+            elif isinstance(data[i], list):
+                di = [d.to(self.device) for d in data[i]]
+            else:
+                raise TypeError('data should be either of type list or torch.Tensor')
+            res.append(di)
+        return tuple(res)
 
     def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False):
         if self.DataLoader == None:

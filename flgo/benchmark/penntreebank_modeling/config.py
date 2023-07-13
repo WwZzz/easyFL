@@ -8,23 +8,18 @@ import torch
 from torch import nn, Tensor
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
 
-train_iter = PennTreebank(split='train')
+
+train_iter, val_iter, test_iter = PennTreebank()
 tokenizer = get_tokenizer('basic_english')
 vocab = build_vocab_from_iterator(map(tokenizer, train_iter), specials=['<unk>'])
 vocab.set_default_index(vocab['<unk>'])
 
-def data_process(raw_text_iter, min_len=0):
-    """Converts raw text into a flat Tensor."""
-    data = [torch.tensor(vocab(tokenizer(item)), dtype=torch.long) for item in raw_text_iter]
-    data = [d for d in data if d.numel()>min_len]
-    return data
+def apply_transform(x):
+    return torch.tensor(vocab(tokenizer(x)), dtype=torch.long)
 
-train_iter, val_iter, test_iter = PennTreebank()
-train_data = data_process(train_iter)
-val_data = data_process(val_iter)
-test_data = data_process(test_iter)
-seq_len = 5
-stride = 1
+train_data = train_iter.map(apply_transform)
+val_data = val_iter.map(apply_transform)
+test_data = test_iter.map(apply_transform)
 
 class PositionalEncoding(nn.Module):
 
