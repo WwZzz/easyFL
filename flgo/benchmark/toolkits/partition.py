@@ -339,13 +339,13 @@ class IDPartitioner(BasicPartitioner):
         if self.num_clients < 0:
             self.num_clients = len(local_datas)
         elif self.priorty == 'max':
-            local_datas = sorted(local_datas, key=lambda x: len('x'), reverse=True)[:self.num_clients]
+            local_datas = sorted(local_datas, key=lambda x: len(x), reverse=True)[:self.num_clients]
         elif self.priorty == 'min':
-            local_datas = sorted(local_datas, key=lambda x: len('x'))[:self.num_clients]
+            local_datas = sorted(local_datas, key=lambda x: len(x))[:self.num_clients]
         elif self.priorty == 'random':
             random.shuffle(local_datas)
             local_datas = local_datas[:self.num_clients]
-        local_datas = sorted(local_datas, key=lambda x:data[x[0]][self.index_func] if self.index_func is not None else data.id[x[0]])
+        # local_datas = sorted(local_datas, key=lambda x:data[x[0]][self.index_func] if self.index_func is not None else data.id[x[0]])
         return local_datas
 
 class VerticalSplittedPartitioner(BasicPartitioner):
