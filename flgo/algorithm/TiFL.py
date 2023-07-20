@@ -14,7 +14,7 @@ import numpy as np
 class Server(BasicServer):
     def initialize(self):
         self.init_algo_para({'T': 5, 'I': 10, 'C': 0})
-        self.tolerance_for_latency = 0
+        self.tolerance_for_latency = 99999999999
         self.tiers = None
 
     def profiling_and_tiering(self):

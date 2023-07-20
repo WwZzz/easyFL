@@ -218,7 +218,7 @@ class BasicSimulator(AbstractSimulator):
             self.clients = {c.id:c for c in objects[1:]}
         else:
             self.server = None
-            self.clients = []
+            self.clients = {}
         self.all_clients = list(self.clients.keys())
         self.random_module = np.random.RandomState(0)
         # client states and the variables
@@ -235,6 +235,9 @@ class BasicSimulator(AbstractSimulator):
         for var in self._VAR_NAMES:
             self.set_variable(self.all_clients, var, [self.variables[cid][var] for cid in self.all_clients])
         self.state_counter = {c:{'dropped_counter': 0, 'latency_counter': 0, } for c in self.clients}
+
+    def initialize(self, *args, **kwargs):
+        return
 
     def get_client_with_state(self, state='idle'):
         r"""
@@ -591,7 +594,7 @@ def with_clock(communicate):
             delta_t = tolerance_for_latency if any_drop or any_overdue else max_latency
             # Receive packages within due
             eff_pkgs = self.gv.clock.get_until(self.gv.clock.current_time + delta_t)
-            self.gv.clock.step(delta_t)
+            self.gv.clock.step(int(delta_t))
             # Drop the packages of overdue clients and reset their states to `idle`
             eff_cids = [pkg_i['__cid'] for pkg_i in eff_pkgs]
             self._overdue_clients = list(set([cid for cid in selected_clients if cid not in eff_cids]))

@@ -393,6 +393,8 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0):
     if type(gen_option['benchmark']) is not dict: gen_option['benchmark']={'name':gen_option['benchmark']}
     if 'para' not in gen_option['benchmark'].keys(): gen_option['benchmark']['para'] = {}
     if 'partitioner' in gen_option.keys():
+        if not isinstance(gen_option['partitioner'], dict):
+            gen_option['partitioner'] = {'name': gen_option['partitioner'], 'para':{}}
         # update parameters of partitioner
         if 'para' not in gen_option['partitioner'].keys():
             gen_option['partitioner']['para'] = {}
@@ -567,16 +569,12 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         for c in obj_class:
             if 'Client' in c:
                 class_client = getattr(algorithm, c)
-                if option['completeness']!='IDL':
-                    class_client.train = flgo.simulator.base.with_completeness(class_client.train)
+                class_client.train = flgo.simulator.base.with_completeness(class_client.train)
             elif 'Server' in c:
                 class_server = getattr(algorithm, c)
-                if option['availability']!='IDL':
-                    class_server.sample = flgo.simulator.base.with_availability(class_server.sample)
-                if option['responsiveness']!='IDL':
-                    class_server.communicate_with = flgo.simulator.base.with_latency(class_server.communicate_with)
-                if option['connectivity']!='IDL':
-                    class_server.communicate = flgo.simulator.base.with_dropout(class_server.communicate)
+                class_server.sample = flgo.simulator.base.with_availability(class_server.sample)
+                class_server.communicate_with = flgo.simulator.base.with_latency(class_server.communicate_with)
+                class_server.communicate = flgo.simulator.base.with_dropout(class_server.communicate)
     objects = task_pipe.generate_objects(option, algorithm, scene=scene)
     obj_classes = collections.defaultdict(int)
     for obj in objects: obj_classes[obj.__class__]+=1
@@ -608,8 +606,9 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
 
     gv.clock = flgo.simulator.base.ElemClock()
     gv.simulator = Simulator(objects, option) if scene == 'horizontal' else None
+    if gv.simulator is not None: gv.simulator.initialize()
     gv.clock.register_simulator(simulator=gv.simulator)
-    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects)
+    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects, simulator=Simulator.__name__ if scene == 'horizontal' else 'None')
     gv.logger.initialize()
     gv.logger.info('Ready to start.')
 

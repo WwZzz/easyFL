@@ -9,6 +9,6 @@ class TaskGenerator(FromDatasetGenerator):
 
 class TaskPipe(FromDatasetPipe):
     def __init__(self, task_path):
-        super(TaskPipe, self).__init__(task_path, train_data, test_data)
+        super(TaskPipe, self).__init__(task_path, train_data=train_data, test_data=test_data)
 
 TaskCalculator = GeneralCalculator

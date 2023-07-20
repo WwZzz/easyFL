@@ -569,6 +569,15 @@ class BasicServer(BasicParty):
         """
         return self.tolerance_for_latency
 
+    def set_tolerance_for_latency(self, tolerance:int):
+        r"""
+        Set the tolerance for latency of waiting for clients' responses
+
+        Args:
+            tolerance (int): the amounts of virtual time units
+        """
+        self.tolerance_for_latency = tolerance
+
     def wait_time(self, t=1):
         r"""
         Wait for the time of the virtual clock to pass t units

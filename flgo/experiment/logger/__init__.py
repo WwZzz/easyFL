@@ -2270,18 +2270,22 @@ class BasicLogger(Logger):
         else:
             output_name = output_name + ("K{}_".format(self.option['num_steps']))
 
-        output_name = output_name + "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}_AVL{}_CN{}_CP{}_RS{}_LG{}".format(
+        output_name = output_name + "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}".format(
                         self.option['learning_rate'],
                         self.option['proportion'],
                         self.option['seed'],
                         self.option['lr_scheduler'] + self.option['learning_rate_decay'],
                         self.option['weight_decay'],
+        )
+        output_name = output_name + '_SIM{}_AVL{}_CN{}_CP{}_RS{}_LG{}'.format(
+                        self.simulator if hasattr(self, 'simulator') else 'None',
                         self.option['availability'],
                         self.option['connectivity'],
                         self.option['completeness'],
                         self.option['responsiveness'],
                         self.__class__.__name__,
-        ) + suffix
+        )
+        output_name = output_name + suffix
         return output_name
 
     def get_output_path(self):
