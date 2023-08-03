@@ -852,7 +852,7 @@ def _modeldict_cossim(md1, md2):
     l1 = torch.tensor(0.).to(md1[list(md1)[0]].device)
     l2 = torch.tensor(0.).to(md1[list(md1)[0]].device)
     for layer in md1.keys():
-        if md1[layer] is None or md1[layer].requires_grad==False:
+        if md1[layer] is None:
             continue
         res += (md1[layer].view(-1).dot(md2[layer].view(-1)))
         l1 += torch.sum(torch.pow(md1[layer], 2))

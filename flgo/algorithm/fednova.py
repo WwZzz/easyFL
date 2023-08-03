@@ -6,6 +6,9 @@ from flgo.algorithm.fedbase import BasicServer, BasicClient
 from flgo.utils import fmodule
 
 class Server(BasicServer):
+    def initialize(self, *args, **kwargs):
+        self.sample_option = 'uniform'
+
     def iterate(self):
         self.selected_clients = self.sample()
         # training

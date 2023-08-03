@@ -985,3 +985,11 @@ def convert_model(get_model:Callable, model_name='anonymous_model', scene:str='h
     else:
         raise NotImplementedError('The current version only support converting model for horizontalFL and DecentralizedFL.')
     return AnonymousModel()
+
+def module2fmodule(Model):
+    class TempFModule(Model, flgo.utils.fmodule.FModule):
+        def __init__(self, *args, **kwargs):
+            super(TempFModule, self).__init__(*args, **kwargs)
+    return TempFModule
+
+
