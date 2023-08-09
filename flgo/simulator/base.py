@@ -570,7 +570,7 @@ def with_clock(communicate):
             return res
         # Convert the unpacked packages to a list of packages of each client.
         pkgs = [{key: vi[id] for key, vi in res.items()} for id in range(len(list(res.values())[0]))] if len(selected_clients)>0 else []
-        if pkgs[0].get('__cid', None) is None:
+        if len(pkgs)>0 and pkgs[0].get('__cid', None) is None:
             for cid, pkg in zip(selected_clients, pkgs):
                 pkg['__cid'] = cid
         # Put the packages from selected clients into clock only if when there are effective selected clients
