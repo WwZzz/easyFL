@@ -1023,7 +1023,7 @@ def set_data_root(data_root:str=None):
             raise TypeError('data_root must be a dir')
         crt_root = os.path.abspath(data_root).strip()
         root_name = '"'+crt_root+'"'
-    with open(file_path, 'r', encoding='UTF-8') as inf:
+    with open(file_path, 'r', encoding=sys.getfilesystemencoding()) as inf:
         lines = inf.readlines()
         idx = -1
         for i,line in enumerate(lines):
@@ -1032,7 +1032,7 @@ def set_data_root(data_root:str=None):
                 break
         if idx>0:
             lines[idx] = "data_root = "+ root_name
-    with open(file_path, 'w') as outf:
+    with open(file_path, 'w', encoding=sys.getfilesystemencoding()) as outf:
         outf.writelines(lines)
     flgo.benchmark.data_root = crt_root
     print('Data root directory has successfully been changed to {}'.format(crt_root))
