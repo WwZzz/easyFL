@@ -1011,19 +1011,19 @@ def set_data_root(data_root:str=None):
     file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'benchmark', '__init__.py')
     default_root = os.path.abspath(os.path.join(flgo.benchmark.path, 'RAW_DATA'))
     if data_root is None and os.path.abspath(flgo.benchmark.data_root)!=default_root:
-        value = default_root
-        crt_root = default_root
+        crt_root = default_root.strip()
+        root_name = '"'+default_root.strip()+'"'
     elif data_root == 'cwd':
-        value = 'os.getcwd()'
         crt_root = os.path.abspath(os.getcwd())
+        root_name = 'os.getcwd()'
     else:
         if not os.path.exists(data_root):
             os.makedirs(data_root)
         if not os.path.isdir(data_root):
             raise TypeError('data_root must be a dir')
-        value = os.path.abspath(data_root)
-        crt_root = value
-    with open(file_path, 'r') as inf:
+        crt_root = os.path.abspath(data_root).strip()
+        root_name = '"'+crt_root+'"'
+    with open(file_path, 'r', encoding='UTF-8') as inf:
         lines = inf.readlines()
         idx = -1
         for i,line in enumerate(lines):
@@ -1031,10 +1031,11 @@ def set_data_root(data_root:str=None):
                 idx = i
                 break
         if idx>0:
-            lines[idx] = 'data_root = '+ value
+            lines[idx] = "data_root = "+ root_name
     with open(file_path, 'w') as outf:
         outf.writelines(lines)
     flgo.benchmark.data_root = crt_root
+    print('Data root directory has successfully been changed to {}'.format(crt_root))
     return
 
 
