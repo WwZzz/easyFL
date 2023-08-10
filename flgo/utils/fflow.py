@@ -1027,14 +1027,14 @@ def set_data_root(data_root:str=None):
         lines = inf.readlines()
         idx = -1
         for i,line in enumerate(lines):
-            if line.find('_data_root')>-1:
+            if line.find('data_root')>-1:
                 idx = i
                 break
         if idx>0:
-            lines[idx] = '_data_root = '+ value
+            lines[idx] = 'data_root = '+ value
     with open(file_path, 'w') as outf:
         outf.writelines(lines)
-    flgo._data_root = crt_root
+    flgo.benchmark.data_root = crt_root
     return
 
 
