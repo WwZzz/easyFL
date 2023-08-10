@@ -161,23 +161,18 @@ class FModule(nn.Module):
         Returns:
             the number of all the parameters in this model
         """
-        try:
-            import prettytable as pt
-        except:
-            print('Please install prettytable through `pip install prettytable` before calling this func')
-            return
-        table = pt.PrettyTable(["Modules", "Parameters"])
+        # table = pt.PrettyTable(["Modules", "Parameters"])
         total_params = 0
         for name, parameter in self.named_parameters():
             if not parameter.requires_grad:
-                table.add_row([name, 0])
+                # table.add_row([name, 0])
                 continue
             params = parameter.numel()
-            table.add_row([name, params])
+            # table.add_row([name, params])
             total_params += params
-        if output:
-            print(table)
-            print(f"TotalTrainableParams: {total_params}")
+        # if output:
+        #     print(table)
+        #     print(f"TotalTrainableParams: {total_params}")
         return total_params
 
 def normalize(m):
