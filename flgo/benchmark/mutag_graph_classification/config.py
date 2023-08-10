@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import global_mean_pool
 
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'MUTAG')
+path = os.path.join(flgo.benchmark.data_root, 'MUTAG')
 all_data = torch_geometric.datasets.TUDataset(path, name='MUTAG', use_node_attr=True)
 all_idxs = [i for i in range(len(all_data))]
 random.shuffle(all_idxs)

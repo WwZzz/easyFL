@@ -11,7 +11,7 @@ target_transform = T.Compose([
     T.PILToTensor(),
     T.Lambda(lambda x: (x-1).squeeze().type(torch.LongTensor))
 ])
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'OXFORD-IIIT-PET')
+path = os.path.join(flgo.benchmark.data_root,  'OXFORD-IIIT-PET')
 # 定义训练集实例，并命名为train_data
 train_data = torchvision.datasets.OxfordIIITPet(root=path, split='trainval', download=True, target_types='segmentation', transform=transform, target_transform=target_transform)
 # 定义测试集实例，并命名为test_data

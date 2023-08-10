@@ -3,7 +3,7 @@ import os
 import flgo
 from flgo.benchmark.toolkits.series.time_series_classification.datasets import UCRArchiveDataset
 
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'UCRArchive')
+path = os.path.join(flgo.benchmark.data_root,  'UCRArchive')
 builtin_class = UCRArchiveDataset
 
 class TaskGenerator(BuiltinClassGenerator):

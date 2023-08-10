@@ -987,9 +987,55 @@ def convert_model(get_model:Callable, model_name='anonymous_model', scene:str='h
     return AnonymousModel()
 
 def module2fmodule(Model):
+    """
+    Convert a class of torch.nn.Module into class flgo.utils.fmodule.FModule
+    Args:
+        Model (class): a class inherited from torch.nn.Module
+
+    Returns:
+        TempModule (class): The same class but additionally inheriting from flgo.utils.fmodule.FModule
+
+    """
     class TempFModule(Model, flgo.utils.fmodule.FModule):
         def __init__(self, *args, **kwargs):
             super(TempFModule, self).__init__(*args, **kwargs)
     return TempFModule
+
+def set_data_root(data_root:str=None):
+    """
+    Set the root of data that stores all the raw data automatically
+    Args:
+        data_root (str): the path of a directory whose default value is None and will be set to os.getcwd() as default.
+    Returns:
+    """
+    file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'benchmark', '__init__.py')
+    default_root = os.path.abspath(os.path.join(flgo.benchmark.path, 'RAW_DATA'))
+    if data_root is None and os.path.abspath(flgo.benchmark.data_root)!=default_root:
+        value = default_root
+        crt_root = default_root
+    elif data_root == 'cwd':
+        value = 'os.getcwd()'
+        crt_root = os.path.abspath(os.getcwd())
+    else:
+        if not os.path.exists(data_root):
+            os.makedirs(data_root)
+        if not os.path.isdir(data_root):
+            raise TypeError('data_root must be a dir')
+        value = os.path.abspath(data_root)
+        crt_root = value
+    with open(file_path, 'r') as inf:
+        lines = inf.readlines()
+        idx = -1
+        for i,line in enumerate(lines):
+            if line.find('_data_root')>-1:
+                idx = i
+                break
+        if idx>0:
+            lines[idx] = '_data_root = '+ value
+    with open(file_path, 'w') as outf:
+        outf.writelines(lines)
+    flgo._data_root = crt_root
+    return
+
 
 

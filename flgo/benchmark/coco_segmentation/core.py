@@ -20,7 +20,7 @@ PATHS = {
 builtin_class = torchvision.datasets.CocoDetection
 train_transforms = Compose([FilterAndRemapCocoCategories(CAT_LIST, remap=True), ConvertCocoPolysToMask(), get_transform(train=True)])
 test_transforms = Compose([FilterAndRemapCocoCategories(CAT_LIST, remap=True), ConvertCocoPolysToMask(), get_transform(train=False)])
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'COCO')
+path = os.path.join(flgo.benchmark.data_root,  'COCO')
 
 class TaskGenerator(BuiltinClassGenerator):
     def __init__(self, rawdata_path=path):

@@ -4,7 +4,7 @@ import flgo.benchmark
 import os.path
 
 builtin_class = BankMarketing
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'BANKMARKETING')
+path = os.path.join(flgo.benchmark.data_root,  'BANKMARKETING')
 
 TaskCalculator = GeneralCalculator
 

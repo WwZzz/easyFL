@@ -2,7 +2,7 @@ import  torch_geometric.datasets
 import flgo.benchmark
 from flgo.benchmark.toolkits.graph.node_classification import *
 
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'PubMed')
+path = os.path.join(flgo.benchmark.data_root, 'PubMed')
 builtin_class = torch_geometric.datasets.Planetoid
 
 TaskCalculator = GeneralCalculator

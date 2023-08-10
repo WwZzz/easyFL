@@ -10,7 +10,7 @@ import random
 
 # 0. 加载数据集
 language_pair = ['de', 'en']
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'MULTI30K')
+path = os.path.join(flgo.benchmark.data_root,  'MULTI30K')
 train_data, val_data, test_data = Multi30k(split=('train', 'valid', 'test'), language_pair=language_pair)
 
 # 1. 加载tokenizer和词表

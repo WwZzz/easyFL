@@ -34,8 +34,8 @@ class TaskGenerator(BasicTaskGenerator):
         'link_type':'trust',
         'zipfile': 'CiaoDVD.zip',
     }
-    # rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'CIAODVD')
-    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'CIAODVD'), scale = 1.0, order='max', min_items = 3):
+    # rawdata_path=os.path.join(flgo.benchmark.data_root, 'CIAODVD')
+    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.data_root, 'CIAODVD'), scale = 1.0, order='max', min_items = 3):
         super(TaskGenerator, self).__init__(benchmark='social_splitted_ciaodvd', rawdata_path=rawdata_path)
         self.scene='vertical'
         for key,value in self._DATASET_INFO.items(): setattr(self, key, value)

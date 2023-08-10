@@ -21,7 +21,7 @@ class GCN(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return F.log_softmax(x, dim=1)
 
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'CORA')
+path = os.path.join(flgo.benchmark.data_root, 'CORA')
 dataset = torch_geometric.datasets.Planetoid(path, name='Cora')
 train_data = dataset[0]
 

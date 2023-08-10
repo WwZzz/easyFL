@@ -5,7 +5,7 @@ import os.path
 
 builtin_class = torchvision.datasets.EMNIST
 transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'EMNIST')
+path = os.path.join(flgo.benchmark.data_root, 'EMNIST')
 
 class TaskGenerator(BuiltinClassGenerator):
     def __init__(self, rawdata_path=path, split='byclass'):

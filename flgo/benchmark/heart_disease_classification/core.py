@@ -4,7 +4,7 @@ import flgo.benchmark
 import os.path
 
 builtin_class = HeartDisease
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'HEART_DISEASE')
+path = os.path.join(flgo.benchmark.data_root,  'HEART_DISEASE')
 
 TaskCalculator = GeneralCalculator
 

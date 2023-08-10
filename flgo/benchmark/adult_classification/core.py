@@ -4,7 +4,7 @@ import flgo.benchmark
 import os.path
 
 builtin_class = Adult
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'ADULT')
+path = os.path.join(flgo.benchmark.data_root, 'ADULT')
 
 TaskCalculator = GeneralCalculator
 

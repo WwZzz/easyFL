@@ -206,7 +206,7 @@ class BankMarketing(BuiltinClassDataset):
 
 
 # import flgo
-# pat = os.path.join(flgo.benchmark.path,'RAW_DATA', 'heart_disease_classification')
+# pat = os.path.join(flgo.benchmark.data_root, 'heart_disease_classification')
 
 class HeartDisease(BuiltinClassDataset):
     """

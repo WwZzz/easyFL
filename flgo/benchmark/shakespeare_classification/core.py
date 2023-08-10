@@ -255,7 +255,7 @@ class SHAKESPEARE(Dataset):
 
 
 class TaskGenerator(BasicTaskGenerator):
-    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'SHAKESPEARE')):
+    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.data_root, 'SHAKESPEARE')):
         super(TaskGenerator, self).__init__(benchmark='shakespeare_classification', rawdata_path=rawdata_path)
         # Regular expression to capture an actors name, and line continuation
 

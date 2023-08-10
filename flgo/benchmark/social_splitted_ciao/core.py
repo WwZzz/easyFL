@@ -41,7 +41,7 @@ class TaskGenerator(BasicTaskGenerator):
         'zipfile': 'ciao.zip',
     }
 
-    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'CIAO'), scale = 1.0, order='max', min_items = 3):
+    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.data_root, 'CIAO'), scale = 1.0, order='max', min_items = 3):
         super(TaskGenerator, self).__init__(benchmark='social_splitted_ciao', rawdata_path=rawdata_path)
         self.scene='vertical'
         for key,value in self._DATASET_INFO.items(): setattr(self, key, value)

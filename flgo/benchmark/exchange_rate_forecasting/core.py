@@ -6,7 +6,7 @@ from flgo.benchmark.toolkits import download_from_url, extract_from_gz, normaliz
 import numpy as np
 import ujson as json
 
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'EXCHANGE_RATE')
+path = os.path.join(flgo.benchmark.data_root, 'EXCHANGE_RATE')
 
 class ExchangeRate(BuiltinClassDataset):
     def __init__(self, root, train=True, window=24, horizon=12, normalize=2):

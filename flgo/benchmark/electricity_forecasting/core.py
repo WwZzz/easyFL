@@ -3,7 +3,7 @@ import os
 import flgo
 from flgo.benchmark.toolkits.series.time_series_forecasting.datasets import Electricity
 
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'ELECTRICITY')
+path = os.path.join(flgo.benchmark.data_root, 'ELECTRICITY')
 builtin_class = Electricity
 
 class TaskGenerator(BuiltinClassGenerator):

@@ -172,7 +172,7 @@ class SENTIMENT140(Dataset):
         return re.findall(r"[\w']+|[.,!?;]", line)
 
 class TaskGenerator(BasicTaskGenerator):
-    def __init__(self,rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'SENTIMENT140')):
+    def __init__(self,rawdata_path=os.path.join(flgo.benchmark.data_root, 'SENTIMENT140')):
         super(TaskGenerator, self).__init__(benchmark='leaf_sent140',
                                             rawdata_path=rawdata_path)
 

@@ -3,7 +3,7 @@ from ..toolkits.rec.rating_prediction import BuiltinClassGenerator, BuiltinClass
 import os
 import flgo.benchmark
 
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'EPINIONS')
+path = os.path.join(flgo.benchmark.data_root, 'EPINIONS')
 builtin_class  = Epinions
 
 class TaskGenerator(BuiltinClassGenerator):

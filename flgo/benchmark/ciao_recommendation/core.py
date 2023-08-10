@@ -3,7 +3,7 @@ from ..toolkits.rec.rating_prediction import BuiltinClassGenerator, BuiltinClass
 import os
 import flgo.benchmark
 
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'CIAO')
+path = os.path.join(flgo.benchmark.data_root, 'CIAO')
 builtin_class  = Ciao
 
 class TaskGenerator(BuiltinClassGenerator):

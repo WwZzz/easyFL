@@ -29,7 +29,7 @@ class TaskGenerator(BasicTaskGenerator):
         'file': 'training_test_dataset.mat',
     }
     #
-    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'DOUBAN')):
+    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.data_root, 'DOUBAN')):
         super(TaskGenerator, self).__init__(benchmark='social_splitted_douban', rawdata_path=rawdata_path)
         self.scene='vertical'
         for key,value in self._DATASET_INFO.items(): setattr(self, key, value)

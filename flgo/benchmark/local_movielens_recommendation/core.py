@@ -3,7 +3,7 @@ from ..toolkits.rec.rating_prediction import BuiltinClassGenerator, BuiltinClass
 import os
 import flgo.benchmark
 
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'MOVIELENS')
+path = os.path.join(flgo.benchmark.data_root, 'MOVIELENS')
 builtin_class  = MovieLens
 
 class TaskGenerator(BuiltinClassGenerator):

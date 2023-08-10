@@ -5,7 +5,7 @@ import torch.nn
 from torchtext.vocab import build_vocab_from_iterator
 from torchtext.data.utils import get_tokenizer, ngrams_iterator
 
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA','SST2')
+path = os.path.join(flgo.benchmark.data_root, 'SST2')
 train_data = torchtext.datasets.SST2(root=path, split='train')
 test_data = torchtext.datasets.SST2(root=path, split='dev')
 ngrams = 2

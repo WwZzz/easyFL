@@ -9,7 +9,7 @@ import random
 import json
 
 class TaskGenerator(BuiltinClassGenerator):
-    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.path,'RAW_DATA', 'MNIST')):
+    def __init__(self, rawdata_path=os.path.join(flgo.benchmark.data_root, 'MNIST')):
         super(TaskGenerator, self).__init__('vertical_mnist_classification', rawdata_path, builtin_class, transform)
 
     def partition(self):

@@ -41,7 +41,7 @@ class GCN(torch.nn.Module):
         return (prob_adj > 0).nonzero(as_tuple=False).t()
 
 trans = T.NormalizeFeatures()
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'CITESEER')
+path = os.path.join(flgo.benchmark.data_root, 'CITESEER')
 dataset = torch_geometric.datasets.Planetoid(path, name='Citeseer', transform=trans)
 train_data = dataset[0]
 

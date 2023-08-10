@@ -39,7 +39,7 @@ class GCN(torch.nn.Module):
         return (prob_adj > 0).nonzero(as_tuple=False).t()
 
 transform = T.NormalizeFeatures()
-path = os.path.join(flgo.benchmark.path,'RAW_DATA', 'CORA')
+path = os.path.join(flgo.benchmark.data_root, 'CORA')
 dataset = torch_geometric.datasets.Planetoid(path, name='Cora', transform=transform)
 train_data = dataset[0]
 

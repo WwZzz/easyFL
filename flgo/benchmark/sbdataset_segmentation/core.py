@@ -126,7 +126,7 @@ class SBDataset(VisionDataset):
 builtin_class = SBDataset
 train_transform = get_transform(train=True)
 test_transform = get_transform(train=False)
-path = os.path.join(flgo.benchmark.path, 'RAW_DATA', 'SBDATASET')
+path = os.path.join(flgo.benchmark.data_root,  'SBDATASET')
 
 class TaskGenerator(BuiltinClassGenerator):
     def __init__(self, rawdata_path=path):
