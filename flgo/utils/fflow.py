@@ -105,8 +105,8 @@ def read_option_from_command():
     """Training Options"""
     # basic settings
     # methods of server side for sampling and aggregating
-    parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='md')
-    parser.add_argument('--aggregate', help='methods for aggregating models', type=str, choices=agg_list, default='uniform')
+    parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='uniform')
+    parser.add_argument('--aggregate', help='methods for aggregating models', type=str, choices=agg_list, default='other')
     # hyper-parameters of training in server side
     parser.add_argument('--num_rounds', help='number of communication rounds', type=int, default=20)
     parser.add_argument('--proportion', help='proportion of clients sampled per round', type=float, default=0.2)
@@ -114,27 +114,27 @@ def read_option_from_command():
     parser.add_argument('--lr_scheduler', help='type of the global learning rate scheduler', type=int, default=-1)
     parser.add_argument('--early_stop', help='stop training if there is no improvement for no smaller than the maximum rounds', type=int, default=-1)
     # hyper-parameters of local_movielens_recommendation training
-    parser.add_argument('--num_epochs', help='number of epochs when clients trainset on data;', type=int, default=5)
-    parser.add_argument('--num_steps', help='the number of local_movielens_recommendation steps, which dominate num_epochs when setting num_steps>0', type=int, default=-1)
+    parser.add_argument('--num_epochs', help='number of epochs when clients locally train the model on data;', type=int, default=5)
+    parser.add_argument('--num_steps', help='the number of local steps, which dominate num_epochs when setting num_steps>0', type=int, default=-1)
     parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.1)
-    parser.add_argument('--batch_size', help='batch size when clients trainset on data;', type=float, default='64')
+    parser.add_argument('--batch_size', help='batch size', type=float, default='64')
     parser.add_argument('--optimizer', help='select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
     parser.add_argument('--clip_grad', help='clipping gradients if the max norm of gradients ||g|| > clip_norm > 0', type=float, default=0.0)
-    parser.add_argument('--momentum', help='momentum of local_movielens_recommendation update', type=float, default=0.0)
-    parser.add_argument('--weight_decay', help='weight decay for the training process', type=float, default=0.0)
+    parser.add_argument('--momentum', help='momentum of local training', type=float, default=0.0)
+    parser.add_argument('--weight_decay', help='weight decay of local training', type=float, default=0.0)
     parser.add_argument('--num_edge_rounds', help='number of edge rounds in hierFL', type=int, default=5)
     # algorithm-dependent hyper-parameters
     parser.add_argument('--algo_para', help='algorithm-dependent hyper-parameters', nargs='*', type=float)
 
     """Environment Options"""
     # the ratio of the amount of the data used to train
-    parser.add_argument('--train_holdout', help='the rate of holding out the validation dataset from all the local_movielens_recommendation training datasets', type=float, default=0.1)
-    parser.add_argument('--test_holdout', help='the rate of holding out the validation dataset from the training datasets', type=float, default=0.0)
+    parser.add_argument('--train_holdout', help='the rate of holding out the validation dataset from all the local training datasets', type=float, default=0.1)
+    parser.add_argument('--test_holdout', help='the rate of holding out the validation dataset from the testing datasets owned by the server', type=float, default=0.0)
     parser.add_argument('--local_test', help='if this term is set True and train_holdout>0, (0.5*train_holdout) of data will be set as client.test_data.', action="store_true", default=False)
     # realistic machine config
     parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
     parser.add_argument('--gpu', nargs='*', help='GPU IDs and empty input is equal to using CPU', type=int)
-    parser.add_argument('--server_with_cpu', help='seed for random initialization;', action="store_true", default=False)
+    parser.add_argument('--server_with_cpu', help='the model parameters will be stored in the memory if True', action="store_true", default=False)
     parser.add_argument('--num_parallels', help="the number of parallels in the clients computing session", type=int, default=1)
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
     parser.add_argument('--pin_memory', help='pin_memory of DataLoader', action="store_true", default=False)
