@@ -609,6 +609,8 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     if gv.simulator is not None: gv.simulator.initialize()
     gv.clock.register_simulator(simulator=gv.simulator)
     gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects, simulator=Simulator.__name__ if scene == 'horizontal' else 'None')
+    if scene=='horizontal':
+        gv.logger.register_variable(server=objects[0], clients=objects[1:])
     gv.logger.initialize()
     gv.logger.info('Ready to start.')
 
@@ -938,7 +940,7 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
         res.append(rec)
     return res
 
-def convert_model(get_model:Callable, model_name='anonymous_model', scene:str='horizontal'):
+def convert_model(get_model:Callable, model_name='anonymous', scene:str='horizontal'):
     r"""
     Convert an existing model into a model that can be loaded in flgo.
     Args:
