@@ -71,6 +71,21 @@ nav:
       - Horizontal FL: Resources/algorithm/horizontal.md
     - Benchmark:
       - Resources/benchmark/index.md
+      - Image:
+        - Resources/benchmark/Image/index.md
+        - Classification: Resources/benchmark/Image/classification.md
+        - Detection: Resources/benchmark/Image/detection.md
+        - Segmentation: Resources/benchmark/Image/segmentation.md
+      - Text:
+        - Resources/benchmark/Text/index.md
+        - Classification: Resources/benchmark/Text/classification.md
+        - Translation: Resources/benchmark/Text/translation.md
+        - Language Modeling: Resources/benchmark/Text/language_modeling.md
+      - Graph:
+        - Resources/benchmark/Graph/index.md
+        - Graph Classification: Resources/benchmark/Graph/graph_classification.md
+        - Node Classification: Resources/benchmark/Graph/node_classification.md
+        - Link Prediction: Resources/benchmark/Graph/link_prediction.md
     - Simulator:
       - Resources/simulator/index.md
   - "About": about.md
