@@ -7,4 +7,4 @@ Following our instructions, you can do things like
 * conduct experiments under various data heterogeneiry and system heterogeneity
 * manage your experimental records and visualize them with few codes
 
-All of our examples can be run on jupyter notebook. The source of our notebooks are in [Click Here](https://github.com/WwZzz/easyFL/tree/FLGo/tutorial/en).
+All of our examples can be run on jupyter notebook. The source of our notebooks are [here](https://github.com/WwZzz/easyFL/tree/FLGo/tutorial/en).

@@ -1,5 +1,5 @@
 # Benchmark
-![bmk_example](../../img/overview_flgo_benchmark.png)
+![bmk_example](https://raw.githubusercontent.com/WwZzz/myfigs/master/overview_flgo_benchmark.png)
 
 At the initialization phase, the original dataset is input to `TaskGenerator` that 
 accordingly and flexibly partitions the dataset into local sub-datasets owned by 

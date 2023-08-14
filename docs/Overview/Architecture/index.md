@@ -1,5 +1,5 @@
 # FLGo Framework
-![framework_fig](../../img/overview_flgo_arch.png)
+![framework_fig](https://raw.githubusercontent.com/WwZzz/myfigs/master/overview_flgo_arch.png)
 
 The whole workflow of FLGo is as shown in the above picture. FLGo framework mainly runs 
 by three steps. 

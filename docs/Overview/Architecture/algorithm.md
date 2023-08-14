@@ -2,7 +2,7 @@
 In FLGo, each algorithm is described by an independent file consisting of the objects 
 (i.e. server and clients in horizontal FL) with their actions. 
 ## Horizontal FL
-![algo_example](../../img/overview_flgo_algo.png)
+![algo_example](https://raw.githubusercontent.com/WwZzz/myfigs/master/overview_flgo_algo.png)
 A classical procedure of FL training process is as shown in the figure above, where the server iteratively 
 broadcasts the global model to a subset of clients and aggregates the received locally 
 trained models from them. Following this scheme, a great number of FL algorithms can be 

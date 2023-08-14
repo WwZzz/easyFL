@@ -1,5 +1,5 @@
 # Logger and analyzer
-![tracer](../../img/overview_exp.png)
+![tracer](https://raw.githubusercontent.com/WwZzz/myfigs/master/overview_exp.png)
 Although there are already several comprehensive experiment managers (e.g. wandb, 
 tensorboard), our `Experiment` module is compatible with them and enable 
 customizing experiments in a non-intrusive way to the codes, where users can create a 

@@ -1,7 +1,7 @@
 # Overview
 | **Name**             | **Dataset**                                | **Description**                   | **Scene**     | **Download**                                                                                                             | **Comment** |
 |----------------------|--------------------------------------------|-----------------------------------|---------------|--------------------------------------------------------------------------------------------------------------------------|-------------|
-| mnist_classification | [MNIST](http://yann.lecun.com/exdb/mnist/) | [See here](#mnist_classification) | Horizontal FL | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/image/classification/mnist_classification.zip) | -           |
+| mnist_classification | [MNIST](http://yann.lecun.com/exdb/mnist/) | [See here](#mnist_classification) | Horizontal FL | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/mnist_classification.zip) | -           |
 |                      |                                            |                                   |               |                                                                                                                          |             |
 
 # Details

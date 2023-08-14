@@ -5,6 +5,6 @@ actions were taken. For example, a client will be available with a probability a
 moment, and clients will be in state 'working' after they were selected if not dropping out.
 The transfer rules across states are described in the figure below
 
-![client_state_machine](../../img/overview_flgo_state.png)
+![client_state_machine](https://raw.githubusercontent.com/WwZzz/myfigs/master/overview_flgo_state.png)
 We provide simple APIs for users to customize the system heterogeneity for simulation. Please see 
 Tutorial 5.1 for details.

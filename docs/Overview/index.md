@@ -41,7 +41,7 @@ We set a virtual global clock and a client-state machine to simulate a real-worl
  and synchronous strategies. Here we provide a comprehensive example to help understand the difference 
 between the two strategies in FLGo.
 
-![async_sync](../img/overview_flgo_async.png)
+![async_sync](https://raw.githubusercontent.com/WwZzz/myfigs/master/overview_flgo_async.png)
 For synchronous algorithms, the server would wait for the slowest clients. 
 In round 1,the server select a subset of idle clients (i.e. client i,u,v) 
 to join in training and the slowest client v dominates the duration of this 
