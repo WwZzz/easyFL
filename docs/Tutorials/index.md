@@ -6,10 +6,5 @@ Following our instructions, you can do things like
 * fast verify your ideas by converting them into runnable codes
 * conduct experiments under various data heterogeneiry and system heterogeneity
 * manage your experimental records and visualize them with few codes
-* ...
 
-We organize this tutorial as follows:
-
-1. At the first part, we introduce ...
-
-All of our examples can be run on jupyter notebook. The source of our notebooks are in .
+All of our examples can be run on jupyter notebook. The source of our notebooks are in [Click Here](https://github.com/WwZzz/easyFL/tree/FLGo/tutorial/en).

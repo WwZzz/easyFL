@@ -23,8 +23,18 @@ nav:
         - flgo.benchmark.toolkits.cv:
           - Docs/benchmark/toolkits/cv/index.md
           - classification: Docs/benchmark/toolkits/cv/classification.md
-        - flgo.benchmark.toolkits.nlp: Docs/empty.md
-        - flgo.benchmark.toolkits.graph: Docs/empty.md
+          - segmentation: Docs/benchmark/toolkits/cv/segmentation.md
+          - detection: Docs/benchmark/toolkits/cv/detection.md
+        - flgo.benchmark.toolkits.nlp:
+          - Docs/benchmark/toolkits/nlp/index.md
+          - classification: Docs/benchmark/toolkits/nlp/classification.md
+          - language_modeling: Docs/benchmark/toolkits/nlp/language_modeling.md
+          - translation: Docs/benchmark/toolkits/nlp/translation.md
+        - flgo.benchmark.toolkits.graph:
+          - Docs/benchmark/toolkits/graph/index.md
+          - node_classification: Docs/benchmark/toolkits/graph/node_classification.md
+          - graph_classification: Docs/benchmark/toolkits/graph/graph_classification.md
+          - link_prediction: Docs/benchmark/toolkits/graph/link_prediction.md
         - flgo.benchmark.toolkits.tabular: Docs/empty.md
         - flgo.benchmark.toolkits.partition: Docs/benchmark/toolkits/parition.md
         - flgo.benchmark.toolkits.visualization: Docs/benchmark/toolkits/visualization.md
@@ -44,9 +54,25 @@ nav:
       - flgo.utils.fmodule: Docs/utils/fmodule.md
   - "Tutorials":
     - Tutorials/index.md
-    - 0 Quick Start: Tutorials/0_Quick_Start.md
+    - 0 Quick Start:
+      - Tutorials/0_Quick_Start/index.md
+    - 1 Configuration:
+      - Tutorials/1_Configuration/index.md
+      - 1.1 FL Descriptor: Tutorials/1_Configuration/1.1_FL_Descriptor.md
+      - 1.2 Option Configuration: Tutorials/1_Configuration/1.2_Option_Configuration.md
+      - 1.3 Task Configuration: Tutorials/1_Configuration/1.3_Task_Configuration.md
+      - 1.4 Algorithm Configuration: Tutorials/1_Configuration/1.4_Algorithm_Configuration.md
+      - 1.5 Model Configuration: Tutorials/1_Configuration/1.5_Model_Configuration.md
+      - 1.6 Logger Configuration: Tutorials/1_Configuration/1.6_Logger_Configuration.md
   - "Resources":
     - Resources/index.md
+    - Algorithm:
+      - Resources/algorithm/index.md
+      - Horizontal FL: Resources/algorithm/horizontal.md
+    - Benchmark:
+      - Resources/benchmark/index.md
+    - Simulator:
+      - Resources/simulator/index.md
   - "About": about.md
   - "Github": https://github.com/WwZzz/easyFL
 theme:
@@ -97,3 +123,12 @@ extra:
 plugins:
 - search
 - mkdocstrings:
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

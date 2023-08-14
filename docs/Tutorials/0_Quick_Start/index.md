@@ -33,7 +33,7 @@ if not os.path.exist(task_path):
 
 After running the codes above, a federated dataset is successfully created in the `task_path`. The visualization of the task is stored in
 `task_path/res.png` as below
-![my_first_task](../img/getstart_fig1.png)
+![my_first_task](../../img/getstart_fig1.png)
 
 
 
@@ -59,4 +59,4 @@ analysis_plan = {
 
 flgo.experiment.analyzer.show(analysis_plan)
 ```
-![my_first_res](../img/getstart_fig2.png)
+![my_first_res](../../img/getstart_fig2.png)

@@ -1,0 +1,1 @@
+:::flgo.benchmark.toolkits.graph.link_prediction
