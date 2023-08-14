@@ -5,7 +5,7 @@ For example, we take next three steps to use FedAvg as a plugin.
 
 1. Create a new file named 'my_fedavg.py'
 
-2. Copy the source code of FedAvg [Here](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resource/algorithm/fedavg.py) into `my_fedavg.py`
+2. Copy the source code of FedAvg [Here](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedavg.py) into `my_fedavg.py`
 
 3. put the file into the project file and use it like
 ```python
