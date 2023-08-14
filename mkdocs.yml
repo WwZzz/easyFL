@@ -64,6 +64,12 @@ nav:
       - 1.4 Algorithm Configuration: Tutorials/1_Configuration/1.4_Algorithm_Configuration.md
       - 1.5 Model Configuration: Tutorials/1_Configuration/1.5_Model_Configuration.md
       - 1.6 Logger Configuration: Tutorials/1_Configuration/1.6_Logger_Configuration.md
+    - 2 Algorithm Customization:
+      - Tutorials/2_Algorithm_Customization/index.md
+    - 3 Benchmark Customization:
+      - Tutorials/3_Benchmark_Customization/index.md
+    - 4 Simulator Customization:
+      - Tutorials/4_Simulator_Customization/index.md
   - "Resources":
     - Resources/index.md
     - Algorithm:
