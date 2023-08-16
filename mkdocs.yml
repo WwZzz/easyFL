@@ -66,6 +66,8 @@ nav:
       - 1.6 Logger Configuration: Tutorials/1_Configuration/1.6_Logger_Configuration.md
     - 2 Algorithm Customization:
       - Tutorials/2_Algorithm_Customization/index.md
+      - 2.1 General Paradigm: Tutorials/2_Algorithm_Customization/2.1_General_Paradigm.md
+      - 2.2 Local Training: Tutorials/2_Algorithm_Customization/2.2_Local_Training_FedProx.md
     - 3 Benchmark Customization:
       - Tutorials/3_Benchmark_Customization/index.md
     - 4 Simulator Customization:
