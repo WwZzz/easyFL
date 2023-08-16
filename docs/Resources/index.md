@@ -7,7 +7,7 @@ The usages of the three kinds of resources are respectively introduced in [Usage
 
 # Contribute to Resources
 We welcome researchers to contribute to this open-source library to share their own studies by introducing new benchmarks, novel algorithms, and more practical simulators, as we hope this can promoto the development of FL community.
-To simplify integrating different kinds of resources, we have also provided easy APIs and comprehensive [tutorials](../Tutorials/index.md) 
+To simplify integrating different kinds of resources, we have also provided easy APIs and comprehensive [tutorials](../Tutorials/index.md).
 We will remark the contributors for the submitted resources in our website.
 
 ## Submit Contributions
