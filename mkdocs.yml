@@ -75,10 +75,10 @@ nav:
   - "Resources":
     - Resources/index.md
     - Algorithm:
-      - Resources/algorithm/index.md
-      - Horizontal FL: Resources/algorithm/horizontal.md
+      - Usage: Resources/algorithm/index.md
+      - Horizontal: Resources/algorithm/horizontal.md
     - Benchmark:
-      - Resources/benchmark/index.md
+      - Usage: Resources/benchmark/index.md
       - Image:
 #        - Resources/benchmark/Image/index.md
         - Classification: Resources/benchmark/Image/classification.md
@@ -95,7 +95,7 @@ nav:
         - Node Classification: Resources/benchmark/Graph/node_classification.md
         - Link Prediction: Resources/benchmark/Graph/link_prediction.md
     - Simulator:
-      - Resources/simulator/index.md
+      - Usage: Resources/simulator/index.md
   - "About": about.md
   - "Github": https://github.com/WwZzz/easyFL
 theme:

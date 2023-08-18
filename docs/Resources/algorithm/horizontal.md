@@ -1,14 +1,24 @@
 # Classical FL
-| **Name** | **Download**                                                                                     | **Publish** | **Paper Link**                           | **Remark** |
-|----------|--------------------------------------------------------------------------------------------------|-------------|------------------------------------------|------------|
-| FedAvg   | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedavg.py) | AISTAS 2017 | [Click](http://arxiv.org/abs/1602.05629) |            |
-|          |                                                                                                  |             |                                          |            |
-|          |                                                                                                  |             |                                          |            |
-|          |                                                                                                  |             |                                          |            |
-|          |                                                                                                  |             |                                          |            |
-|          |                                                                                                  |             |                                          |            |
-|          |                                                                                                  |             |                                          |            |
-|          |                                                                                                  |             |                                          |            |
-|          |                                                                                                  |             |                                          |            |
+| **Name**           | **Download**                                                                                                 | **Publish**               | **Paper Link**                           | **Remark**                              |
+|--------------------|--------------------------------------------------------------------------------------------------------------|---------------------------|------------------------------------------|-----------------------------------------|
+| FedAvg             | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedavg.py)             | AISTAS 2017               | [Click](http://arxiv.org/abs/1602.05629) |                                         |
+| FedProx            | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedprox.py)            | MLSys 2020                | [Click](http://arxiv.org/abs/1812.06127) | Data Heterogeneity / Incomplete Updates |
+| FedNova            | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fednova.py)            | NIPS 2020                 | [Click](http://arxiv.org/abs/2007.07481) | Incomplete Updates                      |
+| Scaffold           | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/scaffold.py)           | ICML 2020                 | [Click](http://arxiv.org/abs/1910.06378) | Data Heterogeneity/ Client Dropout      |
+| FedDyn             | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/feddyn.py)             | ICLR 2021                 | [Click](http://arxiv.org/abs/2111.04263) | Data Heterogeneity                      |
+| FedAvgM            | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedavgm.py)            | arxiv 2019                | [Click](http://arxiv.org/abs/1909.06335) | Data Heterogeneity                      |
+| AFL                | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/afl.py)                | ICML 2019                 | [Click](http://arxiv.org/abs/1902.00146) | Fairness                                |
+| qFedAvg            | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/qfedavg.py)            | ICLR 2020                 | [Click](http://arxiv.org/abs/1905.10497) | Fairness                                |
+| FedMGDA+           | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedmgda+.py)           | IEEE TNSE 2022            | [Click](http://arxiv.org/abs/2006.11489) | Fairness / Robustness                   |
+| FedFV              | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedfv.py)              | IJCAI 2021                | [Click](http://arxiv.org/abs/2104.14937) | Fairness                                |
+| FedFa              | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedfa.py)              | Information Sciences 2022 | [Click](http://arxiv.org/abs/2012.10069) | Fairness                                |
+| MIFA               | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/mifa.py)               | NIPS 2021                 | [Click](http://arxiv.org/abs/2106.04159) | Client Availability                     |
+| PowerOfChoice      | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/powerofchoice.py)      | arxiv 2021                | [Click](http://arxiv.org/abs/2010.13723) | Data Heterogeneity / Client Availability |
+| FedGS              | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedgs.py)              | AAAI 2023                 | [Click]() | Data Heterogeneity / Client Availability |
+| Clustered Sampling | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/clustered_sampling.py) | ICML 2021                 | [Click]() | Data Heterogeneity |
 
 # Personalized FL
+
+| **Name** | **Download**                                                                                    | **Publish** | **Paper Link**                           | **Remark**                              |
+|----------|-------------------------------------------------------------------------------------------------|-------------|------------------------------------------|-----------------------------------------|
+| Ditto    | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/ditto.py) | ICML 2021   | [Click](http://arxiv.org/abs/2007.14390) |                                         |
