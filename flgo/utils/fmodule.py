@@ -145,6 +145,17 @@ class FModule(nn.Module):
         self.op_without_graph()
         self.load_state_dict((self/(self**2)).state_dict())
 
+    def has_nan(self):
+        r"""
+        Check whether there is nan value in model's parameters
+        Returns:
+            res (bool): True if there is nan value
+        """
+        for p in self.parameters():
+            if torch.any(torch.isnan(p)).item():
+                return True
+        return False
+
     def get_device(self):
         r"""
         Returns:

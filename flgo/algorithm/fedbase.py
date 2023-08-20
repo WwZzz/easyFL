@@ -462,6 +462,17 @@ class BasicServer(BasicParty):
         ```
         """
         if len(models) == 0: return self.model
+        nan_exists = [m.has_nan() for m in models]
+        if any(nan_exists):
+            self.gv.logger.info('Warning("There exists non-value in local models")')
+            new_models = []
+            received_clients = []
+            for ni, mi, cid in zip(nan_exists, models, self.received_clients):
+                if ni: continue
+                new_models.append(mi)
+                received_clients.append(cid)
+            self.received_clients = received_clients
+            models = new_models
         local_data_vols = [c.datavol for c in self.clients]
         total_data_vol = sum(local_data_vols)
         if self.aggregation_option == 'weighted_scale':

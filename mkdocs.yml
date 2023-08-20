@@ -68,10 +68,25 @@ nav:
       - Tutorials/2_Algorithm_Customization/index.md
       - 2.1 General Paradigm: Tutorials/2_Algorithm_Customization/2.1_General_Paradigm.md
       - 2.2 Local Training: Tutorials/2_Algorithm_Customization/2.2_Local_Training_FedProx.md
+      - 2.3 Aggregation: Tutorials/2_Algorithm_Customization/2.3_Aggregation.md
+      - 2.4 Sampling: Tutorials/2_Algorithm_Customization/2.4_Sampling.md
+      - 2.5 Communication: Tutorials/2_Algorithm_Customization/2.5_Communication.md
     - 3 Benchmark Customization:
       - Tutorials/3_Benchmark_Customization/index.md
+      - 3.1 From Dataset to Benchmark: Tutorials/3_Benchmark_Customization/3.1_Quick_Customization.md
+      - 3.2 Data Heterogeneity: Tutorials/3_Benchmark_Customization/3.7_Data_Heterogeneity.md
+      - 3.3 Image: Tutorials/3_Benchmark_Customization/3.2_Image.md
+      - 3.4 Text: Tutorials/3_Benchmark_Customization/3.3_Text.md
+      - 3.5 Graph: Tutorials/3_Benchmark_Customization/3.4_Graph.md
+      - 3.6 Series: Tutorials/3_Benchmark_Customization/3.5_Series.md
+      - 3.7 Rec: Tutorials/3_Benchmark_Customization/3.6_Rec.md
     - 4 Simulator Customization:
       - Tutorials/4_Simulator_Customization/index.md
+      - 4.1 Client Availability: Tutorials/4_Simulator_Customization/4.1_Client_Availability.md
+      - 4.2 Client Connectivity: Tutorials/4_Simulator_Customization/4.2_Client_Connectivity.md
+      - 4.3 Client Responsiveness: Tutorials/4_Simulator_Customization/4.3_Client_Responsiveness.md
+      - 4.4 Client Completeness: Tutorials/4_Simulator_Customization/4.4_Client_Conpleteness.md
+
   - "Resources":
     - Resources/index.md
     - Algorithm:
