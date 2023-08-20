@@ -16,6 +16,9 @@ nav:
       - Docs/algorithm/index.md
       - flgo.algorithm.fedbase: Docs/algorithm/fedbase.md
       - flgo.algorithm.vflbase: Docs/algorithm/vflbase.md
+      - flgo.algorithm.hierarchical: Docs/algorithm/hierarchical.md
+      - flgo.algorithm.decentralized: Docs/algorithm/decentralized.md
+
     - flgo.benchmark: 
       - Docs/benchmark/index.md
       - flgo.benchmark.base: Docs/benchmark/base.md

@@ -35,12 +35,13 @@ For example,
  
 ```
 
-- **Thirdly**, git commit your changes with necessary information and push it to our repo. The necessary contains
+- **Thirdly**, git commit your changes with necessary information and push it to our repo, which includes
 
-#### Necessary information for submission
-1. **algorithm**: publishment, year, scene (e.g. horizontal, vertical or others)
-2. **benchmark**: the name of dataset, the type of data, the type of the ML task
-3. **simulator**: the name of simulator, synthetic-based or real-world-based
+> **algorithm**: publishment, year, scene (e.g. horizontal, vertical or others)
+> 
+> **benchmark**: the name of dataset, the type of data, the type of the ML task
+> 
+> **simulator**: the name of simulator, synthetic-based or real-world-based
 
 ### (2) Contact us through email
 Send resources to me through [E-mail](../about.md). The necessacy information should also be contained.
