@@ -114,6 +114,7 @@ nav:
         - Link Prediction: Resources/benchmark/Graph/link_prediction.md
     - Simulator:
       - Usage: Resources/simulator/index.md
+      - Horizontal: Resources/simulator/horizontal.md
   - "About": about.md
   - "Github": https://github.com/WwZzz/easyFL
 theme:
