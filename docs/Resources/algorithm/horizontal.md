@@ -22,3 +22,5 @@
 | **Name** | **Download**                                                                                    | **Publish** | **Paper Link**                           | **Remark**                              |
 |----------|-------------------------------------------------------------------------------------------------|-------------|------------------------------------------|-----------------------------------------|
 | Ditto    | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/ditto.py) | ICML 2021   | [Click](http://arxiv.org/abs/2007.14390) |                                         |
+|          |                                                                                                 |             |                                          |                                         |
+|          |                                                                                                 |             |                                          |                                         |
