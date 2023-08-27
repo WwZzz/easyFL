@@ -522,10 +522,12 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     benchmark = task_info['benchmark']
     if model== None:
         bmk_module = importlib.import_module(benchmark)
-        if hasattr(bmk_module, 'default_model'):
+        if hasattr(algorithm, 'init_global_module') or hasattr(algorithm, 'init_local_module'):
+            model = algorithm
+        elif hasattr(bmk_module, 'default_model'):
             model = getattr(bmk_module, 'default_model')
         else:
-            model = algorithm
+            raise NotImplementedError("Model cannot be None when there exists no default model for the current benchmark {} and the algorithm {} didn't define the model by `init_local_module` or `init_global_module`".format(task_info['benchmark'], option['algorithm']))
     option['model'] = (model.__name__).split('.')[-1]
     # create global variable
     gv = GlobalVariable()

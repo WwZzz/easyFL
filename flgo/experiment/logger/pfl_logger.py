@@ -25,8 +25,8 @@ class PFLLogger(BasicLogger):
                     ctest_dict[met_name].append(ctests[cid][met_name])
                 self.output['local_test_'+met_name].append(float(np.array(ctest_dict[met_name]).mean()))
         # global performance
-        gmetrics = self.server.test(self.server.model, 'test')
-        for met_name, met_val in gmetrics.items():
-            self.output['global_test_' + met_name].append(met_val)
+        # gmetrics = self.server.test(self.server.model, 'test')
+        # for met_name, met_val in gmetrics.items():
+        #     self.output['global_test_' + met_name].append(met_val)
         # output to stdout
         self.show_current_output()
