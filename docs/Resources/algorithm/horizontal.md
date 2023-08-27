@@ -19,8 +19,10 @@
 
 # Personalized FL
 
-| **Name** | **Download**                                                                                    | **Publish** | **Paper Link**                           | **Remark**                              |
-|----------|-------------------------------------------------------------------------------------------------|-------------|------------------------------------------|-----------------------------------------|
-| Ditto    | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/ditto.py) | ICML 2021   | [Click](http://arxiv.org/abs/2007.14390) |                                         |
-|          |                                                                                                 |             |                                          |                                         |
-|          |                                                                                                 |             |                                          |                                         |
+| **Name**   | **Download**                                                                                     | **Publish** | **Paper Link**                            | **Remark** |
+|------------|--------------------------------------------------------------------------------------------------|-------------|-------------------------------------------|------------|
+| Ditto      | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/ditto.py)  | ICML 2021   | [Click](http://arxiv.org/abs/2007.14390)  |            |
+| FedALA     | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedala.py) | AAAI 2023   | [Click](http://arxiv.org/abs/2212.01197)  |            |
+| FedRep     | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedrep.py) | ICML 2021   | [Click](http://arxiv.org/abs/2102.07078)  |            |
+| pFedMe     | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/pfedme.py) | NIPS 2020   | [Click](http://arxiv.org/abs/2006.08848)  |            |                                         |
+| Per-FedAvg |                                                                                                  |             |                                           |            |
