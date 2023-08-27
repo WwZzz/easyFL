@@ -1,3 +1,7 @@
+"""
+This is a non-official implementation of personalized FL method FedALA (https://ojs.aaai.org/index.php/AAAI/article/view/26330).
+The implementation here is directly transfered from their github repo (https://github.com/TsingZ0/FedALA/tree/main)
+"""
 import flgo.algorithm.fedbase
 import copy
 import random
