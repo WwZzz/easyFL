@@ -1,6 +1,6 @@
 """
-This is a non-official implementation of personalized FL method Per-FedAvg (http://arxiv.org/abs/2006.08848).
-The original implementation is in github repo (https://github.com/CharlieDinh/pFedMe/)
+This is a non-official implementation of personalized FL method Per-FedAvg (http://arxiv.org/abs/2002.07948).
+Our implementation considers both the two efficient versions of Per-FedAvg (FO) and Per-FedAvg (HF)
 """
 import copy
 import torch
