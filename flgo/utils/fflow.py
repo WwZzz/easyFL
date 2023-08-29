@@ -288,7 +288,7 @@ def gen_hierarchical_benchmark(benchmark:str, config_file:str, target_path = '.'
     bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
     return bmk_module
 
-def gen_task_from_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dict={}, task_path: str= '', rawdata_path:str= '', seed:int=0):
+def gen_task_from_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dict={}, task_path: str= '', rawdata_path:str= '', seed:int=0, overwrite=False):
     r"""
     Generate a federated task according to the parameters of this function. The formats and meanings of the inputs are listed as below:
 
@@ -345,8 +345,11 @@ def gen_task_from_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:d
     if task_path=='': task_path = os.path.join('.', task_generator.task_name)
     task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
     # check if task already exists
-    if task_pipe.task_exists():
-        raise FileExistsError('Task {} already exists.'.format(task_path))
+    if task_pipe.task_exists() and not overwrite:
+        warnings.warn('Task {} already exists.'.format(task_path))
+        return
+    else:
+        shutil.rmtree(task_path)
     try:
         # create task architecture
         task_pipe.create_task_architecture()
@@ -366,7 +369,7 @@ def gen_task_from_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:d
     except:
         pass
 
-def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0):
+def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, overwrite:bool=False):
     r"""
     Generate a federated task that is specified by the benchmark information and the partition information, where the generated task will be stored in the task_path and the raw data will be downloaded into the rawdata_path.
 
@@ -440,8 +443,11 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0):
     if task_path=='': task_path = os.path.join('.', task_generator.task_name)
     task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
     # check if task already exists
-    if task_pipe.task_exists():
-        raise FileExistsError('Task {} already exists.'.format(task_path))
+    if task_pipe.task_exists() and not overwrite:
+        warnings.warn('Task {} already exists.'.format(task_path))
+        return
+    else:
+        shutil.rmtree(task_path)
     try:
         # create task architecture
         task_pipe.create_task_architecture()
