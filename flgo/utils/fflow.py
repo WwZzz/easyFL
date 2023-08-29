@@ -346,10 +346,11 @@ def gen_task_from_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:d
     task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
     # check if task already exists
     if task_pipe.task_exists() and not overwrite:
-        warnings.warn('Task {} already exists.'.format(task_path))
-        return
-    else:
-        shutil.rmtree(task_path)
+        if not overwrite:
+            warnings.warn('Task {} already exists.'.format(task_path))
+            return
+        else:
+            shutil.rmtree(task_path)
     try:
         # create task architecture
         task_pipe.create_task_architecture()
@@ -443,11 +444,12 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, ove
     if task_path=='': task_path = os.path.join('.', task_generator.task_name)
     task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
     # check if task already exists
-    if task_pipe.task_exists() and not overwrite:
-        warnings.warn('Task {} already exists.'.format(task_path))
-        return
-    else:
-        shutil.rmtree(task_path)
+    if task_pipe.task_exists():
+        if not overwrite:
+            warnings.warn('Task {} already exists.'.format(task_path))
+            return
+        else:
+            shutil.rmtree(task_path)
     try:
         # create task architecture
         task_pipe.create_task_architecture()
