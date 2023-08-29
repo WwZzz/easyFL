@@ -2,8 +2,6 @@
 This is a non-official implementation of personalized FL method FedFomo (http://arxiv.org/abs/2012.08565).
 The original implementation is at https://github.com/NVlabs/FedFomo
 """
-import warnings
-
 import flgo.algorithm.fedbase
 import flgo.utils.fmodule as fmodule
 import copy
