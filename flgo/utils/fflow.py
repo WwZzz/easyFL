@@ -10,6 +10,7 @@ import importlib
 import random
 import os
 import os.path
+import uuid
 import warnings
 from typing import *
 try:
@@ -40,6 +41,7 @@ import flgo.experiment.logger.hier_logger
 import flgo.experiment.logger
 import flgo.experiment.device_scheduler
 from flgo.simulator.base import BasicSimulator
+import flgo.benchmark.base
 import flgo.benchmark.partition
 import flgo.benchmark.toolkits.partition
 import flgo.algorithm
@@ -53,13 +55,13 @@ class GlobalVariable:
     """This class is to create a shared space for sharing variables across
     different parties for each runner"""
 
-    def __init__(self):
-        self.logger = None
-        self.simulator = None
-        self.clock = None
-        self.dev_list = None
-        self.TaskCalculator = None
-        self.TaskPipe = None
+    def __init__(self, logger:flgo.experiment.logger.BasicLogger=None, simulator:flgo.simulator.base.BasicSimulator=None, clock:flgo.simulator.base.ElemClock=None, dev_list:list=None, TaskCalculator:flgo.benchmark.base.BasicTaskCalculator=None, TaskPipe:flgo.benchmark.base.BasicTaskPipe=None):
+        self.logger = logger
+        self.simulator = simulator
+        self.clock = clock
+        self.dev_list = dev_list
+        self.TaskCalculator = TaskCalculator
+        self.TaskPipe = TaskPipe
         self.crt_dev = 0
 
     def apply_for_device(self):
@@ -396,15 +398,6 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, ove
     gen_option = load_configuration(config)
     if type(gen_option['benchmark']) is not dict: gen_option['benchmark']={'name':gen_option['benchmark']}
     if 'para' not in gen_option['benchmark'].keys(): gen_option['benchmark']['para'] = {}
-    if 'partitioner' in gen_option.keys():
-        if not isinstance(gen_option['partitioner'], dict):
-            gen_option['partitioner'] = {'name': gen_option['partitioner'], 'para':{}}
-        # update parameters of partitioner
-        if 'para' not in gen_option['partitioner'].keys():
-            gen_option['partitioner']['para'] = {}
-        else:
-            if 'name' not in gen_option['partitioner'].keys():
-                gen_option['benchmark']['para'].update(gen_option['partitioner']['para'])
     # init generator
     if rawdata_path!='': gen_option['benchmark']['para']['rawdata_path']=rawdata_path
     if type(gen_option['benchmark']['name']) is str:
@@ -417,26 +410,40 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, ove
     bmk_module = importlib.import_module(gen_option['benchmark']['name']) if type(
         gen_option['benchmark']['name']) is str else gen_option['benchmark']['name']
     # create partitioner for generator if specified
-    if 'partitioner' in gen_option.keys() and 'name' in gen_option['partitioner'].keys():
-        Partitioner = gen_option['partitioner']['name']
-        if type(Partitioner) is str:
-            if Partitioner in globals().keys(): Partitioner = eval(Partitioner)
-            else: Partitioner = getattr(flgo.benchmark.partition, Partitioner)
-        partitioner = Partitioner(**gen_option['partitioner']['para'])
-        task_generator.register_partitioner(partitioner)
-        partitioner.register_generator(task_generator)
-    else:
-        try:
-            if hasattr(bmk_module, 'default_partitioner'):
-                Partitioner = getattr(bmk_module, 'default_partitioner')
-                default_partition_para = getattr(bmk_module, 'default_partition_para') if hasattr(bmk_module, 'default_partition_para') else {}
-                partitioner = Partitioner(**default_partition_para)
+    if 'partitioner' in gen_option.keys():
+        if isinstance(gen_option['partitioner'], flgo.benchmark.partition.BasicPartitioner):
+            partitioner = gen_option['partitioner']
+            task_generator.register_partitioner(partitioner)
+            partitioner.register_generator(task_generator)
+        else:
+            if not isinstance(gen_option['partitioner'], dict):
+                gen_option['partitioner'] = {'name': gen_option['partitioner'], 'para':{}}
+            # update parameters of partitioner
+            if 'para' not in gen_option['partitioner'].keys():
+                gen_option['partitioner']['para'] = {}
+            else:
+                if 'name' not in gen_option['partitioner'].keys():
+                    gen_option['benchmark']['para'].update(gen_option['partitioner']['para'])
+            if 'name' in gen_option['partitioner'].keys():
+                Partitioner = gen_option['partitioner']['name']
+                if type(Partitioner) is str:
+                    if Partitioner in globals().keys(): Partitioner = eval(Partitioner)
+                    else: Partitioner = getattr(flgo.benchmark.partition, Partitioner)
+                partitioner = Partitioner(**gen_option['partitioner']['para'])
                 task_generator.register_partitioner(partitioner)
                 partitioner.register_generator(task_generator)
             else:
-                partitioner = None
-        except:
-            partitioner = None
+                try:
+                    if hasattr(bmk_module, 'default_partitioner'):
+                        Partitioner = getattr(bmk_module, 'default_partitioner')
+                        default_partition_para = getattr(bmk_module, 'default_partition_para') if hasattr(bmk_module, 'default_partition_para') else {}
+                        partitioner = Partitioner(**default_partition_para)
+                        task_generator.register_partitioner(partitioner)
+                        partitioner.register_generator(task_generator)
+                    else:
+                        partitioner = None
+                except:
+                    partitioner = None
     # generate federated task
     task_generator.generate()
     # save the generated federated benchmark
@@ -462,13 +469,76 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, ove
         print(e)
         task_pipe.remove_task()
         print("Failed to saving splited dataset.")
+        return None
     # save visualization
-    if hasattr(bmk_module, 'visualize'):
-        try:
-            visualize_func = getattr(bmk_module,'visualize')
-            visualize_func(task_generator, partitioner, task_path)
-        except Exception as e:
-            print('Warning: Failed to visualize the partitioned result where there exists error {}'.format(e))
+    try:
+        visualize_func = getattr(bmk_module,'visualize')
+        visualize_func(task_generator, partitioner, task_path)
+    except Exception as e:
+        print('Warning: Failed to visualize the partitioned result where there exists error {}'.format(e))
+    finally:
+        return task_path
+
+def gen_task_by_(benchmark, partitioner:flgo.benchmark.partition.BasicPartitioner=None, task_path:str='', seed:int=0, overwrite:bool=False):
+    """
+    Generate federated task from benchmark and partitioner without inputing other parameters
+    Args:
+        benchmark (module): benchmark
+        partitioner (flgo.benchmark.partition.BasicPartitioner): a instance of type flgo.benchmark.partition.BasicPartitioner
+        task_path (str): the name and the path of the task
+        seed (int): random seed
+        overwrite (bool): overwrite the old task if the task_path already exist if True
+
+    Returns:
+        task_path (str): the path of the task
+    """
+    # generate the name of task randomly if empty
+    if len(task_path)==0: task_path = 'FLGoTask_'+uuid.uuid4().hex
+    # setup random seed
+    random.seed(3 + seed)
+    np.random.seed(97 + seed)
+    torch.manual_seed(12 + seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    bmk_core = importlib.import_module('.core', benchmark.__name__)
+    # load configuration
+    task_generator = getattr(bmk_core, 'TaskGenerator')()
+    if partitioner is not None:
+        task_generator.register_partitioner(partitioner)
+        partitioner.register_generator(task_generator)
+    # generate federated task
+    task_generator.generate()
+    # save the generated federated benchmark
+    # initialize task pipe
+    if task_path == '': task_path = os.path.join('.', task_generator.task_name)
+    task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
+    # check if task already exists
+    if task_pipe.task_exists():
+        if not overwrite:
+            warnings.warn('Task {} already exists.'.format(task_path))
+            return
+        else:
+            shutil.rmtree(task_path)
+    try:
+        # create task architecture
+        task_pipe.create_task_architecture()
+        # save meta infomation
+        task_pipe.save_info(task_generator)
+        # save task
+        task_pipe.save_task(task_generator)
+        print('Task {} has been successfully generated.'.format(task_pipe.task_path))
+    except Exception as e:
+        print(e)
+        task_pipe.remove_task()
+        print("Failed to saving splited dataset.")
+        return None
+    # save visualization
+    try:
+        visualize_func = getattr(benchmark, 'visualize')
+        visualize_func(task_generator, partitioner, task_path)
+    except Exception as e:
+        print('Warning: Failed to visualize the partitioned result where there exists error {}'.format(e))
+    finally:
+        return task_path
 
 def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = None, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal'):
     r"""
@@ -561,7 +631,8 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     core_module = '.'.join([benchmark, 'core'])
     gv.TaskPipe = getattr(importlib.import_module(core_module), 'TaskPipe')
     task_pipe = gv.TaskPipe(task)
-    gv.TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
+    TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
+    gv.TaskCalculator = TaskCalculator
     task_data = task_pipe.load_data(option)
 
     # init objects
@@ -571,6 +642,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         try:
             C = getattr(algorithm, c)
             setattr(C, 'gv', gv)
+            setattr(C, 'TaskCalculator', TaskCalculator)
             tmp.append(c)
         except:
             continue

@@ -7,6 +7,7 @@ import torch
 import torch.multiprocessing as mp
 import numpy as np
 
+import flgo.benchmark.base
 from flgo.utils import fmodule
 import flgo.simulator.base as ss
 
@@ -193,6 +194,7 @@ class BasicParty:
         return
 
 class BasicServer(BasicParty):
+    TaskCalculator = flgo.benchmark.base.BasicTaskCalculator
     def __init__(self, option={}):
         super().__init__()
         self.test_data = None
@@ -206,7 +208,7 @@ class BasicServer(BasicParty):
         self.num_parallels = option['num_parallels']
         # server calculator
         self.device = self.gv.apply_for_device() if not option['server_with_cpu'] else torch.device('cpu')
-        self.calculator = self.gv.TaskCalculator(self.device, optimizer_name=option['optimizer'])
+        self.calculator = self.TaskCalculator(self.device, optimizer_name=option['optimizer'])
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
         self.num_steps = option['num_steps']
@@ -623,6 +625,7 @@ class BasicServer(BasicParty):
         self.dropped_clients = []
 
 class BasicClient(BasicParty):
+    TaskCalculator = flgo.benchmark.base.BasicTaskCalculator
     def __init__(self, option={}):
         super().__init__()
         self.id = None
@@ -634,7 +637,7 @@ class BasicClient(BasicParty):
         self.model = None
         # local_movielens_recommendation calculator
         self.device = self.gv.apply_for_device()
-        self.calculator = self.gv.TaskCalculator(self.device, option['optimizer'])
+        self.calculator = self.TaskCalculator(self.device, option['optimizer'])
         self._train_loader = None
         # hyper-parameters for training
         self.optimizer_name = option['optimizer']
