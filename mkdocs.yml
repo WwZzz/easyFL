@@ -94,7 +94,8 @@ nav:
     - Resources/index.md
     - Algorithm:
       - Usage: Resources/algorithm/index.md
-      - Horizontal: Resources/algorithm/horizontal.md
+      - Classical FL: Resources/algorithm/horizontal.md
+      - Personalized FL: Resources/algorithm/personalize.md
     - Benchmark:
       - Usage: Resources/benchmark/index.md
       - Image:
