@@ -91,7 +91,7 @@ class Model(FModule):
         self.conv4_x = self._make_layer(block, 256, num_block[2], 2)
         self.conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.head = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
@@ -118,7 +118,7 @@ class Model(FModule):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def encoder(self, x):
         output = self.conv1(x)
         output = self.conv2_x(output)
         output = self.conv3_x(output)
@@ -126,7 +126,11 @@ class Model(FModule):
         output = self.conv5_x(output)
         output = self.avg_pool(output)
         output = output.view(output.size(0), -1)
-        output = self.fc(output)
+        return output
+
+    def forward(self, x):
+        output = self.encoder(x)
+        output = self.head(output)
         return output
 
 def init_local_module(object):

@@ -4,7 +4,7 @@ from flgo.utils.fmodule import FModule
 class Model(FModule):
     def __init__(self):
         super(Model, self).__init__()
-        self.embedder = nn.Sequential(
+        self.encoder = nn.Sequential(
             nn.Conv2d(3, 64, 5),
             nn.ReLU(),
             nn.MaxPool2d(2),
@@ -17,14 +17,11 @@ class Model(FModule):
             nn.Linear(384, 192),
             nn.ReLU(),
         )
-        self.fc = nn.Linear(192, 10)
+        self.head = nn.Linear(192, 10)
 
     def forward(self, x):
-        x = self.get_embedding(x)
-        return self.fc(x)
-
-    def get_embedding(self, x):
-        return self.embedder(x)
+        x = self.encoder(x)
+        return self.head(x)
 
 def init_local_module(object):
     pass
