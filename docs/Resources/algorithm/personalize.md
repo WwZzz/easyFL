@@ -24,4 +24,5 @@ runner.run()
 | pFedHN     | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/pfedhn.py)    | ICML 2021          | [Click](https://proceedings.mlr.press/v139/shamsian21a.html)  |            |
 | Fed-ROD    | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedrod.py)    | ICLR 2023          | [Click](https://openreview.net/forum?id=I1hQbx10Kxn)          |            |
 | FedPAC     | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedpac.py)    | ICLR 2023          | [Click](http://arxiv.org/abs/2306.11867)                                                              |            |
+| FedPer     | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedper.py)    | AISTATS 2020       |                                                               |            |
 |            |                                                                                                     |                    |                                                               |            |

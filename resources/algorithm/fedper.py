@@ -1,6 +1,6 @@
 """
-This is a non-official implementation of personalized FL method LG-Fedavg (http://arxiv.org/abs/2001.01523).
-The original implementation is in github repo (https://github.com/pliang279/LG-FedAvg)
+This is a non-official implementation of personalized FL method FedPer (https://arxiv.org/abs/1912.00818).
+The original implementation is in github repo (https://github.com/ki-ljl/FedPer)
 """
 import copy
 import torch
