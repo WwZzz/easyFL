@@ -444,11 +444,8 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, ove
                         partitioner = None
                 except:
                     partitioner = None
-    # generate federated task
-    task_generator.generate()
-    # save the generated federated benchmark
     # initialize task pipe
-    if task_path=='': task_path = os.path.join('.', task_generator.task_name)
+    if len(task_path) == 0: task_path = 'FLGoTask_' + uuid.uuid4().hex
     task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
     # check if task already exists
     if task_pipe.task_exists():
@@ -457,6 +454,9 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, ove
             return
         else:
             shutil.rmtree(task_path)
+    # generate federated task
+    task_generator.generate()
+    # save the generated federated benchmark
     try:
         # create task architecture
         task_pipe.create_task_architecture()
@@ -505,19 +505,18 @@ def gen_task_by_(benchmark, partitioner:flgo.benchmark.partition.BasicPartitione
     if partitioner is not None:
         task_generator.register_partitioner(partitioner)
         partitioner.register_generator(task_generator)
-    # generate federated task
-    task_generator.generate()
-    # save the generated federated benchmark
-    # initialize task pipe
-    if task_path == '': task_path = os.path.join('.', task_generator.task_name)
-    task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
     # check if task already exists
+    task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
     if task_pipe.task_exists():
         if not overwrite:
             warnings.warn('Task {} already exists.'.format(task_path))
             return
         else:
             shutil.rmtree(task_path)
+    # generate federated task
+    task_generator.generate()
+    # save the generated federated benchmark
+    # initialize task pipe
     try:
         # create task architecture
         task_pipe.create_task_architecture()
