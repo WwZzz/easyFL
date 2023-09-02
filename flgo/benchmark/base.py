@@ -361,7 +361,7 @@ class BasicTaskCalculator(AbstractTaskCalculator):
     def to_device(self, data, *args, **kwargs):
         return NotImplementedError
 
-    def get_dataloader(self, *args, **kwargs):
+    def get_dataloader(self, dataset, batch_size=64, *args, **kwargs):
         return NotImplementedError
 
     def test(self, model, data, *args, **kwargs):
