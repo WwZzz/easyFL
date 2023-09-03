@@ -49,7 +49,7 @@ import flgo.algorithm
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available'] # sampling options for the default sampling method in flgo.algorihtm.fedbase
 agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for the default aggregating method in flgo.algorihtm.fedbase
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
-default_option_dict = {'pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': -1, 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False,'seed': 0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
+default_option_dict = {'pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': -1, 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False,'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
 class GlobalVariable:
     """This class is to create a shared space for sharing variables across
@@ -135,6 +135,7 @@ def read_option_from_command():
     parser.add_argument('--local_test', help='if this term is set True and train_holdout>0, (0.5*train_holdout) of data will be set as client.test_data.', action="store_true", default=False)
     # realistic machine config
     parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
+    parser.add_argument('--dataseed', help='seed for random initialization for data train/val/test partition', type=int, default=0)
     parser.add_argument('--gpu', nargs='*', help='GPU IDs and empty input is equal to using CPU', type=int)
     parser.add_argument('--server_with_cpu', help='the model parameters will be stored in the memory if True', action="store_true", default=False)
     parser.add_argument('--num_parallels', help="the number of parallels in the clients computing session", type=int, default=1)
@@ -162,6 +163,17 @@ def read_option_from_command():
         if option[key] is None:
             option[key]=[]
     return option
+
+def option_helper():
+    from flgo.utils import option_desc
+    import prettytable as pt
+    lines = option_desc.split('\n')
+    lines = [l.split(',') for l in lines if len(l)>0]
+    tb = pt.PrettyTable(lines[0])
+    for i in range(1, len(lines)):
+        tb.add_row(lines[i])
+    print(tb)
+    return
 
 def load_configuration(config={}):
     r"""
@@ -656,7 +668,9 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
                 class_server.sample = flgo.simulator.base.with_availability(class_server.sample)
                 class_server.communicate_with = flgo.simulator.base.with_latency(class_server.communicate_with)
                 class_server.communicate = flgo.simulator.base.with_dropout(class_server.communicate)
+    setup_seed(option['dataseed'])
     objects = task_pipe.generate_objects(option, algorithm, scene=scene)
+    setup_seed(option['seed']+346)
     obj_classes = collections.defaultdict(int)
     for obj in objects: obj_classes[obj.__class__]+=1
     creating_str = []
