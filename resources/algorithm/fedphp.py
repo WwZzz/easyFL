@@ -1,6 +1,6 @@
 """
 This is a non-official implementation of personalized FL method FedPHP (https://dl.acm.org/doi/abs/10.1007/978-3-030-86486-6_36).
-The original implementation is in github repo (https://github.com/lxcnju/FedRepo)
+The original implementation is in github repo (https://github.com/lxcnju/FedRepo). We transfer their implementation into flgo.
 """
 import flgo.algorithm.fedbase
 import copy
