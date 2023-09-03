@@ -14,7 +14,10 @@ class Client(fa.BasicClient):
         if self.model==None:
             self.model = global_model
         else:
+            new_dict = self.model.state_dict()
+            global_dict = global_model.state_dict()
             for key in self.model.state_dict().keys():
-                if 'bn' not in key.lower():
-                    self.model.state_dict()[key].data.copy_(global_model.state_dict()[key])
+                if 'bn' in key.lower() or 'batch_norm' in key.lower() or 'batchnorm' in key.lower(): continue
+                new_dict[key] = global_dict[key]
+            self.model.load_state_dict(new_dict)
         return self.model
