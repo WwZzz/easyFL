@@ -29,3 +29,4 @@ runner.run()
 | FedBABU         | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedbabu.py)         | ICLR 2022          | [Click](https://arxiv.org/abs/2106.06042)                    |            |
 | FedBN           | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedbn.py)           | ICLR 2021          | [Click](https://openreview.net/pdf?id=6YEQUn0QICG)           |            |
 | FedAvg+FineTune | [source code](https://raw.githubusercontent.com/WwZzz/easyFL/FLGo/resources/algorithm/fedavg_finetune.py) | -                  | -                                                            |            |
+|                 |                                                                                                           |                    |                                                              |            |
