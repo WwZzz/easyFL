@@ -55,7 +55,7 @@ def size_of_package(package):
     size = 0
     for v in package.values():
         if type(v) is torch.Tensor:
-            size += sys.getsizeof(v.storage())
+            size += sys.getsizeof(v.untyped_storage())
         else:
             size += v.__sizeof__()
     return size
