@@ -6,6 +6,9 @@ import functools
 import torch
 import heapq
 
+import flgo.utils.fmodule
+
+
 class PriorityQueue:
     r"""Priority Queue"""
     def __init__(self):
@@ -53,6 +56,7 @@ def size_of_package(package):
         size (int): the size of the package
     """
     size = 0
+    if not isinstance(package, dict): return 0
     for v in package.values():
         if type(v) is torch.Tensor:
             size += sys.getsizeof(v.untyped_storage())
@@ -500,11 +504,15 @@ def with_latency(communicate_with):
     def delayed_communicate_with(self, target_id, package):
         # Calculate latency for the target client
         # Set local_movielens_recommendation model size of clients for computation cost estimation
-        model_size = package['model'].count_parameters(output=False) if 'model' in package.keys() else 0
+        if 'model' in package.keys() and isinstance(package['model'], flgo.utils.fmodule.FModule):
+            model_size = package['model'].count_parameters(output=False)
+        else:
+            model_size = 0
         self.gv.simulator.set_variable(target_id, '__model_size', model_size)
         # Set downloading package sizes for clients for downloading cost estimation
         self.gv.simulator.set_variable(target_id, '__download_package_size',size_of_package(package))
         res = communicate_with(self, target_id, package)
+        if res is None: res = {}
         # Set uploading package sizes for clients for uploading cost estimation
         self.gv.simulator.set_variable(target_id, '__upload_package_size', size_of_package(res))
         # update latency of the target client according to the communication cost and computation cost
