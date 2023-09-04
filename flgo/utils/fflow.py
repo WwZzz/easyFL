@@ -302,88 +302,6 @@ def gen_hierarchical_benchmark(benchmark:str, config_file:str, target_path = '.'
     bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
     return bmk_module
 
-def gen_task_from_para(benchmark, bmk_para:dict={}, Partitioner=None, par_para:dict={}, task_path: str= '', rawdata_path:str= '', seed:int=0, overwrite=False):
-    r"""
-    Generate a federated task according to the parameters of this function. The formats and meanings of the inputs are listed as below:
-
-    Args:
-        benchmark (package|str): the benchmark package or the module path of it
-        bmk_para (dict): the customized parameter dict of the method TaskGenerator.__init__() of the benchmark
-        Partitioner (flgo.benchmark.toolkits.partition.BasicPartitioner|str): the class of the Partitioner or the name of the Partitioner that was realized in flgo.benchmark.toolkits.partition
-        par_para (dict): the customized parameter dict of the method Partitioner.__init__()
-        task_path (str): the path to store the generated task
-        rawdata_path (str): where the raw data will be downloaded\stored
-        seed (int): the random seed used to generate the task
-
-    Example:
-    ```python
-        >>> import flgo
-        >>> import flgo.benchmark.mnist_classification as mnist
-        >>> from flgo.benchmark.toolkits.partition import IIDPartitioner
-        >>> # GENERATE TASK BY PASSING THE MODULE OF BENCHMARK AND THE CLASS OF THE PARTITIOENR
-        >>> flgo.gen_task_from_para(benchmark=mnist, Partitioner = IIDPartitioner, par_para={'num_clients':100}, task_path='./mnist_gen_by_para1')
-        >>> # GENERATE THE SAME TASK BY PASSING THE STRING
-        >>> flgo.gen_task_from_para(benchmark='flgo.benchmark.mnist_classification', Partitioner='IIDPartitioner', par_para={'num_clients':100}, task_path='./mnist_gen_by_para2')
-    ```
-    """
-    random.seed(3 + seed)
-    np.random.seed(97 + seed)
-    torch.manual_seed(12+seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    if type(benchmark) is str: benchmark = importlib.import_module(benchmark)
-    if not hasattr(benchmark, '__path__'): raise RuntimeError("benchmark should be a package or the path of a package")
-    if Partitioner is not None:
-        if type(Partitioner) is str:
-            if Partitioner in globals().keys(): Partitioner = eval(Partitioner)
-            else: Partitioner = getattr(flgo.benchmark.toolkits.partition, Partitioner)
-        partitioner = Partitioner(**par_para)
-    else:
-        try:
-            if hasattr(benchmark, 'default_partitioner'):
-                Partitioner = getattr(benchmark, 'default_partitioner')
-                default_partition_para = getattr(benchmark, 'default_partition_para') if hasattr(benchmark, 'default_partition_para') else {}
-                partitioner = Partitioner(**default_partition_para)
-            else:
-                partitioner = None
-        except:
-            partitioner = None
-    if rawdata_path!='': bmk_para['rawdata_path']=rawdata_path
-    bmk_core = benchmark.core
-    task_generator = getattr(bmk_core, 'TaskGenerator')(**bmk_para)
-    if partitioner is not None:
-        task_generator.register_partitioner(partitioner)
-        partitioner.register_generator(task_generator)
-    task_generator.generate()
-    # save the generated federated benchmark
-    # initialize task pipe
-    if task_path=='': task_path = os.path.join('.', task_generator.task_name)
-    task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
-    # check if task already exists
-    if task_pipe.task_exists() and not overwrite:
-        if not overwrite:
-            warnings.warn('Task {} already exists.'.format(task_path))
-            return
-        else:
-            shutil.rmtree(task_path)
-    try:
-        # create task architecture
-        task_pipe.create_task_architecture()
-        # save meta infomation
-        task_pipe.save_info(task_generator)
-        # save task
-        task_pipe.save_task(task_generator)
-        print('Task {} has been successfully generated.'.format(task_pipe.task_path))
-    except Exception as e:
-        print(e)
-        task_pipe.remove_task()
-        print("Failed to saving splited dataset.")
-    # save visualization
-    try:
-        visualize_func = getattr(benchmark,'visualize')
-        visualize_func(task_generator, partitioner, task_path)
-    except:
-        pass
-
 def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, overwrite:bool=False):
     r"""
     Generate a federated task that is specified by the benchmark information and the partition information, where the generated task will be stored in the task_path and the raw data will be downloaded into the rawdata_path.
@@ -462,7 +380,7 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, ove
     # check if task already exists
     if task_pipe.task_exists():
         if not overwrite:
-            warnings.warn('Task {} already exists.'.format(task_path))
+            warnings.warn('Task {} already exists. To overwrite the existing task, use flgo.gen_task(...,overwrite=True,...)'.format(task_path))
             return
         else:
             shutil.rmtree(task_path)
@@ -521,7 +439,7 @@ def gen_task_by_(benchmark, partitioner:flgo.benchmark.partition.BasicPartitione
     task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
     if task_pipe.task_exists():
         if not overwrite:
-            warnings.warn('Task {} already exists.'.format(task_path))
+            warnings.warn('Task {} already exists. To overwrite the existing task, use flgo.gen_task_by_(...,overwrite=True,...)'.format(task_path))
             return
         else:
             shutil.rmtree(task_path)
