@@ -46,7 +46,7 @@ class Server(BasicServer):
                 if round<self.current_round:
                     stale_clients.append(cid)
                     stale_rounds.append(round)
-            if len(stale_rounds)>=0:
+            if len(stale_rounds)>0:
                 self.gv.logger.info('Receiving stale models from clients: {}'.format(stale_clients))
                 self.gv.logger.info('The staleness are {}'.format([r-self.current_round for r in stale_rounds]))
                 self.gv.logger.info('Averaging Staleness: {}'.format(np.mean([r-self.current_round for r in stale_rounds])))
@@ -66,11 +66,12 @@ class Server(BasicServer):
         elif self.cond==1:
             # aggregate if the time budget for waiting is exhausted
             if self.gv.clock.current_time-self.sampling_timestamp>=self.time_budget or all([(cid in self.buffer['client_id']) for cid in self.selected_clients]):
-                return True
+                if len(self.buffer['model'])>0:
+                    return True
             return False
         elif self.cond==2:
             # aggregate when the number of models in the buffer is larger than K
-            return len(self.buffer['client_id'])>=self.K
+            return len(self.buffer['client_id'])>=min(len(self.selected_clients), self.K)
 
 class Client(BasicClient):
     def unpack(self, received_pkg):
@@ -88,9 +89,9 @@ if __name__ =='__main__':
     import flgo
     import flgo.benchmark.mnist_classification as mnist
     import os
-    task = './my_task'
+    task = './mnist_100clients'
     if not os.path.exists(task):
-        flgo.gen_task({'benchmark': mnist, 'partitioner': {'name': 'IIDPartitioner', 'para': {'num_clients': 20}}}, task)
+        flgo.gen_task({'benchmark': mnist, 'partitioner': {'name': 'IIDPartitioner', 'para': {'num_clients': 100}}}, task)
     class algo:
         Server = Server
         Client = Client
