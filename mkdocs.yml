@@ -89,7 +89,7 @@ nav:
       - 4.2 Client Connectivity: Tutorials/4_Simulator_Customization/4.2_Client_Connectivity.md
       - 4.3 Client Responsiveness: Tutorials/4_Simulator_Customization/4.3_Client_Responsiveness.md
       - 4.4 Client Completeness: Tutorials/4_Simulator_Customization/4.4_Client_Completeness.md
-
+      - 4.5 Varieties of FedAvg with Staleness: Tutorials/4_Simulator_Customization/4.5_Varieties_of_FedAvg_with_Staleness.md
   - "Resources":
     - Resources/index.md
     - Algorithm:
