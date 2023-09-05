@@ -194,7 +194,7 @@ def load_configuration(config={}):
     else:
         raise TypeError('The input config should be either a dict or a filename.')
 
-def gen_benchmark_from_file(benchmark:str, config_file:str, target_path='.',data_type:str='cv', task_type:str='classification'):
+def gen_benchmark_from_file(benchmark:str, config_file:str, target_path='.',data_type:str='cv', task_type:str='classification', overwrite:bool=False) -> str:
     r"""
         Create customized benchmarks from configurations. The configuration is a .py file that describes the datasets and the model,
         where there must exist a function named `get_model` and a variable `train_data`. `val_data` and test_data are two optional
@@ -205,13 +205,18 @@ def gen_benchmark_from_file(benchmark:str, config_file:str, target_path='.',data
         target_path: (str): the path to store the benchmark
         data_type (str): the type of dataset that should be in the list ['cv', 'nlp', 'graph', 'rec', 'series', 'tabular']
         task_type (str): the type of the task (e.g. classification, regression...)
+        overwrite (bool): overwrite current benchmark if there already exists a benchmark of the same name
     Returns:
         bmk_module (str): the module name of the generated benchmark
     """
     if not os.path.exists(config_file): raise FileNotFoundError('File {} not found.'.format(config_file))
     target_path = os.path.abspath(target_path)
     bmk_path = os.path.join(target_path, benchmark)
-    if os.path.exists(bmk_path): raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
+    if os.path.exists(bmk_path):
+        if not overwrite:
+            warnings.warn('There already exists a benchmark `{}`'.format(benchmark))
+            return '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
+        # raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
     temp_path = os.path.join(flgo.benchmark.path, 'toolkits', data_type, task_type, 'temp')
     if not os.path.exists(temp_path):
         raise NotImplementedError('There is no support to automatically generation of {}.{}. More other types are comming soon...'.format(data_type, task_type))
