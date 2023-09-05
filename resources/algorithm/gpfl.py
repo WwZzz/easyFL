@@ -26,12 +26,6 @@ class Server(flgo.algorithm.fedbase.BasicServer):
         dec_model = self.get_decorate_model()
         self.model = dec_model
 
-    def iterate(self):
-        self.selected_clients = self.sample()
-        models = self.communicate(self.selected_clients)['model']
-        self.model = self.aggregate(models)
-        return len(models) > 0
-
     def get_decorate_model(self):
         dim = self.dim
         encoder = self.model.encoder
