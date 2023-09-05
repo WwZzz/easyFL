@@ -64,7 +64,7 @@ coco
 
 ### Usage
 To use this benchmark, you need to manually download the raw data into the dictionary 'cityspaces_segmentation/cityspaces/'. The necessary file contains
-`leftImg8bit_trainvaltest.zip` (11GB) and `gtFine_trainvaltest.zip (241MB)`.
+`leftImg8bit_trainvaltest.zip` (11GB) and `gtFine_trainvaltest.zip` (241MB).
 
 ### model
 | **Model Name** | **Non-Fed Performance** | **NumPara** | **Implementation** |
