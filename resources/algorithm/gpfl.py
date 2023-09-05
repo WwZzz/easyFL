@@ -16,7 +16,7 @@ class Server(flgo.algorithm.fedbase.BasicServer):
         mu (float): the coefficient of the weight decay on parameters C and CoV
     """
     def initialize(self):
-        self.init_algo_para({'lmbd': 1e-4, 'mu':1e-3})
+        self.init_algo_para({'lmbd': 1e-2, 'mu':1e-2})
         self.num_classes = len(collections.Counter([d[-1] for d in self.test_data]))
         with torch.no_grad():
             x = self.test_data[0]
