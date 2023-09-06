@@ -12,6 +12,8 @@ import os
 import os.path
 import uuid
 import warnings
+import zipfile
+import urllib.request
 from typing import *
 try:
     import ujson as json
@@ -1058,5 +1060,40 @@ def set_data_root(data_root:str=None):
     print('Data root directory has successfully been changed to {}'.format(crt_root))
     return
 
-
+def download_resource(root:str, name:str, type:str, overwrite:bool=False):
+    """
+    Download resource from github
+    Args:
+        root (str): the path to store the resource
+        name (str): the name of the resource
+        type (type): the type of the resource in ['algorithm', 'benchmark', 'simulator']
+        overwrite (bool): whether to overwrite existing file
+    Returns:
+    """
+    resource_root = "https://github.com/WwZzz/easyFL/raw/FLGo/resources/"
+    if type not in ['algorithm', 'benchmark', 'simulator']: raise ValueError("Args type must of value in ['algorithm', 'benchmark', 'simulator']")
+    url = resource_root+type+'/'
+    suffix_dict = {'algorithm':'.py', 'simulator':'.py', 'benchmark':'.zip'}
+    suffix = suffix_dict[type]
+    file_name = name
+    if not file_name.endswith(suffix):
+        file_name = file_name+suffix
+    if not os.path.exists(file_name) or overwrite:
+        try:
+            urllib.request.urlretrieve(url+file_name, os.path.join(root, file_name))
+        except Exception as e:
+            print(e)
+            return None
+    else:
+        warnings.warn("There already exist {} named {}".format(type, name))
+    if type == 'benchmark':
+        bmk_zip = zipfile.ZipFile(file_name)
+        bmk_zip.extractall(root)
+    module_path = '.'.join(os.path.relpath(os.path.join(root, name), os.path.curdir).split(os.path.sep))
+    module = importlib.import_module(module_path)
+    if type in ['algorithm', 'benchmark']:
+        return module
+    else:
+        Simulator = getattr(module, 'Simulator')
+        return Simulator
 
