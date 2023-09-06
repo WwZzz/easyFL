@@ -263,6 +263,7 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         model.eval()
         confmat = ConfusionMatrix(num_classes=dataset.num_classes)
         if batch_size==-1:batch_size=len(dataset)
+        if len(dataset)==0: return {}
         data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
         total_loss = 0.0
         for batch_id, batch_data in tqdm(enumerate(data_loader), desc='Predicting...'):
