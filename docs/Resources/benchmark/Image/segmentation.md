@@ -7,6 +7,7 @@
 | cityspaces_segmentation    | [Cityspaces](https://www.cityscapes-dataset.com/)                   | [See here](#cityspaces_segmentation)    | Horizontal FL | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/cityspaces_segmentation.zip)    |                 |
 | camvid_segmentation        | [CamVID](https://www.kaggle.com/datasets/carlolepelaars/camvid)     | [See here](#camvid_segmentation)        | Horizontal FL | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/camvid_segmentation.zip)        |                 |
 | ade20k_segmentation        | [ADE20k](http://sceneparsing.csail.mit.edu/ )                       | [See here](#ade20k_segmentation)        | Horizontal FL | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/ade20k_segmentation.zip)        |                 |
+| voc_segmentation           | [PASCAL_VOC](http://host.robots.ox.ac.uk/pascal/VOC/ )              | [See here](#voc_segmentation)           | Horizontal FL | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/voc_segmentation.zip)           |                 |
 
 
 # Details
@@ -131,3 +132,17 @@ ADE20K
 | IIDPartitioner       | yes       |                                                        |
 | DiversityPartitioner |           | Partitioning according to label diversity              |
 | DirichletPartitioner |           | Partitioning according to dir. distribution of labels  |
+
+## **voc_segmentation**
+<div id="voc_segmentation"></div>
+VOC
+
+### model
+| **Model Name** | **Non-Fed Performance** | **NumPara** | **Implementation** |
+|----------------|-------------------------|-------------|--------------------|
+| FCN_ResNet50   | -                       |             | -                  |
+
+### supported partitioner
+| Name                 | IsDefault | Comments                                               |
+|----------------------|-----------|--------------------------------------------------------|
+| IIDPartitioner       | yes       |                                                        |
