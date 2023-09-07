@@ -1113,9 +1113,9 @@ def list_resource(type:str='algorithm'):
     except Exception as e:
         print(e)
         return None
-    res = re.findall(r'"[a-z]*.py"', content)
+    res = re.findall(r'"[a-z0-9_]*.py"', content)
     res = [s.strip('"') for s in res]
-    res = [s.strip(suffix) for s in res]
+    res = [s[:-3] for s in res if s!="test.py"]
     return res
 
 
