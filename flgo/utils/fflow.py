@@ -569,8 +569,8 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     task_pipe = gv.TaskPipe(task)
     TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
     gv.TaskCalculator = TaskCalculator
+    setup_seed(option['dataseed'])
     task_data = task_pipe.load_data(option)
-
     # init objects
     obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
     tmp = []
@@ -593,9 +593,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
                 class_server.sample = flgo.simulator.base.with_availability(class_server.sample)
                 class_server.communicate_with = flgo.simulator.base.with_latency(class_server.communicate_with)
                 class_server.communicate = flgo.simulator.base.with_dropout(class_server.communicate)
-    setup_seed(option['dataseed'])
     objects = task_pipe.generate_objects(option, algorithm, scene=scene)
-    setup_seed(option['seed']+346)
     obj_classes = collections.defaultdict(int)
     for obj in objects: obj_classes[obj.__class__]+=1
     creating_str = []
@@ -603,7 +601,6 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     creating_str = ', '.join(creating_str)
     gv.logger.info('SCENE:\t\t{} FL with '.format(scene)+creating_str)
     task_pipe.distribute(task_data, objects)
-
     # init model
     if hasattr(model, 'init_local_module'):
         for object in objects:
@@ -614,7 +611,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     if hasattr(model, 'init_dataset'):
         for object in objects:
             model.init_dataset(object)
-
+    setup_seed(option['seed']+346)
     # init communicator
     gv.communicator = flgo.VirtualCommunicator(objects)
 

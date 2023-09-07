@@ -304,8 +304,10 @@ class BasicTaskPipe(AbstractTaskPipe):
         if p == 0: return dataset, None
         s1 = int(len(dataset) * p)
         s2 = len(dataset) - s1
-        if s1==0: return dataset, None
-        elif s2==0: return None, dataset
+        if s1==0:
+            return dataset, None
+        elif s2==0:
+            return None, dataset
         else:
             return torch.utils.data.random_split(dataset, [s2, s1])
 
