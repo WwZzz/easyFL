@@ -57,13 +57,13 @@ class BasicClient:
     ...
 
     def train(self, model):
-        model.train_one_step()
+        model.train()
         optimizer = self.calculator.get_optimizer(self.optimizer_name, model, lr=self.learning_rate,
                                                   weight_decay=self.weight_decay, momentum=self.momentum)
         for iter in range(self.num_steps):
             batch_data = self.get_batch_data()
             model.zero_grad()
-            loss = self.calculator.train_one_step(model, batch_data)['loss']
+            loss = self.calculator.compute_loss(model, batch_data)['loss']
             loss.backward()
             optimizer.step()
         return
@@ -78,6 +78,6 @@ class BasicClient:
         return batch_data
 ```
 
-Here the `calculator` is the instance of `TaskCalculator` that is dynamically imported at `utils/fflow.initialize` according to the benchmark name of the fedtask. When local training the model, the function `Client.train()` accesses all the running-time variables necessary for local training by the calculator. For example, the batched data is generated from `calculator.get_data_loader()`, and `calculator.train_one_step()` returns a `dict` that contains the loss in the computing graph that can be used to computing the gradient. In this way, a lot of federated algorithms with additional loss term can be applied without changing the calculator (e.g. FedProx, FedDyn). There are also works that utilize the intermediate variables of the forward process when feeding data to the model (e.g. MOON). To handle this case, we allow the model to be defined in the algorithm file `fedxx.py` instead of `benchmark/benchmark_name/model/model_name.py`, which will be imported when the model_name cannot be found in `benchmark/benchmark_name/model/`. Therefore, the special term can be calculated by using the algorithm-specific model. (Remark: for now we've mainly considered about classification problems, and the other problems (e.g. Re-ID, NLP) will be implemented soon.)
+Here the `calculator` is the instance of `TaskCalculator` that is dynamically imported at `utils/fflow.initialize` according to the benchmark name of the fedtask. When local training the model, the function `Client.train()` accesses all the running-time variables necessary for local training by the calculator. For example, the batched data is generated from `calculator.get_data_loader()`, and `calculator.compute_loss()` returns a `dict` that contains the loss in the computing graph that can be used to computing the gradient. In this way, a lot of federated algorithms with additional loss term can be applied without changing the calculator (e.g. FedProx, FedDyn). There are also works that utilize the intermediate variables of the forward process when feeding data to the model (e.g. MOON). To handle this case, we allow the model to be defined in the algorithm file `fedxx.py` instead of `benchmark/benchmark_name/model/model_name.py`, which will be imported when the model_name cannot be found in `benchmark/benchmark_name/model/`. Therefore, the special term can be calculated by using the algorithm-specific model. (Remark: for now we've mainly considered about classification problems, and the other problems (e.g. Re-ID, NLP) will be implemented soon.)
 
 ## Example of Task-Converting
