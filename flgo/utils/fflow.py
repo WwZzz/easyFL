@@ -12,6 +12,8 @@ import os
 import os.path
 import uuid
 import warnings
+import requests
+import re
 import zipfile
 import urllib.request
 from typing import *
@@ -1093,4 +1095,27 @@ def download_resource(root:str, name:str, type:str, overwrite:bool=False):
     else:
         Simulator = getattr(module, 'Simulator')
         return Simulator
+
+def list_resource(type:str='algorithm'):
+    """
+    List currently available resources at github. The arg. `type` should be one of elements in {'algorithm', 'benchmark', 'simulator'}
+    Args:
+        type (str):
+    Returns:
+        res (list): the name of currently available resources
+    """
+    if type not in ['algorithm', 'benchmark', 'simulator']: raise ValueError("Args type must of value in ['algorithm', 'benchmark', 'simulator']")
+    url = "https://github.com/WwZzz/easyFL/tree/FLGo/resources/"+type
+    suffix_dict = {"algorithm": ".py", "benchmark":".zip", "simulator":".py"}
+    suffix = suffix_dict[type]
+    try:
+        content = str(requests.get(url).content, encoding=sys.getfilesystemencoding())
+    except Exception as e:
+        print(e)
+        return None
+    res = re.findall(r'"[a-z]*.py"', content)
+    res = [s.strip('"') for s in res]
+    res = [s.strip(suffix) for s in res]
+    return res
+
 
