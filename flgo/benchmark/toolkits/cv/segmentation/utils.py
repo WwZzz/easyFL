@@ -88,9 +88,9 @@ class ConfusionMatrix:
 
     def compute(self):
         h = self.mat.float()
-        acc_global = torch.diag(h).sum() / h.sum()
-        acc = torch.diag(h) / h.sum(1)
-        iu = torch.diag(h) / (h.sum(1) + h.sum(0) - torch.diag(h))
+        acc_global = torch.diag(h).sum() / (h.sum()+1e-8)
+        acc = torch.diag(h) / (h.sum(1)+1e-8)
+        iu = torch.diag(h) / (h.sum(1) + h.sum(0) - torch.diag(h)+1e-8)
         return acc_global, acc, iu
 
     def reduce_from_all_processes(self):

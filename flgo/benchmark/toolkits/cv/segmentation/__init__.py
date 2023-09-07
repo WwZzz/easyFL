@@ -21,7 +21,7 @@ class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
                 self.Y = None
             else:
                 self.X = torch.stack([self.dataset[i][0] for i in self.indices])
-                self.Y = torch.LongTensor([self.dataset[i][1] for i in self.indices])
+                self.Y = [self.dataset[i][1] for i in self.indices]
 
         def __getitem__(self, idx):
             if self.X is not None:
