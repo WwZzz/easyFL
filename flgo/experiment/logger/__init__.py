@@ -2176,6 +2176,16 @@ class BasicLogger(Logger):
         self.current_round = round
         return eval_interval > 0 and (round == 0 or round % eval_interval == 0)
 
+    def set_formatter(self, formatter:str):
+        """
+        Set the formatter of the logger
+        Args:
+            formatter (str): the formatter of logger
+        """
+        self.formatter = Formatter(formatter)
+        if hasattr(self, 'streamhandler'): self.streamhandler.setFormatter(formatter)
+        if hasattr(self, 'filehandler'): self.filehandler.setFormatter(formatter)
+
     def time_start(self, key=''):
         """Create a timestamp of the event 'key' starting"""
         if key not in [k for k in self.time_buf.keys()]:
@@ -2306,6 +2316,25 @@ class BasicLogger(Logger):
         Returns:
         """
         self._es_direction = -self._es_direction
+
+    def set_early_stop_direction(self, d=None):
+        """
+        Set the direction of optimal of the early stop variable
+        Args:
+            d (int|float): if d>0, then the larger the early stop key variable is, the better the result is. if key <0, then the lower is the better one.
+
+        """
+        if d is not None:
+            self._es_direction = int(2*(int(d>0)-0.5))
+
+    def set_early_stop_key(self, key:str=None):
+        """
+        Set the name of the variable that will be used to check whether to early stop
+        Args:
+            key (str): the name of the variable
+        """
+        if key is not None and isinstance(key, str):
+            self._es_key = key
 
     def early_stop(self):
         # Early stopping when there is no improvement on the validation loss for more than self.option['early_stop'] rounds
