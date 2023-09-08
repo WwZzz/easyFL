@@ -6,3 +6,4 @@ from .vertical_logger import VerticalLogger
 from .hier_logger import HierLogger
 from . import BasicLogger
 from .test_logger import TestLogger
+from .full_logger import FullLogger
