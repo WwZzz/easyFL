@@ -466,7 +466,8 @@ class BasicServer(BasicParty):
         if len(models) == 0: return self.model
         nan_exists = [m.has_nan() for m in models]
         if any(nan_exists):
-            self.gv.logger.info('Warning("There exists non-value in local models")')
+            if all(nan_exists): raise ValueError("All the received local models have parameters of nan value.")
+            self.gv.logger.info('Warning("There exists nan-value in local models, which will be automatically removed from the aggregatino list.")')
             new_models = []
             received_clients = []
             for ni, mi, cid in zip(nan_exists, models, self.received_clients):
