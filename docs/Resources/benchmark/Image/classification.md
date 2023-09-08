@@ -1,14 +1,14 @@
 # Overview
-| **Name**                        | **Dataset**                                                                    | **Description**                       | **Scene**      | **Download**                                                                                                   | **Remark**   |
-|---------------------------------|--------------------------------------------------------------------------------|---------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------|--------------|
-| mnist_classification            | [MNIST](http://yann.lecun.com/exdb/mnist/)                                     | [See here](#mnist_classification)     | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/mnist_classification.zip)            | -            |
-| cifar10_classification          | [CIFAR10](https://www.cs.toronto.edu/~kriz/cifar.html)                         | [See here](#cifar10_classification)   | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/cifar10_classification.zip)          |              |
-| cifar100_classification         | [CIFAR100](https://www.cs.toronto.edu/~kriz/cifar.html)                        | [See here](#cifar100_classification)  | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/cifar100_classification.zip)         |              |
-| svhn_classification             | [SVHN](http://ufldl.stanford.edu/housenumbers/)                                | [See here](#svhn_classification)      | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/svhn_classification.zip)             | -            |
-| fashion_classification          | [FASHION](https://github.com/zalandoresearch/fashion-mnist)                    | [See here](#fashion_classification)   | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/fashion_classification.zip)          | -            |
-| domainnet_classification        | [DomainNet](https://ai.bu.edu/M3SDA)                                           | [See here](#domainnet_classification) | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/domainnet_classification.zip)        | Feature Skew |
+| **Name**                        | **Dataset**                                                                    | **Description**                              | **Scene**      | **Download**                                                                                                   | **Remark**   |
+|---------------------------------|--------------------------------------------------------------------------------|----------------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------|--------------|
+| mnist_classification            | [MNIST](http://yann.lecun.com/exdb/mnist/)                                     | [See here](#mnist_classification)            | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/mnist_classification.zip)            | -            |
+| cifar10_classification          | [CIFAR10](https://www.cs.toronto.edu/~kriz/cifar.html)                         | [See here](#cifar10_classification)          | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/cifar10_classification.zip)          |              |
+| cifar100_classification         | [CIFAR100](https://www.cs.toronto.edu/~kriz/cifar.html)                        | [See here](#cifar100_classification)         | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/cifar100_classification.zip)         |              |
+| svhn_classification             | [SVHN](http://ufldl.stanford.edu/housenumbers/)                                | [See here](#svhn_classification)             | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/svhn_classification.zip)             | -            |
+| fashion_classification          | [FASHION](https://github.com/zalandoresearch/fashion-mnist)                    | [See here](#fashion_classification)          | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/fashion_classification.zip)          | -            |
+| domainnet_classification        | [DomainNet](https://ai.bu.edu/M3SDA)                                           | [See here](#domainnet_classification)        | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/domainnet_classification.zip)        | Feature Skew |
 | office-caltech10_classification | [OfficeCaltech10](https://github.com/ChristophRaab/Office_Caltech_DA_Dataset/) | [See here](#office-caltech10_classification) | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/office-caltech10_classification.zip) | Feature Skew |
-|                                 |                                                                                |                                       |                |                                                                                                                |              |
+| pacs_classification             | [PACS](https://github.com/MachineLearning2020/Homework3-PACS/tree/master)      | [See here](#pacs_classification)             | Horizontal FL  | [Click Here](https://github.com/WwZzz/easyFL/raw/FLGo/resources/benchmark/pacs_classification.zip)             | Feature Skew |
 
 # Details
 
@@ -139,6 +139,25 @@ Office-Caltech-10 a standard benchmark for domain adaptation, which consists of 
 | Name                 | IsDefault | Comments                                               |
 |----------------------|-----------|--------------------------------------------------------|
 | IIDPartitioner       | yes       |                                                        |
-| DiversityPartitioner |           | Partitioning according to label diversity              |
-| DirichletPartitioner |           | Partitioning according to dir. distribution of labels  |
+| DiversityPartitioner |           |             |
+| DirichletPartitioner |           |   |
+
+## **pacs_classification**
+<div id="pacs_classification"></div>
+
+![pacs](https://assets-global.website-files.com/5d7b77b063a9066d83e1209c/61e9cfc482f048b007a9c0ab_PACS-0000001060-38db8f1d_ucFoTXn.jpeg)
+PACS is an image dataset for domain generalization. It consists of four domains, namely Photo (1,670 images), Art Painting (2,048 images), Cartoon (2,344 images) and Sketch (3,929 images). Each domain contains seven categories.
+### model
+| **Model Name** | **Non-Fed Performance** | **NumPara** | **Implementation** |
+|----------------|-------------------------|-------------|--------------------|
+| AlexNet        | -                       |             | -                  |
+| resnet18       |                         |             |                    |
+
+### supported partitioner
+| Name                 | IsDefault | Comments                                               |
+|----------------------|-----------|--------------------------------------------------------|
+| IIDPartitioner       | yes       |                                                        |
+| DiversityPartitioner |           |              |
+| DirichletPartitioner |           |  |
+
 
