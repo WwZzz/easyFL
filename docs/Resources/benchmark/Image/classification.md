@@ -141,3 +141,4 @@ Office-Caltech-10 a standard benchmark for domain adaptation, which consists of 
 | IIDPartitioner       | yes       |                                                        |
 | DiversityPartitioner |           | Partitioning according to label diversity              |
 | DirichletPartitioner |           | Partitioning according to dir. distribution of labels  |
+
