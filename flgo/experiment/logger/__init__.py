@@ -2165,6 +2165,7 @@ class BasicLogger(Logger):
             self.addHandler(self.filehandler)
         # options of early stopping
         self._es_key = 'val_loss'
+        self._es_direction = -1
         self._es_patience = 20
         self._es_counter = 0
         self._es_best_score = None
@@ -2298,10 +2299,18 @@ class BasicLogger(Logger):
     def get_time_string(self):
         return time.strftime('%Y-%m-%d-%H-%M-%S')
 
+    def turn_early_stop_direction(self):
+        """
+        _es_direction=1 infers that a higher value of the validation metric is better and _es_direction=-1 means lower is better.
+        The default value of _es_direction is -1.
+        Returns:
+        """
+        self._es_direction = -self._es_direction
+
     def early_stop(self):
         # Early stopping when there is no improvement on the validation loss for more than self.option['early_stop'] rounds
         if self.option['early_stop']<0 or (self._es_key not in self.output): return False
-        score = -self.output[self._es_key][-1]
+        score = self._es_direction*self.output[self._es_key][-1]
         if np.isnan(score): return True
         if self._es_best_score is None:
             self._es_best_score = score
