@@ -13,7 +13,7 @@ class Server(BasicServer):
         self.h = self.model.zeros_like()
 
     def aggregate(self, models):
-        self.h = self.h - self.alpha * (1.0 / self.num_clients * fmodule._model_sum(models) - self.model)
+        self.h = self.h - self.alpha * 1.0 / self.num_clients * (fmodule._model_sum(models) - len(models)*self.model)
         new_model = fmodule._model_average(models) - 1.0 / self.alpha * self.h
         return new_model
 
