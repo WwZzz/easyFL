@@ -675,10 +675,14 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
         algorithm = importlib.import_module(algorithm_name)
     except:
         algorithm = algorithm_name
+    es_key = 'val_loss'
+    es_drct = -1
     try:
         runner = flgo.init(task, algorithm, model=model, option=opt, Logger=Logger, Simulator=Simulator, scene=scene)
+        es_key = runner.gv.logger.get_es_key()
+        es_drct = runner.gv.logger.get_es_direction()
         runner.run()
-        res = (os.path.join(runner.gv.logger.get_output_path(), runner.gv.logger.get_output_name()), pid)
+        res = (os.path.join(runner.gv.logger.get_output_path(), runner.gv.logger.get_output_name()), es_key, es_drct, pid)
         send_end.send(res)
     except Exception as e:
         s = 'Process {} exits with error:" {}". '.format(pid, str(e))
@@ -712,8 +716,14 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     for op in options:op['log_file'] = True
     if scheduler is None:
         scheduler = flgo.experiment.device_scheduler.BasicScheduler(device_ids)
-    outputs = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
-    optimal_idx = int(np.argmin([min(output['val_loss']) for output in outputs]))
+    outputs, es_key, es_drct = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
+    if len(outputs)==0:
+        warnings.warn("All the groups of parameters had resulted in divergence of model training")
+        return {}
+    if es_drct<=0:
+        optimal_idx = int(np.argmin([min(output[es_key]) for output in outputs]))
+    else:
+        optimal_idx = int(np.argmax([max(output[es_key]) for output in outputs]))
     optimal_para = options[optimal_idx]
     print("The optimal combination of hyper-parameters is:")
     print('-----------------------------------------------')
@@ -721,9 +731,11 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
         if k=='gpu': continue
         print("{}\t|{}".format(k,v))
     print('-----------------------------------------------')
-    op_round = np.argmin(outputs[optimal_idx]['val_loss'])
+    op_round = np.argmin(outputs[optimal_idx][es_key]) if es_drct<=0 else np.argmax(outputs[optimal_idx][es_key])
+    op_value = np.min(outputs[optimal_idx][es_key]) if es_drct<=0 else np.max(outputs[optimal_idx][es_key])
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
-    print('The minimal validation loss occurs at the round {}'.format(op_round))
+    print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
+    return optimal_para
 
 def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler = None):
     """
@@ -759,6 +771,8 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
     algorithm_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
     option_state = {oid:{'p':None, 'completed':False, 'output':None, 'option_in_queue':False, 'recv':None, } for oid in range(len(options))}
     if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
+    es_key = None
+    es_drct = None
     while True:
         for oid in range(len(options)):
             opt = options[oid]
@@ -783,21 +797,27 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                     except:
                         pass
                     option_state[oid]['p'] = None
-                    if len(tmp)==2:
+                    if len(tmp)==4:
                         option_state[oid]['completed'] = True
                         option_state[oid]['output'] = tmp[0]
+                        if es_key is None: es_key = tmp[1]
+                        if es_drct is None: es_drct = tmp[2]
                     else:
                         print(tmp[1])
+                        if "All the received local models have parameters of nan value." in tmp[1]:
+                            option_state[oid]['completed'] = True
+                            option_state[oid]['output'] = tmp[1]
         if all([v['completed'] for v in option_state.values()]):break
         time.sleep(1)
     res = []
     for oid in range(len(options)):
         rec_path = option_state[oid]['output']
-        with open(rec_path, 'r') as inf:
-            s_inf = inf.read()
-            rec = json.loads(s_inf)
-        res.append(rec)
-    return res
+        if os.path.exists(rec_path):
+            with open(rec_path, 'r') as inf:
+                s_inf = inf.read()
+                rec = json.loads(s_inf)
+            res.append(rec)
+    return res, es_key, es_drct
 
 def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
     r"""
@@ -943,11 +963,14 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
                     except:
                         pass
                     runner_state[rid]['p'] = None
-                    if len(tmp) == 2:
+                    if len(tmp) == 4:
                         runner_state[rid]['completed'] = True
                         runner_state[rid]['output'] = tmp[0]
                     else:
                         print(tmp[1])
+                        if "All the received local models have parameters of nan value." in tmp[1]:
+                            runner_state[rid]['completed'] = True
+                            runner_state[rid]['output'] = tmp[1]
         if all([v['completed'] for v in runner_state.values()]): break
         time.sleep(1)
     res = []

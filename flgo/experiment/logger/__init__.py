@@ -2309,7 +2309,7 @@ class BasicLogger(Logger):
     def get_time_string(self):
         return time.strftime('%Y-%m-%d-%H-%M-%S')
 
-    def turn_early_stop_direction(self):
+    def turn_es_direction(self):
         """
         _es_direction=1 infers that a higher value of the validation metric is better and _es_direction=-1 means lower is better.
         The default value of _es_direction is -1.
@@ -2317,7 +2317,7 @@ class BasicLogger(Logger):
         """
         self._es_direction = -self._es_direction
 
-    def set_early_stop_direction(self, d=None):
+    def set_es_direction(self, d=None):
         """
         Set the direction of optimal of the early stop variable
         Args:
@@ -2327,7 +2327,7 @@ class BasicLogger(Logger):
         if d is not None:
             self._es_direction = int(2*(int(d>0)-0.5))
 
-    def set_early_stop_key(self, key:str=None):
+    def set_es_key(self, key:str=None):
         """
         Set the name of the variable that will be used to check whether to early stop
         Args:
@@ -2336,8 +2336,24 @@ class BasicLogger(Logger):
         if key is not None and isinstance(key, str):
             self._es_key = key
 
+    def get_es_key(self):
+        """
+        Returns:
+            es_key (str): get the name of the variable being used to check whether to early stop
+        """
+        return self._es_key
+
+    def get_es_direction(self):
+        """
+        Returns:
+            es_direction (str): get the direction of the metric of early stopping
+        """
+        return self._es_direction
+
     def early_stop(self):
-        # Early stopping when there is no improvement on the validation loss for more than self.option['early_stop'] rounds
+        """
+        Early stopping when there is no improvement on the validation loss for more than self.option['early_stop'] rounds
+        """
         if self.option['early_stop']<0 or (self._es_key not in self.output): return False
         score = self._es_direction*self.output[self._es_key][-1]
         if np.isnan(score): return True
