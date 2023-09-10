@@ -41,6 +41,7 @@ class Client(BasicClient):
                 l3 += torch.sum(torch.pow(pm - ps, 2))
             loss = l1 - l2 + 0.5 * self.alpha * l3
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         # update grad_L
         self.gradL = self.gradL - self.alpha * (model-src_model)
