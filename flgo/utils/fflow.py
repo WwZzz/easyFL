@@ -10,6 +10,7 @@ import importlib
 import random
 import os
 import os.path
+import types
 import uuid
 import warnings
 import requests
@@ -982,7 +983,7 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
         res.append(rec)
     return res
 
-def convert_model(get_model:Callable, model_name='anonymous', scene:str='horizontal'):
+def convert_model(get_model:Callable, model_name='anonymous', scene:str='horizontal', attr_preversed=True):
     r"""
     Convert an existing model into a model that can be loaded in flgo.
     Args:
@@ -993,13 +994,19 @@ def convert_model(get_model:Callable, model_name='anonymous', scene:str='horizon
     Returns:
         res_model: the model can be used in flgo.init(..., model=res_model, ...)
     """
-    class DecoratedModel(flgo.utils.fmodule.FModule):
-        def __init__(self):
-            super().__init__()
-            self.model = get_model()
+    if attr_preversed and not isinstance(get_model, types.FunctionType):
+        class DecoratedModel(get_model, flgo.utils.fmodule.FModule):
+            def __init__(self, *args, **kwargs):
+                flgo.utils.fmodule.FModule.__init__(self)
+                super().__init__(*args, **kwargs)
+    else:
+        class DecoratedModel(flgo.utils.fmodule.FModule):
+            def __init__(self):
+                super().__init__()
+                self.model = get_model()
 
-        def forward(self, *args, **kwargs):
-            return self.model(*args, **kwargs)
+            def forward(self, *args, **kwargs):
+                return self.model(*args, **kwargs)
 
     if scene=='horizontal':
         class AnonymousModel:

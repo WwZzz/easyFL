@@ -340,15 +340,12 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         self.DataLoader = torch.utils.data.DataLoader
 
     def compute_loss(self, model, data):
-        """
-        Args:
-            model: the model to train
-            data: the training dataset
-        Returns: dict of train-one-step's result, which should at least contains the key 'loss'
-        """
         tdata = self.to_device(data)
         outputs = model(tdata[0])
-        loss = self.criterion(outputs, tdata[-1])
+        if hasattr(model, 'compute_loss'):
+            loss = model.compute_loss(outputs, tdata[-1])
+        else:
+            loss = self.criterion(outputs, tdata[-1])
         return {'loss': loss}
 
     @torch.no_grad()
@@ -363,19 +360,23 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         Returns: [mean_accuracy, mean_loss]
         """
         model.eval()
-        if batch_size==-1:batch_size=len(dataset)
-        data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
+        if batch_size == -1: batch_size = len(dataset)
+        data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers,
+                                          pin_memory=pin_memory)
         total_loss = 0.0
         num_correct = 0
         for batch_id, batch_data in enumerate(data_loader):
             batch_data = self.to_device(batch_data)
             outputs = model(batch_data[0])
-            batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
+            if hasattr(model, 'compute_loss'):
+                batch_mean_loss = model.compute_loss(outputs, batch_data[-1]).item()
+            else:
+                batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
             y_pred = outputs.data.max(1, keepdim=True)[1]
             correct = y_pred.eq(batch_data[-1].data.view_as(y_pred)).long().cpu().sum()
             num_correct += correct.item()
             total_loss += batch_mean_loss * len(batch_data[-1])
-        return {'accuracy': 1.0*num_correct/len(dataset), 'loss':total_loss/len(dataset)}
+        return {'accuracy': 1.0 * num_correct / len(dataset), 'loss': total_loss / len(dataset)}
 
     def to_device(self, data):
         return data[0].to(self.device), data[1].to(self.device)

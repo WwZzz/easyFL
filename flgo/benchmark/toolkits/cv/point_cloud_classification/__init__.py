@@ -344,16 +344,13 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         self.collect_fn = collect_fn_
 
     def compute_loss(self, model, data):
-        """
-        Args:
-            model: the model to train
-            data: the training dataset
-        Returns: dict of train-one-step's result, which should at least contains the key 'loss'
-        """
         tdata = self.to_device(data)
         outputs = model(tdata[0])
-        loss = self.criterion(outputs, tdata[-1])
-        return {'loss': loss}
+        if hasattr(model, 'compute_loss'):
+            loss = model.compute_loss(outputs, tdata[-1])
+        else:
+            loss = self.criterion(outputs, tdata[-1])
+        return {'loss':loss}
 
     @torch.no_grad()
     def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
@@ -374,7 +371,10 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         for batch_id, batch_data in enumerate(data_loader):
             batch_data = self.to_device(batch_data)
             outputs = model(batch_data[0])
-            batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
+            if hasattr(model, 'compute_loss'):
+                batch_mean_loss = model.compute_loss(outputs, batch_data[-1]).item()
+            else:
+                batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
             y_pred = outputs.data.max(1, keepdim=True)[1]
             correct = y_pred.eq(batch_data[-1].data.view_as(y_pred)).long().cpu().sum()
             num_correct += correct.item()
