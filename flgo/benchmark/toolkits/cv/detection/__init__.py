@@ -77,7 +77,11 @@ class GeneralCalculator(BasicTaskCalculator):
         model.train()
         tdata = self.to_device(data)
         output = model(*tdata)
-        return {'loss':sum(list(output.values()))}
+        if hasattr(model, 'compute_loss'):
+            loss = model.compute_loss(output, tdata)
+        else:
+            loss = self.criterion(output, tdata)
+        return {'loss':loss}
 
     @torch.no_grad()
     def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
@@ -89,9 +93,13 @@ class GeneralCalculator(BasicTaskCalculator):
         for batch_data in dataloader:
             batch_data = self.to_device(batch_data)
             output = model(*batch_data)
-            for k in output:
-                losses[k] = losses.get(k, 0.0) + output[k].item()*len(batch_data[0])
-            losses['all_loss'] = losses.get('all_loss', 0.0) + sum([v.item() for v in output.values()])
+            if hasattr(model, 'compute_loss'):
+                loss = model.compute_loss(output, batch_data).item()
+            else:
+                for k in output:
+                    losses[k] = losses.get(k, 0.0) + output[k].item()*len(batch_data[0])
+                loss = sum([v.item() for v in output.values()])
+            losses['all_loss'] = losses.get('all_loss', 0.0) + loss*len(batch_data[0])
             num_samples += len(batch_data[0])
         for k,v in losses.items():
             losses[k]/=num_samples
@@ -156,7 +164,7 @@ class GeneralCalculator(BasicTaskCalculator):
             for iou_th in ious:
                 c_acc_fp_i = np.cumsum(c_tf_dict[iou_th]['fp'])
                 c_acc_tp_i = np.cumsum(c_tf_dict[iou_th]['tp'])
-                c_recall_i = c_acc_tp_i/c_npos
+                c_recall_i = c_acc_tp_i/(c_npos+1e-8)
                 c_precision_i = np.divide(c_acc_tp_i, (c_acc_tp_i + c_acc_fp_i))
                 c_ap_i, c_mpre_i, c_mrec_i, c_ii_i = average_precision(c_recall_i, c_precision_i)
                 res_ious[iou_th] = c_ap_i

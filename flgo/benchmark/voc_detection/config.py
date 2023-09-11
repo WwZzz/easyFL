@@ -43,9 +43,13 @@ test_data = torchvision.datasets.VOCDetection(root=path, download=True, image_se
 train_data.num_classes = len(CLASSES)
 test_data.num_classes = len(CLASSES)
 
+def compute_loss(model_output, *args, **kwargs):
+    return sum(list(model_output.values()))
+
 def get_model():
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=torchvision.models.detection.FasterRCNN_ResNet50_FPN_Weights.COCO_V1)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, len(CLASSES))
+    model.compute_loss = compute_loss
     return model
 

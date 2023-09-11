@@ -83,6 +83,9 @@ class Model(fmodule.FModule):
             res['ap_class'].append(label)
         return res
 
+    def compute_loss(self, model_output, *args, **kwargs):
+        return sum(list(model_output.values()))
+
 def init_local_module(object):
     pass
 
