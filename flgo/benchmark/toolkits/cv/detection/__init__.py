@@ -80,7 +80,7 @@ class GeneralCalculator(BasicTaskCalculator):
         if hasattr(model, 'compute_loss'):
             loss = model.compute_loss(output, tdata)
         else:
-            loss = self.criterion(output, tdata)
+            loss = sum(list(output.values()))
         return {'loss':loss}
 
     @torch.no_grad()
