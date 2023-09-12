@@ -9,6 +9,7 @@ except:
     import json
 import torch.utils.data
 import flgo.benchmark.base
+from tqdm import tqdm
 
 FromDatasetGenerator = flgo.benchmark.base.FromDatasetGenerator
 
@@ -22,22 +23,6 @@ class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
             self.pin_memory = pin_memory
             if hasattr(dataset, 'num_classes'):
                 self.num_classes = dataset.num_classes
-            else:
-                yset = set()
-                if isinstance(dataset[0][-1], torch.Tensor):
-                    for d in dataset:
-                        yset = yset.union(set(d[-1].unique().tolist()))
-                elif isinstance(dataset[0][-1], np.ndarray):
-                    yset = set()
-                    for d in dataset:
-                        yset = yset.union(set(torch.from_numpy(d[-1]).unique().tolist()))
-                else:
-                    yset = set()
-                    for d in dataset:
-                        yset = yset.union(set(torch.tensor(d[-1]).unique().tolist()))
-                dataset.num_classes = len(yset)
-                self.num_classes = dataset.num_classes
-            self.num_part = dataset.num_part
             if not self.pin_memory:
                 self.X = None
                 self.Y = None
@@ -87,7 +72,7 @@ class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
             cpert = None if  local_perturbation[cid] is None else [torch.tensor(t) for t in local_perturbation[cid]]
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert, running_time_option['pin_memory'])
             num_classes = cdata.num_classes
-            num_part = cdata.num_part
+            # num_part = cdata.num_part
             cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
             if running_time_option['train_holdout']>0 and running_time_option['local_test']:
                 cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
@@ -95,20 +80,15 @@ class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
                 cdata_test = None
             if cdata_train is not None:
                 cdata_train.num_classes = num_classes
-                cdata_train.num_part = num_part
             if cdata_test is not None:
                 cdata_test.num_classes = num_classes
-                cdata_test.num_part = num_part
             if cdata_val is not None:
                 cdata_val.num_classes = num_classes
-                cdata_val.num_part = num_part
             task_data[cname] = {'train':cdata_train, 'val':cdata_val, 'test': cdata_test}
         if server_data_val is not None:
             server_data_val.num_classes = train_data.num_classes
-            server_data_val.num_part = train_data.num_part
         if server_data_test is not None:
             server_data_test.num_classes = train_data.num_classes
-            server_data_test.num_part = train_data.num_part
         return task_data
 
 class DecentralizedFromDatasetPipe(flgo.benchmark.base.DecentralizedFromDatasetPipe):
@@ -383,7 +363,7 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         self.criterion = torch.nn.NLLLoss()
         self.DataLoader = torch.utils.data.DataLoader
         def collect_fn_(x):
-            return torch.stack([xi[0] for xi in x]).transpose(2,1), torch.cat([xi[1] for xi in x]), torch.stack([xi[2] for xi in x])
+            return torch.stack([xi[0] for xi in x]).transpose(2,1), torch.stack([xi[1] for xi in x])
         # self.collect_fn = lambda x: (x[0].transpose(2, 1), x[1][:,0])
         self.collect_fn = collect_fn_
 
@@ -411,15 +391,8 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         if batch_size==-1:batch_size=len(dataset)
         data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
         total_loss = 0.0
-        num_correct = 0
-        npoints = 0
         test_metrics = {}
-        total_correct = 0
-        total_seen = 0
-        total_seen_class = [0 for _ in range(dataset.num_part)]
-        total_correct_class = [0 for _ in range(dataset.num_part)]
-        ious = []
-        for batch_id, batch_data in enumerate(data_loader):
+        for batch_id, batch_data in tqdm(enumerate(data_loader)):
             cur_batch_size,_,NUM_POINT = batch_data[0].size()
             batch_data = self.to_device(batch_data)
             outputs = model(*batch_data[:-1])
@@ -427,38 +400,12 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
                 batch_mean_loss = model.compute_loss(outputs, batch_data[-1]).item()
             else:
                 batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
-            cur_pred_val = outputs.cpu().data.numpy()
-            cur_pred_val_logits = cur_pred_val
-            cur_pred_val = np.zeros((cur_batch_size, NUM_POINT)).astype(np.int32)
-            target = batch_data[-1].cpu().data.numpy()
             total_loss += batch_mean_loss * len(batch_data[-1])
-            correct = np.sum(cur_pred_val == target)
-            total_correct += correct
-            total_seen += (cur_batch_size * NUM_POINT)
-            for l in range(dataset.num_part):
-                total_seen_class[l] += np.sum(target == l)
-                total_correct_class[l] += (np.sum((cur_pred_val == l) & (target == l)))
-            for i in range(cur_batch_size):
-                segp = cur_pred_val[i, :]
-                segl = target[i, :]
-                part_ious = [0.0 for _ in range(dataset.num_part)]
-                for l in range(dataset.num_part):
-                    if (np.sum(segl == l) == 0) and (
-                            np.sum(segp == l) == 0):  # part is not present, no prediction as well
-                        part_ious[l] = 1.0
-                    else:
-                        part_ious[l] = np.sum((segl == l) & (segp == l)) / float(
-                            np.sum((segl == l) | (segp == l)))
-                ious.append(part_ious)
-        part_ious = np.mean(ious, axis=0)
-        mean_iou = np.mean(part_ious)
-        test_metrics['accuracy'] = total_correct / float(total_seen)
-        test_metrics['iou'] = mean_iou
         test_metrics['loss'] = total_loss/len(dataset)
         return test_metrics
 
     def to_device(self, data):
-        return data[0].to(self.device), data[1].to(self.device), data[2].to(self.device)
+        return data[0].to(self.device), data[1].to(self.device)
 
     def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False):
         if self.DataLoader == None:
