@@ -392,7 +392,15 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
         total_loss = 0.0
         test_metrics = {}
-        for batch_id, batch_data in tqdm(enumerate(data_loader)):
+        total_correct = 0
+        total_seen = 0
+        loss_sum = 0
+        NUM_CLASSES = dataset.num_classes
+        labelweights = np.zeros(NUM_CLASSES)
+        total_seen_class = [0 for _ in range(NUM_CLASSES)]
+        total_correct_class = [0 for _ in range(NUM_CLASSES)]
+        total_iou_deno_class = [0 for _ in range(NUM_CLASSES)]
+        for batch_id, batch_data in tqdm(enumerate(data_loader),total=len(data_loader)):
             cur_batch_size,_,NUM_POINT = batch_data[0].size()
             batch_data = self.to_device(batch_data)
             outputs = model(*batch_data[:-1])
@@ -400,8 +408,25 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
                 batch_mean_loss = model.compute_loss(outputs, batch_data[-1]).item()
             else:
                 batch_mean_loss = self.criterion(outputs, batch_data[-1]).item()
-            total_loss += batch_mean_loss * len(batch_data[-1])
+            total_loss += batch_mean_loss * cur_batch_size
+            seg_pred = outputs
+            pred_val = seg_pred.contiguous().cpu().data.numpy()
+            batch_label = batch_data[-1].cpu().data.numpy()
+            loss_sum += batch_mean_loss
+            pred_val = np.argmax(pred_val, 2)
+            correct = np.sum((pred_val == batch_label))
+            total_correct += correct
+            total_seen += (cur_batch_size * NUM_POINT)
+            tmp, _ = np.histogram(batch_label, range(NUM_CLASSES + 1))
+            labelweights += tmp
+            for l in range(NUM_CLASSES):
+                total_seen_class[l] += np.sum((batch_label == l))
+                total_correct_class[l] += np.sum((pred_val == l) & (batch_label == l))
+                total_iou_deno_class[l] += np.sum(((pred_val == l) | (batch_label == l)))
         test_metrics['loss'] = total_loss/len(dataset)
+        test_metrics['mIoU'] = np.mean(np.array(total_correct_class) / (np.array(total_iou_deno_class, dtype=np.float) + 1e-6))
+        test_metrics['accuracy'] = total_correct / float(total_seen)
+        test_metrics['mean_class_accuracy'] = np.mean(np.array(total_correct_class) / (np.array(total_seen_class, dtype=np.float) + 1e-6))
         return test_metrics
 
     def to_device(self, data):
