@@ -2,7 +2,7 @@ import math
 import copy
 import collections
 from typing import Any
-
+from tqdm import tqdm
 import torch
 import torch.multiprocessing as mp
 import numpy as np
@@ -301,7 +301,7 @@ class BasicServer(BasicParty):
         # communicate with selected clients
         if self.num_parallels <= 1:
             # computing iteratively
-            for client_id in communicate_clients:
+            for client_id in tqdm(communicate_clients, desc="Local Training on {} Clients".format(len(communicate_clients)), leave=False):
                 server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
                 response_from_client_id = self.communicate_with(self.clients[client_id].id, package=server_pkg)
