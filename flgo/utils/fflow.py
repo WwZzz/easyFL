@@ -530,6 +530,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     setup_seed(seed=option['seed'])
     option['task'] = task
     option['algorithm'] = (algorithm.__name__).split('.')[-1]
+    option['scene'] = scene
     # option['server_with_cpu'] = True if (option['num_parallels']>1 and len(option['gpu'])>1) else option['server_with_cpu']
     # init task info
     if not os.path.exists(task):
@@ -558,15 +559,18 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
             Logger = flgo.experiment.logger.dec_logger.DecLogger
         elif scene=='hierarchical':
             Logger = flgo.experiment.logger.hier_logger.HierLogger
-    gv.logger = Logger(task=task, option=option, name=str(id(gv))+str(Logger), level=option['log_level'])
+        elif scene=='horizontal_cp':
+            Logger = flgo.experiment.logger.simple_logger.SimpleLogger
+    logger = Logger(task=task, option=option, name=str(id(gv))+str(Logger), level=option['log_level'])
+    gv.logger = logger
     # init device
     gv.dev_list = [torch.device('cpu')] if (option['gpu'] is None or len(option['gpu'])==0) else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
-    gv.logger.info('Initializing devices: '+','.join([str(dev) for dev in gv.dev_list])+' will be used for this running.')
+    logger.info('Initializing devices: '+','.join([str(dev) for dev in gv.dev_list])+' will be used for this running.')
     # init task
-    gv.logger.info('BENCHMARK:\t{}'.format(benchmark))
-    gv.logger.info('TASK:\t\t\t{}'.format(task))
-    gv.logger.info('MODEL:\t\t{}'.format(model.__name__))
-    gv.logger.info('ALGORITHM:\t{}'.format(option['algorithm']))
+    logger.info('BENCHMARK:\t{}'.format(benchmark))
+    logger.info('TASK:\t\t\t{}'.format(task))
+    logger.info('MODEL:\t\t{}'.format(model.__name__))
+    logger.info('ALGORITHM:\t{}'.format(option['algorithm']))
     core_module = '.'.join([benchmark, 'core'])
     gv.TaskPipe = getattr(importlib.import_module(core_module), 'TaskPipe')
     task_pipe = gv.TaskPipe(task)
@@ -602,7 +606,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     creating_str = []
     for k,v in obj_classes.items(): creating_str.append("{} {}".format(v, k))
     creating_str = ', '.join(creating_str)
-    gv.logger.info('SCENE:\t\t{} FL with '.format(scene)+creating_str)
+    logger.info('SCENE:\t\t{} FL with '.format(scene)+creating_str)
     task_pipe.distribute(task_data, objects)
     # init model
     if hasattr(model, 'init_local_module'):
@@ -621,18 +625,18 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     for ob in objects: ob.initialize()
 
     # init virtual system environment
-    gv.logger.info('SIMULATOR:\t{}'.format(str(Simulator)))
+    logger.info('SIMULATOR:\t{}'.format(str(Simulator)))
     # flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
 
     gv.clock = flgo.simulator.base.ElemClock()
     gv.simulator = Simulator(objects, option) if scene == 'horizontal' else None
     if gv.simulator is not None: gv.simulator.initialize()
     gv.clock.register_simulator(simulator=gv.simulator)
-    gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects, simulator=Simulator.__name__ if scene == 'horizontal' else 'None')
+    logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects, simulator=Simulator.__name__ if scene == 'horizontal' else 'None')
     if scene=='horizontal':
-        gv.logger.register_variable(server=objects[0], clients=objects[1:])
-    gv.logger.initialize()
-    gv.logger.info('Ready to start.')
+        logger.register_variable(server=objects[0], clients=objects[1:])
+    logger.initialize()
+    logger.info('Ready to start.')
 
     # register global variables for objects
     for c in tmp:
@@ -646,7 +650,10 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     if gv.simulator is not None:
         gv.simulator.gv = gv
     gv.clock.gv = gv
-    gv.logger.gv = gv
+    logger.gv = gv
+    if scene=='horizontal_cp':
+        for obj in objects: obj.logger = Logger
+        return objects
     return objects[0]
 
 def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, scene, send_end):
