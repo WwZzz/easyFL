@@ -322,6 +322,37 @@ class Client(fedavg.Client):
         torch.cuda.empty_cache()
         exit(0)
 
+    def set_data(self, data, flag:str='train') -> None:
+        r"""
+        Set self's attibute 'xxx_data' to be data where xxx is the flag. For example,
+        after calling self.set_data([1,2,3], 'test'), self.test_data will be [1,2,3].
+        Particularly, If the flag is 'train', the batchsize and the num_steps will be
+        reset.
+
+        Args:
+            data: anything
+            flag (str): the name of the data
+        """
+        setattr(self, flag + '_data', data)
+        if flag not in self._data_names:
+            self._data_names.append(flag)
+        if flag == 'train':
+            import math
+            self.datavol = len(data)
+            if hasattr(self, 'batch_size'):
+                # reset batch_size
+                if self.batch_size < 0:
+                    self.batch_size = len(self.get_data(flag))
+                elif self.batch_size >= 1:
+                    self.batch_size = int(self.batch_size)
+                else:
+                    self.batch_size = int(self.datavol * self.batch_size)
+            # reset num_steps
+            if hasattr(self, 'num_steps') and hasattr(self, 'num_epochs'):
+                if self.num_steps > 0:
+                    self.num_epochs = 1.0 * self.num_steps / (math.ceil(self.datavol / self.batch_size))
+                else:
+                    self.num_steps = self.num_epochs * math.ceil(self.datavol / self.batch_size)
 class algo:
     Server = Server
     Client = Client
