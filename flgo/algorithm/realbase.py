@@ -96,25 +96,29 @@ class Server(fedavg.Server):
             self._check_timestamp = time.time()
         return len(self.clients)>=10 or time.time()-self._check_timestamp>=30
 
+    def register_handler(self, worker_id, client_id, received_pkg):
+        valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
+        if received_pkg["name"] not in self.clients.keys():
+            self.add_client(received_pkg["name"])
+            l = len(self.clients)
+            self.logger.info("%s joined in the federation. The number of clients is %i" % (received_pkg['name'], l))
+
+            d = {"client_idx": l, 'port_send': self.port_send, 'port_recv': self.port_recv,
+                 '__option__': {k: self.option[k] for k in valid_keys}}
+            self.registrar.send_multipart([worker_id, client_id, pickle.dumps(d, pickle.DEFAULT_PROTOCOL)])
+        else:
+            self.logger.info("%s rebuilt the connection." % received_pkg['name'])
+            self.registrar.send_pyobj({"client_idx": len(self.clients), 'port_send': self.port_send, 'port_recv': self.port_recv, '__option__': {k: self.option[k] for k in valid_keys}})
+
     def listen_for_registration(self):
         while not self.is_exit():
             time.sleep(0.1)
             if len(self.register_poller.poll(10000)) > 0:
-                worked_id = self.registrar.recv()
+                worker_id = self.registrar.recv()
                 client_id = self.registrar.recv()
-                reg_req = self.registrar.recv_pyobj()
-                if reg_req["name"] not in self.clients.keys():
-                    self.add_client(reg_req["name"])
-                    l = len(self.clients)
-                    self.logger.info("%s joined in the federation. The number of clients is %i" % (reg_req['name'], l))
-                    valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
-                    d = {"client_idx": l, 'port_send': self.port_send, 'port_recv': self.port_recv, '__option__':{k:self.option[k] for k in valid_keys}}
-                    self.registrar.send_multipart([worked_id, client_id, pickle.dumps(d, pickle.DEFAULT_PROTOCOL)])
-                    # self.registrar.send(client_id, zmq.SNDMORE)
-                    # self.registrar.send_pyobj()
-                else:
-                    self.logger.info("%s rebuilt the connection." % reg_req['name'])
-                    self.registrar.send_pyobj({"client_idx": l, 'port_send': self.port_send, 'port_recv': self.port_recv, '__option__':{k:self.option[k] for k in valid_keys}})
+                received_pkg = self.registrar.recv_pyobj()
+                t = threading.Thread(self.register_handler, args=(worker_id, client_id, received_pkg))
+                t.start()
 
     def listen_for_sender(self):
         # t = threading.current_thread()
