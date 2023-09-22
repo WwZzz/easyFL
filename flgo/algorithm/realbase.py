@@ -287,7 +287,10 @@ class Client(fedavg.Client):
         response['__name__'] = self.name
         if hasattr(self, 'round'): response['__round__'] = self.round
         self.sender.send_string(self.name, zmq.SNDMORE)
-        self.sender.send_pyobj(response)
+        msg = pickle.dumps(response, pickle.DEFAULT_PROTOCOL)
+        self.logger.info("Sending the package of size {}MB to the server...".format(len(msg)/1024/1024))
+        self.sender.send(msg)
+        # self.sender.send_pyobj(response)
         return
 
     def run(self, server_ip='127.0.0.1', server_port='5555'):
