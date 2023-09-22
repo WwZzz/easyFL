@@ -309,8 +309,8 @@ class Client(fedavg.Client):
 
         self.sender = self.context.socket(zmq.PUSH)
         self.sender.connect("tcp://%s:%s" % (server_ip, port_svr_recv))
-        self.logger.info("Start training...")
-        self.logger.info("-------------------------------Training-------------------------------")
+        self.logger.info("Ready For Training...")
+        self.logger.info("---------------------------------------------------------------------")
         while True:
             name = self.receiver.recv_string()
             assert name == self.name
