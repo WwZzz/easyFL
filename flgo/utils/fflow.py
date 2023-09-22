@@ -612,6 +612,19 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
                 class_server.communicate_with = flgo.simulator.base.with_latency(class_server.communicate_with)
                 class_server.communicate = flgo.simulator.base.with_dropout(class_server.communicate)
     objects = task_pipe.generate_objects(option, algorithm, scene=scene)
+    if scene=='real_hclient':
+        name_path = os.path.join(task, 'name')
+        if not os.path.exists(name_path):
+            import uuid
+            import socket
+            try:
+                ip = requests.get('https://api.ipify.org').text
+            except:
+                ip = 'unknown_ip'
+            with open(name_path, 'w') as namefile:
+                namefile.write('_'.join([ip, socket.gethostname(), str(uuid.getnode())]))
+        with open(name_path, 'r') as namefile:
+            objects[0].name = namefile.readline()
     obj_classes = collections.defaultdict(int)
     for obj in objects: obj_classes[obj.__class__]+=1
     creating_str = []

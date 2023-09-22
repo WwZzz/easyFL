@@ -277,14 +277,6 @@ class BasicTaskPipe(AbstractTaskPipe):
             objects = [server]
         elif scene=='real_hclient':
             client = algorithm.Client(running_time_option)
-            import uuid
-            import socket
-            import requests
-            try:
-                ip = requests.get('https://api.ipify.org').text
-            except:
-                ip = 'unknown_ip'
-            client.name = '_'.join([ip, socket.gethostname(), str(uuid.getnode())])
             objects = [client]
         return objects
 
