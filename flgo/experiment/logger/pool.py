@@ -8,3 +8,4 @@ from . import BasicLogger
 from .test_logger import TestLogger
 from .full_logger import FullLogger
 from .gval_logger import GValLogger
+from .parallel_hlogger import ParallelHFLLogger

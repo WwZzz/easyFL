@@ -63,7 +63,7 @@ class BasicParty:
         setattr(self, flag + '_data', data)
         if flag not in self._data_names:
             self._data_names.append(flag)
-        if flag == 'train':
+        if flag == 'train' and 'real' not in self.option['scene']:
             self.datavol = len(data)
             if hasattr(self, 'batch_size'):
                 # reset batch_size
@@ -419,6 +419,7 @@ class BasicServer(BasicParty):
         """
         all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in
                                                                                         range(self.num_clients)]
+        clients_per_round = max(min(int(self.num_clients*self.proportion),len(all_clients)), 1)
         # full sampling with unlimited communication resources of the server
         if 'full' in self.sample_option:
             return all_clients
@@ -426,14 +427,14 @@ class BasicServer(BasicParty):
         elif 'uniform' in self.sample_option:
             # original sample proposed by fedavg
             selected_clients = list(
-                np.random.choice(all_clients, min(self.clients_per_round, len(all_clients)), replace=False)) if len(
+                np.random.choice(all_clients, clients_per_round, replace=False)) if len(
                 all_clients) > 0 else []
         elif 'md' in self.sample_option:
             # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local_movielens_recommendation data sizes
             local_data_vols = [self.clients[cid].datavol for cid in all_clients]
             total_data_vol = sum(local_data_vols)
             p = np.array(local_data_vols) / total_data_vol
-            selected_clients = list(np.random.choice(all_clients, self.clients_per_round, replace=True, p=p)) if len(
+            selected_clients = list(np.random.choice(all_clients, clients_per_round, replace=True, p=p)) if len(
                 all_clients) > 0 else []
         return selected_clients
 
@@ -661,6 +662,7 @@ class BasicClient(BasicParty):
         # actions of different message type
         self.option = option
         self.actions = {0: self.reply}
+        self.default_action = self.reply
 
     @fmodule.with_multi_gpus
     def train(self, model):
