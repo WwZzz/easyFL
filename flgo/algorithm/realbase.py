@@ -324,7 +324,7 @@ class Client(fedavg.Client):
                 package['__size__'] = package_size/1024/1024 #MB
                 if '__round__' in package.keys():
                     self.round = package['__round__']
-                    self.logger.info("{} was selected at round {}".format(self.name, package['__round__']))
+                    self.logger.info("{} is selected at round {} and received the package of size {}MB from the server".format(self.name, package['__round__'], package['__size__']))
                 self.message_handler(package)
             except Exception as e:
                 print(e)
