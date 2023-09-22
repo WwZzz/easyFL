@@ -6,7 +6,6 @@ import flgo.algorithm.fedavg as fedavg
 import zmq
 import time
 import flgo.utils.fmodule
-from multiprocessing import Process
 import threading
 
 class Server(fedavg.Server):
@@ -327,13 +326,6 @@ class algo:
     Server = Server
     Client = Client
 
-import flgo.experiment.logger as fel
-class MyLogger(fel.BasicLogger):
-    def log_once(self, *args, **kwargs):
-        test_metrics = self.object.test()
-        for met, val in test_metrics.items():
-            self.output[self.object.name+'_test_'+met].append(val)
-        self.show_current_output()
 
 if __name__=='__main__':
     mlp.set_start_method('spawn', force=True)
@@ -341,10 +333,6 @@ if __name__=='__main__':
     import flgo.benchmark.mnist_classification as mnist
     import flgo.benchmark.partition as fbp
     flgo.gen_task_by_(mnist, fbp.IIDPartitioner(num_clients=10), 'my_task')
-    objects = flgo.init('my_task', algo, option={'proportion':0.2, 'gpu':[0,1,2,3,], 'server_with_cpu':True, 'num_rounds':10, 'num_steps':1, 'log_file':True}, scene='horizontal_cp', Logger=MyLogger)
-    plist = []
-    for obj in objects:
-        p = Process(target=obj.run,)
-        p.start()
-        plist.append(p)
+    runner = flgo.init('my_task', algo, option={'proportion':0.2, 'gpu':[0,1,2,3,], 'server_with_cpu':True, 'num_rounds':10, 'num_steps':1, 'log_file':True}, scene='parallel_horizontal')
+    runner.run()
 

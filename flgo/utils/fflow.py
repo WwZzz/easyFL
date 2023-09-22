@@ -44,6 +44,7 @@ import flgo.experiment.logger.vertical_logger
 import flgo.experiment.logger.dec_logger
 import flgo.experiment.logger.hier_logger
 import flgo.experiment.logger
+import flgo.experiment.logger.pool as felp
 import flgo.experiment.device_scheduler
 from flgo.simulator.base import BasicSimulator
 import flgo.benchmark.base
@@ -552,15 +553,17 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     # init logger
     if Logger is None:
         if scene=='horizontal':
-            Logger = flgo.experiment.logger.simple_logger.SimpleLogger
+            Logger = felp.SimpleLogger
         elif scene=='vertical':
-            Logger = flgo.experiment.logger.vertical_logger.VerticalLogger
+            Logger = felp.VerticalLogger
         elif scene=='decentralized':
-            Logger = flgo.experiment.logger.dec_logger.DecLogger
+            Logger = felp.DecLogger
         elif scene=='hierarchical':
-            Logger = flgo.experiment.logger.hier_logger.HierLogger
-        elif scene=='horizontal_cp':
-            Logger = flgo.experiment.logger.simple_logger.SimpleLogger
+            Logger = felp.HierLogger
+        elif scene=='parallel_horizontal':
+            Logger = felp.ParallelHFLLogger
+        elif scene=='real_hserver' or scene=='real_hclient':
+            Logger = felp.ParallelHFLLogger
     logger = Logger(task=task, option=option, name=str(id(gv))+str(Logger), level=option['log_level'])
     gv.logger = logger
     # init device
@@ -577,7 +580,15 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
     gv.TaskCalculator = TaskCalculator
     setup_seed(option['dataseed'])
-    task_data = task_pipe.load_data(option)
+    if 'real' not in scene:
+        task_data = task_pipe.load_data(option)
+    else:
+        sys.path.append(task)
+        task_config = importlib.import_module('config')
+        train_data = getattr(task_config, 'train_data') if hasattr(task_config, 'train_data') else None
+        test_data = getattr(task_config, 'test_data') if hasattr(task_config, 'test_data') else None
+        val_data = getattr(task_config, 'val_data') if hasattr(task_config, 'val_data') else None
+        task_data = {'train':train_data, 'test':test_data, 'val':val_data}
     # init objects
     obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
     tmp = []
@@ -607,6 +618,9 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     for k,v in obj_classes.items(): creating_str.append("{} {}".format(v, k))
     creating_str = ', '.join(creating_str)
     logger.info('SCENE:\t\t{} FL with '.format(scene)+creating_str)
+    if 'real' in scene:
+        task_data = {objects[0].name: task_data}
+        objects[0].logger = Logger
     task_pipe.distribute(task_data, objects)
     # init model
     if hasattr(model, 'init_local_module'):
@@ -623,37 +637,47 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     gv.communicator = flgo.VirtualCommunicator(objects)
 
     for ob in objects: ob.initialize()
+    if 'real' not in scene:
+        # init virtual system environment
+        logger.info('SIMULATOR:\t{}'.format(str(Simulator)))
+        # flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
 
-    # init virtual system environment
-    logger.info('SIMULATOR:\t{}'.format(str(Simulator)))
-    # flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
+        gv.clock = flgo.simulator.base.ElemClock()
+        gv.simulator = Simulator(objects, option) if scene == 'horizontal' else None
+        if gv.simulator is not None: gv.simulator.initialize()
+        gv.clock.register_simulator(simulator=gv.simulator)
+        logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects, simulator=Simulator.__name__ if scene == 'horizontal' else 'None')
+        if scene=='horizontal':
+            logger.register_variable(server=objects[0], clients=objects[1:])
+        logger.initialize()
+        logger.info('Ready to start.')
 
-    gv.clock = flgo.simulator.base.ElemClock()
-    gv.simulator = Simulator(objects, option) if scene == 'horizontal' else None
-    if gv.simulator is not None: gv.simulator.initialize()
-    gv.clock.register_simulator(simulator=gv.simulator)
-    logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects, simulator=Simulator.__name__ if scene == 'horizontal' else 'None')
-    if scene=='horizontal':
-        logger.register_variable(server=objects[0], clients=objects[1:])
-    logger.initialize()
-    logger.info('Ready to start.')
-
-    # register global variables for objects
-    for c in tmp:
-        try:
-            C = getattr(algorithm, c)
-            delattr(C, 'gv')
-        except:
-            continue
-    for ob in objects:
-        ob.gv = gv
-    if gv.simulator is not None:
-        gv.simulator.gv = gv
-    gv.clock.gv = gv
-    logger.gv = gv
-    if scene=='horizontal_cp':
+        # register global variables for objects
+        for c in tmp:
+            try:
+                C = getattr(algorithm, c)
+                delattr(C, 'gv')
+            except:
+                continue
+        for ob in objects:
+            ob.gv = gv
+        if gv.simulator is not None:
+            gv.simulator.gv = gv
+        gv.clock.gv = gv
+        logger.gv = gv
+    if scene=='parallel_horizontal':
         for obj in objects: obj.logger = Logger
-        return objects
+        class HParallelRunner:
+            def __init__(self, objects:list):
+                self.objects = objects
+                self.plist = []
+
+            def run(self):
+                for obj in self.objects:
+                    p = torch.multiprocessing.Process(target=obj.run, )
+                    p.start()
+                    self.plist.append(p)
+        objects = [HParallelRunner(objects)]
     return objects[0]
 
 def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, scene, send_end):
@@ -1154,5 +1178,3 @@ def list_resource(type:str='algorithm'):
     res = [s.strip('"') for s in res]
     res = [s[:-len(suffix)] for s in res if s!="test.py"]
     return res
-
-

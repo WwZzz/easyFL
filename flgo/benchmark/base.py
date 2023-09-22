@@ -257,7 +257,7 @@ class BasicTaskPipe(AbstractTaskPipe):
             # return objects as list
             objects = [protocol]
             objects.extend(clients)
-        elif scene=='horizontal_cp':
+        elif scene=='parallel_horizontal':
             # init clients
             Client = algorithm.Client
             clients = [Client(running_time_option) for _ in range(len(self.feddata['client_names']))]
@@ -271,6 +271,21 @@ class BasicTaskPipe(AbstractTaskPipe):
             # return objects as list
             objects = [server]
             objects.extend(clients)
+        elif scene=='real_hserver':
+            server = algorithm.Server(running_time_option)
+            server.name = 'server'
+            objects = [server]
+        elif scene=='real_hclient':
+            client = algorithm.Client(running_time_option)
+            import uuid
+            import socket
+            import requests
+            try:
+                ip = requests.get('https://api.ipify.org').text
+            except:
+                ip = 'unknown_ip'
+            client.name = '_'.join([ip, socket.gethostname(), str(uuid.getnode())])
+            objects = [client]
         return objects
 
     def save_info(self, generator):
