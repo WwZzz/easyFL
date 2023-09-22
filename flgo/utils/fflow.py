@@ -539,6 +539,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     with open(os.path.join(task, 'info'), 'r') as inf:
         task_info = json.load(inf)
     benchmark = task_info['benchmark']
+    if 'bmk_path' in task_info and os.path.isdir(task_info['bmk_path']): sys.path.append(task_info['bmk_path'])
     if model== None:
         bmk_module = importlib.import_module(benchmark)
         if hasattr(algorithm, 'init_global_module') or hasattr(algorithm, 'init_local_module'):
@@ -584,7 +585,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         task_data = task_pipe.load_data(option)
     else:
         sys.path.append(task)
-        task_config = importlib.import_module('config')
+        task_config = importlib.import_module('_dataset')
         train_data = getattr(task_config, 'train_data') if hasattr(task_config, 'train_data') else None
         test_data = getattr(task_config, 'test_data') if hasattr(task_config, 'test_data') else None
         val_data = getattr(task_config, 'val_data') if hasattr(task_config, 'val_data') else None
@@ -1191,3 +1192,65 @@ def list_resource(type:str='algorithm'):
     res = [s.strip('"') for s in res]
     res = [s[:-len(suffix)] for s in res if s!="test.py"]
     return res
+
+def gen_empty_task(benchmark, task_path:str, scene:str="unknown"):
+    if os.path.exists(task_path):
+        warnings.warn("Task {} already exists.".format(task_path))
+        return task_path
+    info = {'benchmark':benchmark.__name__, "scene":scene, 'bmk_path': os.path.dirname(benchmark.__file__)}
+    os.makedirs(os.path.join(task_path, 'log'))
+    os.makedirs(os.path.join(task_path, 'record'))
+    with open(os.path.join(task_path, 'info'), 'w') as outinfo:
+        json.dump(info, outinfo)
+    with open(os.path.join(task_path, '_dataset.py'), 'w') as outf:
+        pass
+    print("Empty task {} has been successfully generated.".format(task_path))
+    return task_path
+
+def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
+    if not os.path.exists(task_path):
+        raise FileNotFoundError("Task {} doesn't exist.".format(task_path))
+    if not os.path.isdir(target_path):
+        raise TypeError("target path must be a directory.")
+    if not os.path.isdir(task_path):
+        raise TypeError("task path must be a directory.")
+    with open(os.path.join(task_path, 'info'), 'r') as inf:
+        info = json.load(inf)
+    old_info = info.copy()
+    config_path = os.path.join(task_path, '_dataset.py')
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as in_dataset:
+            old_config = in_dataset.readlines()
+    with open(config_path, 'w') as new_dataset:
+        new_dataset.writelines(['train_data=None\n', 'test_data=None\n', 'val_data=None\n'])
+    output_path = os.path.join(target_path, os.path.basename(task_path)+'.zip')
+    zipf = zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED)
+
+    flag = False
+    if with_bmk:
+        bmk = importlib.import_module(info['benchmark'])
+        bmk_dir = os.path.dirname(bmk.__file__)
+        bmk_base = os.path.basename(bmk_dir)
+        if 'bmk_path' in info:
+            sys.path.append(info['bmk_path'])
+            info['bmk_path'] = '.'
+            info['benchmark'] = bmk_base
+            with open(os.path.join(task_path, 'info'), 'w') as outf:
+                json.dump(info, outf)
+            flag = True
+        for root, dirs, files in os.walk(bmk_dir):
+            relative_root = bmk_base if root == bmk_dir else root.replace(bmk_dir, bmk_base) + os.sep
+            for filename in files:
+                zipf.write(os.path.join(root, filename), os.path.join(relative_root,filename))
+    task_base = os.path.basename(task_path)
+    for root, dirs, files in os.walk(task_path):
+        relative_root = task_base if root == task_path else root.replace(task_path, task_base) + os.sep
+        for filename in files:
+            zipf.write(os.path.join(root, filename), os.path.join(relative_root,filename))
+    zipf.close()
+    if flag:
+        with open(os.path.join(task_path, 'info'), 'w') as outf:
+            json.dump(old_info, outf)
+    with open(config_path, 'w') as out_dataset:
+        out_dataset.writelines(old_config)
+    return output_path
