@@ -1,4 +1,6 @@
 import collections
+import pickle
+
 import torch.cuda
 import torch.multiprocessing as mlp
 import flgo
@@ -112,12 +114,15 @@ class Server(fedavg.Server):
             time.sleep(0.5)
             if len(self.receiver_poller.poll(10000)) > 0:
                 name = self.receiver.recv_string()
-                d = self.receiver.recv_pyobj()
+                package_msg = self.receiver.recv()
+                package_size = len(package_msg)/1024.0/1024.0
+                d = self.receiver._deserialize(package_msg, pickle.loads)
+                d['__size__'] = package_size
                 if '__mtype__' in d and d['__mtype__']=="close":
                     self.logger.info("{} was successfully closed.".format(name))
                 else:
                     self.add_buffer({'name':name, 'package':d})
-                    self.logger.info("Received package from {} at round {}".format(name, self.current_round))
+                    self.logger.info("Received package of size {}MB from {} at round {}".format(package_size, name, self.current_round))
 
     @property
     def clients(self):
@@ -293,6 +298,7 @@ class Client(fedavg.Client):
         self.registrar = self.context.socket(zmq.REQ)
         self.registrar.connect("tcp://%s:%s"%(server_ip, server_port))
         port_svr_recv, port_svr_send = self.register()
+        self.logger.info(f"Successfully Registered to {server_ip}:{server_port}")
 
         self.receiver = self.context.socket(zmq.SUB)
         self.receiver.connect("tcp://%s:%s" % (server_ip, port_svr_send))
@@ -300,17 +306,22 @@ class Client(fedavg.Client):
 
         self.sender = self.context.socket(zmq.PUSH)
         self.sender.connect("tcp://%s:%s" % (server_ip, port_svr_recv))
-
+        self.logger.info("Start training...")
+        self.logger.info("-------------------------------Training-------------------------------")
         while True:
             name = self.receiver.recv_string()
             assert name == self.name
             try:
-                package = self.receiver.recv_pyobj()
+                package_msg = self.receiver.recv()
+                package_size = len(package_msg)
+                package = self.receiver._deserialize(package_msg, pickle.loads)
+                # package = self.receiver.recv_pyobj()
                 assert '__mtype__' in package
                 if package['__mtype__']=='close':
                     self.sender.send_string(self.name, zmq.SNDMORE)
                     self.sender.send_pyobj({'__mtype__':"close"})
                     break
+                package['__size__'] = package_size/1024/1024 #MB
                 if '__round__' in package.keys():
                     self.round = package['__round__']
                     self.logger.info("{} was selected at round {}".format(self.name, package['__round__']))
