@@ -597,7 +597,7 @@ class BasicServer(BasicParty):
         r"""
         Wait for the time of the virtual clock to pass t units
         """
-        ss.clock.step(t)
+        self.gv.clock.step(t)
         return
 
     @property
