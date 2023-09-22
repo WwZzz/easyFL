@@ -104,7 +104,8 @@ class Server(fedavg.Server):
                     self.add_client(reg_req["name"])
                     l = len(self.clients)
                     self.logger.info("%s joined in the federation. The number of clients is %i" % (reg_req['name'], l))
-                    self.registrar.send_pyobj({"client_idx": l, 'port_send': self.port_send, 'port_recv': self.port_recv})
+                    valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
+                    self.registrar.send_pyobj({"client_idx": l, 'port_send': self.port_send, 'port_recv': self.port_recv, '__option__':{k:self.option[k] for k in valid_keys}})
                 else:
                     self.logger.info("%s rebuilt the connection." % reg_req['name'])
 
@@ -277,6 +278,7 @@ class Client(fedavg.Client):
         self.logger.info("%s Registering..." % self.name)
         self.registrar.send_pyobj({"name": self.name})
         reply = self.registrar.recv_pyobj()
+        if '__option__' in reply: self.set_option(reply['__option__'])
         return reply["port_recv"], reply["port_send"],
 
     def message_handler(self, package, *args, **kwargs):
@@ -335,6 +337,37 @@ class Client(fedavg.Client):
         self.logger.info("%s has been closed" % self.name)
         torch.cuda.empty_cache()
         exit(0)
+
+    def set_option(self, option:dict={}):
+        valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
+        types = [int, float, float, float, float, int, str]
+        self.option.update(option)
+        for k,t in zip(valid_keys, types):
+            if k in option:
+                try:
+                    setattr(self, k, t(option[k]))
+                except:
+                    self.logger.info("Failed to set hyper-parameter {}={}".format(k, option[k]))
+                    continue
+        # correct hyper-parameters
+        if hasattr(self, 'train_data'):
+            import math
+            self.datavol = len(self.train_data)
+            if hasattr(self, 'batch_size'):
+                # reset batch_size
+                if self.batch_size < 0:
+                    self.batch_size = self.datavol
+                elif self.batch_size >= 1:
+                    self.batch_size = int(self.batch_size)
+                else:
+                    self.batch_size = int(self.datavol * self.batch_size)
+            # reset num_steps
+            if hasattr(self, 'num_steps') and hasattr(self, 'num_epochs'):
+                if self.num_steps > 0:
+                    self.num_epochs = 1.0 * self.num_steps / (math.ceil(self.datavol / self.batch_size))
+                else:
+                    self.num_steps = self.num_epochs * math.ceil(self.datavol / self.batch_size)
+        return
 
     def set_data(self, data, flag:str='train') -> None:
         r"""
