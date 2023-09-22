@@ -117,7 +117,7 @@ class Server(fedavg.Server):
                 worker_id = self.registrar.recv()
                 client_id = self.registrar.recv()
                 received_pkg = self.registrar.recv_pyobj()
-                t = threading.Thread(self.register_handler, args=(worker_id, client_id, received_pkg))
+                t = threading.Thread(target=self.register_handler, args=(worker_id, client_id, received_pkg))
                 t.start()
 
     def listen_for_sender(self):
