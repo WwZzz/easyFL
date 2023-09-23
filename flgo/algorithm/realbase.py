@@ -173,7 +173,7 @@ class Server(fedavg.Server):
     def _read_zipped_task(self, with_bmk=True):
         task_path = self.option['task']
         task_name = os.path.basename(task_path)
-        task_dir = os.path.dirname(task_path)
+        task_dir = os.path.dirname(os.path.abspath(task_path))
         task_zip = task_name + '.zip'
         if not os.path.exists(task_zip):
             flgo.zip_task(task_path, target_path=task_dir, with_bmk=with_bmk)
@@ -206,25 +206,29 @@ class Server(fedavg.Server):
         self.context = zmq.Context()
         self.registrar = self.context.socket(zmq.ROUTER)
         self.registrar.bind("%s://%s:%s" % (protocol, ip, port))
-        self.port_send = self.get_free_port()
 
-        self.task_pusher = self.context.socket(zmq.STREAM)
         self.port_task = self.get_free_port()
-        self.logger.info("Publish task in %s://%s:%s"% (protocol, ip, self.port_task))
+        self.task_pusher = self.context.socket(zmq.STREAM)
         self.task_pusher.bind("%s://%s:%s" % (protocol, ip, self.port_task))
+        self.logger.info("Publish Task %s in %s://%s:%s"% (os.path.basename(self.option['task']),protocol, ip, self.port_task))
 
+        self.port_send = self.get_free_port()
         self.sender = self.context.socket(zmq.PUB)
         self.sender.bind("%s://%s:%s" %(protocol, ip, self.port_send))
+
         self.port_recv = self.get_free_port()
         self.receiver = self.context.socket(zmq.PULL)
         self.receiver.bind("%s://%s:%s"%(protocol, ip, self.port_recv))
+
         self._poller = zmq.Poller()
         self._poller.register(self.task_pusher, zmq.POLLIN)
         self._poller.register(self.registrar, zmq.POLLIN)
         self._poller.register(self.receiver, zmq.POLLIN)
         self._thread_listening = threading.Thread(target=self._listen)
         self._thread_listening.start()
+
         self.register()
+
         self.current_round = 1
         self.logger.time_start('Total Time Cost')
         if self.eval_interval>0:

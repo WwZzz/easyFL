@@ -1194,6 +1194,15 @@ def list_resource(type:str='algorithm'):
     return res
 
 def gen_empty_task(benchmark, task_path:str, scene:str="unknown"):
+    r"""
+    Create empty task for a benchmark without information about partitioning.
+    Args:
+        benchmark (module): the benchmark module
+        task_path (str): the path of the task
+        scene (str): the scene of FL
+    Return:
+        task_path
+    """
     if os.path.exists(task_path):
         warnings.warn("Task {} already exists.".format(task_path))
         return task_path
@@ -1254,3 +1263,17 @@ def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
     with open(config_path, 'w') as out_dataset:
         out_dataset.writelines(old_config)
     return output_path
+
+def pull_task_from_(address:str, task_name:str, target_path='.'):
+    import zmq
+    ctx = zmq.Context()
+    sck = ctx.socket(zmq.REQ)
+    sck.connect(address)
+    task_zip = os.path.basename(task_name)+'.zip'
+    with open(os.path.join(target_path, task_zip), 'wb') as f:
+        while True:
+            chunk = sck.recv()
+            if not chunk:
+                break
+            f.write(chunk)
+    return
