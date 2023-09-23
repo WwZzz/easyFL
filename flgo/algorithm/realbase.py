@@ -88,11 +88,8 @@ class Server(fedavg.Server):
         return
 
     def if_start(self):
-        tmp = input("Press Y and Enter to start training: ")
+        tmp = input("Press Enter to start training: \n")
         return (tmp.lower()=='y' or tmp.lower()=='yes')
-        # if not hasattr(self, '_check_timestamp'):
-        #     self._check_timestamp = time.time()
-        # return len(self.clients)>=10 or time.time()-self._check_timestamp>=30
 
     def register_handler(self, worker_id, client_id, received_pkg):
         valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
@@ -108,25 +105,26 @@ class Server(fedavg.Server):
             self.logger.info("%s rebuilt the connection." % received_pkg['name'])
             self.registrar.send_pyobj({"client_idx": len(self.clients), 'port_send': self.port_send, 'port_recv': self.port_recv, '__option__': {k: self.option[k] for k in valid_keys}})
 
-    def task_pusher_handler(self, worked_id, client_id, *args, **kwargs):
+    def task_pusher_handler(self, worker_id, client_id):
         zipped_task = self._get_zipped_task()
         if zipped_task is None:
             self._read_zipped_task()
             zipped_task = self._get_zipped_task()
-        for _data in zipped_task:
-            self.task_pusher.send_multipart([worked_id, client_id, _data])
+        self.task_pusher.send_multipart([worker_id, client_id, zipped_task])
         return
 
     def _listen(self):
         while not self.is_exit():
-            time.sleep(0.5)
-            events = dict(self._poller.poll())
+            events = dict(self._poller.poll(10000))
             if self.task_pusher in events and events[self.task_pusher]==zmq.POLLIN:
-                worker_id = self.task_pusher.recv()
-                client_id = self.task_pusher.recv()
-                received_pkg = self.task_pusher.recv_pyobj()
-                t = threading.Thread(target=self.task_pusher_handler, args=(worker_id, client_id, received_pkg))
-                t.start()
+                worker_id, client_id, request = self.task_pusher.recv_multipart()
+                if request==b'pull task':
+                    try:
+                        self.logger.info("Receive task pull request from %s" % client_id)
+                        t = threading.Thread(target=self.task_pusher_handler, args=(worker_id, client_id))
+                        t.start()
+                    except:
+                        self.logger.info("Failed to handle task for %s" % client_id)
             if self.registrar in events and events[self.registrar]==zmq.POLLIN:
                 worker_id = self.registrar.recv()
                 client_id = self.registrar.recv()
@@ -186,11 +184,11 @@ class Server(fedavg.Server):
                 if not chunk:
                     break
 
-    def _get_zipped_task(self, copy=True):
-        if not hasattr(self, '_get_zipped_task'): return None
-        return self._zipped_task.copy() if copy==True else self._zipped_task
+    def _get_zipped_task(self):
+        if not hasattr(self, '_zipped_task'): return None
+        return b"".join(self._zipped_task)
 
-    def run(self, ip='*', port='5555', protocol='tcp'):
+    def run(self, ip:str='*', port:str='5555', protocol:str='tcp', port_task:str=''):
         self._read_zipped_task()
         self.logger = self.logger(task=self.option['task'], option=self.option, name=self.name+'_'+str(self.logger), level=self.option['log_level'])
         self.logger.register_variable(object=self, server=self)
@@ -207,8 +205,8 @@ class Server(fedavg.Server):
         self.registrar = self.context.socket(zmq.ROUTER)
         self.registrar.bind("%s://%s:%s" % (protocol, ip, port))
 
-        self.port_task = self.get_free_port()
-        self.task_pusher = self.context.socket(zmq.STREAM)
+        self.port_task = self.get_free_port() if port_task == '' else port_task
+        self.task_pusher = self.context.socket(zmq.ROUTER)
         self.task_pusher.bind("%s://%s:%s" % (protocol, ip, self.port_task))
         self.logger.info("Publish Task %s in %s://%s:%s"% (os.path.basename(self.option['task']),protocol, ip, self.port_task))
 
