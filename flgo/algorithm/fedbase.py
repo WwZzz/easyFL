@@ -63,6 +63,7 @@ class BasicParty:
         setattr(self, flag + '_data', data)
         if flag not in self._data_names:
             self._data_names.append(flag)
+        if data is None: return
         if flag == 'train' and 'real' not in self.option['scene']:
             self.datavol = len(data)
             if hasattr(self, 'batch_size'):

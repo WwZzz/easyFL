@@ -1,8 +1,8 @@
-from .utils.fflow import init, gen_task, gen_task_by_, gen_benchmark_from_file, zip_task, gen_decentralized_benchmark, gen_hierarchical_benchmark, gen_empty_task, convert_model,tune, run_in_parallel, module2fmodule, multi_init_and_run, set_data_root,download_resource, list_resource, option_helper
+from .utils.fflow import init, gen_task, gen_task_by_, gen_benchmark_from_file, zip_task, pull_task_from_, gen_decentralized_benchmark, gen_hierarchical_benchmark, gen_empty_task, convert_model,tune, run_in_parallel, module2fmodule, multi_init_and_run, set_data_root,download_resource, list_resource, option_helper
 from .benchmark import data_root
 communicator = None
 _data_root = data_root
-
+_name = None
 class VirtualCommunicator:
     """
     Communicator that simulates the communication phase between any two objects

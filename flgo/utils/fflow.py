@@ -17,6 +17,7 @@ import requests
 import re
 import zipfile
 import urllib.request
+import zmq
 from typing import *
 try:
     import ujson as json
@@ -56,6 +57,8 @@ sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full
 agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for the default aggregating method in flgo.algorihtm.fedbase
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
 default_option_dict = {'pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': -1, 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False,'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
+
+_ctx = zmq.Context()
 
 class GlobalVariable:
     """This class is to create a shared space for sharing variables across
@@ -616,14 +619,9 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     if scene=='real_hclient':
         name_path = os.path.join(task, 'name')
         if not os.path.exists(name_path):
-            import uuid
-            import socket
-            try:
-                ip = requests.get('https://api.ipify.org').text
-            except:
-                ip = 'unknown_ip'
+            name = _get_name()
             with open(name_path, 'w') as namefile:
-                namefile.write('_'.join([ip, socket.gethostname(), str(uuid.getnode())]))
+                namefile.write(name)
         with open(name_path, 'r') as namefile:
             objects[0].name = namefile.readline()
     obj_classes = collections.defaultdict(int)
@@ -1265,15 +1263,32 @@ def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
     return output_path
 
 def pull_task_from_(address:str, task_name:str, target_path='.'):
-    import zmq
-    ctx = zmq.Context()
-    sck = ctx.socket(zmq.REQ)
-    sck.connect(address)
+    if os.path.exists(os.path.join(target_path, task_name)):
+        raise FileExistsError("Task %s already exists."%os.path.join(target_path, task_name))
     task_zip = os.path.basename(task_name)+'.zip'
-    with open(os.path.join(target_path, task_zip), 'wb') as f:
-        while True:
-            chunk = sck.recv()
-            if not chunk:
-                break
-            f.write(chunk)
+    zip_path = os.path.join(target_path, task_zip)
+    if os.path.exists(zip_path):
+        raise FileExistsError("Zipped task {} already exists.".format(zip_path))
+    # ctx = zmq.Context()
+    sck = _ctx.socket(zmq.REQ)
+    sck.connect(address)
+    sck.send(b"pull task")
+    chunk = sck.recv()
+    with open(zip_path, 'wb') as f:
+        f.write(chunk)
+    assert os.path.exists(zip_path)
+    # unzip
+    zip_task = zipfile.ZipFile(zip_path, 'r')
+    zip_task.extractall(target_path)
     return
+
+def _get_name():
+    import uuid
+    import socket
+    if flgo._name is None:
+        try:
+            ip = requests.get('https://api.ipify.org').text
+        except:
+            ip = 'unknown_ip'
+        flgo._name = '_'.join([ip, socket.gethostname(), str(uuid.getnode())])
+    return flgo._name
