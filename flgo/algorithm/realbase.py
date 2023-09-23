@@ -80,10 +80,10 @@ class Server(fedavg.Server):
 
     def register(self):
         self.logger.info("Waiting for registrations...")
-        self.register_poller = zmq.Poller()
-        self.register_poller.register(self.registrar, zmq.POLLIN)
-        self.listen_registration_thread = threading.Thread(target=self.listen_for_registration, )
-        self.listen_registration_thread.start()
+        # self.register_poller = zmq.Poller()
+        # self.register_poller.register(self.registrar, zmq.POLLIN)
+        # self.listen_registration_thread = threading.Thread(target=self.listen_for_registration, )
+        # self.listen_registration_thread.start()
         while True:
             time.sleep(1)
             if self.if_start():
@@ -110,31 +110,71 @@ class Server(fedavg.Server):
             self.logger.info("%s rebuilt the connection." % received_pkg['name'])
             self.registrar.send_pyobj({"client_idx": len(self.clients), 'port_send': self.port_send, 'port_recv': self.port_recv, '__option__': {k: self.option[k] for k in valid_keys}})
 
-    def listen_for_registration(self):
+    # def listen_for_registration(self):
+    #     while not self.is_exit():
+    #         time.sleep(0.1)
+    #         if len(self.register_poller.poll(10000)) > 0:
+    #             worker_id = self.registrar.recv()
+    #             client_id = self.registrar.recv()
+    #             received_pkg = self.registrar.recv_pyobj()
+    #             t = threading.Thread(target=self.register_handler, args=(worker_id, client_id, received_pkg))
+    #             t.start()
+    #
+    # def listen_for_pulling(self):
+    #     while not self.is_exit():
+    #         time.sleep(0.5)
+    #         if len(self.task_pusher_poller.poll(10000)) > 0:
+    #             name = self.task_pusher.recv_string()
+    #             package_msg = self.receiver.recv()
+    #             package_size = len(package_msg) / 1024.0 / 1024.0
+    #             d = self.receiver._deserialize(package_msg, pickle.loads)
+    #             d['__size__'] = package_size
+    #             if '__mtype__' in d and d['__mtype__'] == "close":
+    #                 self.logger.info("{} was successfully closed.".format(name))
+    #             else:
+    #                 self.add_buffer({'name': name, 'package': d})
+    #                 self.logger.info("Received package of size {}MB from {} at round {}".format(package_size, name,
+    #                                                                                             self.current_round))
+    def _listen(self):
         while not self.is_exit():
-            time.sleep(0.1)
-            if len(self.register_poller.poll(10000)) > 0:
+            time.sleep(0.5)
+            events = dict(self._poller.poll())
+            if self.task_pusher in events and events[self.task_pusher]==zmq.POLLIN:
+                pass
+            if self.registrar in events and events[self.registrar]==zmq.POLLIN:
                 worker_id = self.registrar.recv()
                 client_id = self.registrar.recv()
                 received_pkg = self.registrar.recv_pyobj()
                 t = threading.Thread(target=self.register_handler, args=(worker_id, client_id, received_pkg))
                 t.start()
-
-    def listen_for_sender(self):
-        # t = threading.current_thread()
-        while not self.is_exit():
-            time.sleep(0.5)
-            if len(self.receiver_poller.poll(10000)) > 0:
+            if self.receiver in events and events[self.receiver]==zmq.POLLIN:
                 name = self.receiver.recv_string()
                 package_msg = self.receiver.recv()
-                package_size = len(package_msg)/1024.0/1024.0
+                package_size = len(package_msg) / 1024.0 / 1024.0
                 d = self.receiver._deserialize(package_msg, pickle.loads)
                 d['__size__'] = package_size
-                if '__mtype__' in d and d['__mtype__']=="close":
+                if '__mtype__' in d and d['__mtype__'] == "close":
                     self.logger.info("{} was successfully closed.".format(name))
                 else:
-                    self.add_buffer({'name':name, 'package':d})
-                    self.logger.info("Received package of size {}MB from {} at round {}".format(package_size, name, self.current_round))
+                    self.add_buffer({'name': name, 'package': d})
+                    self.logger.info("Received package of size {}MB from {} at round {}".format(package_size, name,
+                                                                                                self.current_round))
+
+    # def listen_for_sender(self):
+    #     # t = threading.current_thread()
+    #     while not self.is_exit():
+    #         time.sleep(0.5)
+    #         if len(self.receiver_poller.poll(10000)) > 0:
+    #             name = self.receiver.recv_string()
+    #             package_msg = self.receiver.recv()
+    #             package_size = len(package_msg)/1024.0/1024.0
+    #             d = self.receiver._deserialize(package_msg, pickle.loads)
+    #             d['__size__'] = package_size
+    #             if '__mtype__' in d and d['__mtype__']=="close":
+    #                 self.logger.info("{} was successfully closed.".format(name))
+    #             else:
+    #                 self.add_buffer({'name':name, 'package':d})
+    #                 self.logger.info("Received package of size {}MB from {} at round {}".format(package_size, name, self.current_round))
 
     # def listen_for_pulling_task(self):
     #     while not self.is_exit():
@@ -183,12 +223,17 @@ class Server(fedavg.Server):
         else:
             return {'model': self.model}
 
+    def zip_task(self):
+        task_path = self.option['task']
+        task_name = os.path.basename(task_path)
+        task_zip = task_name + '.zip'
+        if not os.path.exists(task_zip):
+            flgo.zip_task(task_path, target_path='.')
+
     def run(self, ip='*', port='5555'):
+        self.zip_task()
         self.logger = self.logger(task=self.option['task'], option=self.option, name=self.name+'_'+str(self.logger), level=self.option['log_level'])
         self.logger.register_variable(object=self, server=self)
-        task_name = os.path.basename(self.option['task'])
-        if os.path.exists(os.path.join(os.path.dirname(self.option['task']), task_name+'.zip')):
-            flgo.zip_task(self.option['task'], target_path='.')
         self._clients = {}
         self.ip = ip
         self.port = port
@@ -202,17 +247,33 @@ class Server(fedavg.Server):
         self.registrar = self.context.socket(zmq.ROUTER)
         self.registrar.bind("tcp://%s:%s" % (ip, port))
         self.port_send = self.get_free_port()
+
+        self.task_pusher = self.context.socket(zmq.STREAM)
+        self.port_task = self.get_free_port()
+        self.task_pusher.bind("tcp://%s:%s" % (ip, self.port_task))
+        # self.task_pusher_poller = zmq.Poller()
+        # self.task_pusher_poller.register(self.task_pusher, zmq.POLLIN)
+        # self.listen_task_pusher_thread = threading.Thread(target=self.listen_for_pulling)
+        # self.listen_task_pusher_thread.start()
+
         self.sender = self.context.socket(zmq.PUB)
         self.sender.bind("tcp://%s:%s" %(ip, self.port_send))
         self.port_recv = self.get_free_port()
         self.receiver = self.context.socket(zmq.PULL)
         self.receiver.bind("tcp://%s:%s"%(ip, self.port_recv))
+        self._poller = zmq.Poller()
+        self._poller.register(self.task_pusher, zmq.POLLIN)
+        self._poller.register(self.registrar, zmq.POLLIN)
+        self._poller.register(self.receiver, zmq.POLLIN)
+        self._thread_listening = threading.Thread(target=self._listen)
+        self._thread_listening.start()
+
         self.register()
         self.current_round = 1
-        self.receiver_poller = zmq.Poller()
-        self.receiver_poller.register(self.receiver, zmq.POLLIN)
-        self.listen_receiver_thread = threading.Thread(target=self.listen_for_sender, )
-        self.listen_receiver_thread.start()
+        # self.receiver_poller = zmq.Poller()
+        # self.receiver_poller.register(self.receiver, zmq.POLLIN)
+        # self.listen_receiver_thread = threading.Thread(target=self.listen_for_sender, )
+        # self.listen_receiver_thread.start()
         self.logger.time_start('Total Time Cost')
         if self.eval_interval>0:
             # evaluating initial model performance
