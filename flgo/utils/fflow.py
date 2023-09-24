@@ -1262,7 +1262,7 @@ def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
         out_dataset.writelines(old_config)
     return output_path
 
-def pull_task_from_(address:str, task_name:str, target_path='.'):
+def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True):
     if os.path.exists(os.path.join(target_path, task_name)):
         raise FileExistsError("Task %s already exists."%os.path.join(target_path, task_name))
     task_zip = os.path.basename(task_name)+'.zip'
@@ -1272,14 +1272,21 @@ def pull_task_from_(address:str, task_name:str, target_path='.'):
     # ctx = zmq.Context()
     sck = _ctx.socket(zmq.REQ)
     sck.connect(address)
-    sck.send(b"pull task")
-    chunk = sck.recv()
+    try:
+        print('Requesting task %s from %s ...'% (task_name, address))
+        sck.send(b"pull task")
+        chunk = sck.recv()
+        print('Successfully received task from %s'%address)
+    except Exception as e:
+        print(e)
+        return
     with open(zip_path, 'wb') as f:
         f.write(chunk)
     assert os.path.exists(zip_path)
     # unzip
-    zip_task = zipfile.ZipFile(zip_path, 'r')
-    zip_task.extractall(target_path)
+    if unzip:
+        zip_task = zipfile.ZipFile(zip_path, 'r')
+        zip_task.extractall(target_path)
     return
 
 def _get_name():
