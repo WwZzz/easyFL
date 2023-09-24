@@ -89,7 +89,7 @@ class Server(fedavg.Server):
         return
 
     def if_start(self):
-        tmp = input("Press Enter to start training: \n")
+        tmp = input("Press Y and Enter to start training: \n")
         return (tmp.lower()=='y' or tmp.lower()=='yes')
 
     def register_handler(self, worker_id, client_id, received_pkg):
