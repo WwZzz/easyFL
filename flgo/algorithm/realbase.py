@@ -404,7 +404,7 @@ class Client(fedavg.Client):
                     self.logger.info("Failed to set hyper-parameter {}={}".format(k, option[k]))
                     continue
         # correct hyper-parameters
-        if hasattr(self, 'train_data'):
+        if hasattr(self, 'train_data') and self.train_data is not None:
             import math
             self.datavol = len(self.train_data)
             if hasattr(self, 'batch_size'):
