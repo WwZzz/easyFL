@@ -1,6 +1,7 @@
 import collections
 import os.path
 import pickle
+import warnings
 
 import torch.cuda
 import torch.multiprocessing as mlp
@@ -437,6 +438,7 @@ class Client(fedavg.Client):
         if flag not in self._data_names:
             self._data_names.append(flag)
         if flag == 'train':
+            if data is None: warnings.warn("Local train data is None")
             import math
             self.datavol = len(data)
             if hasattr(self, 'batch_size'):
