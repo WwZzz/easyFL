@@ -438,7 +438,9 @@ class Client(fedavg.Client):
         if flag not in self._data_names:
             self._data_names.append(flag)
         if flag == 'train':
-            if data is None: warnings.warn("Local train data is None")
+            if data is None:
+                warnings.warn("Local train data is None")
+                return
             import math
             self.datavol = len(data)
             if hasattr(self, 'batch_size'):
