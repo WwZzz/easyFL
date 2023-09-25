@@ -11,6 +11,7 @@ import zmq
 import time
 import flgo.utils.fmodule
 import threading
+import numpy as np
 
 class Server(fedavg.Server):
     def __init__(self, option={}):
@@ -45,6 +46,10 @@ class Server(fedavg.Server):
         self.id = -1
         self._data_names = []
         self._exit = False
+        self._avalability_timeout = 100
+
+    def set_availability_timeout(self, t:float):
+        self._avalability_timeout = t
 
     def is_exit(self):
         self._lock_exit.acquire()
@@ -89,8 +94,7 @@ class Server(fedavg.Server):
         return
 
     def if_start(self):
-        tmp = input("Press Enter to start training: \n")
-        return (tmp.lower()=='y' or tmp.lower()=='yes')
+        return self.num_clients>=5
 
     def register_handler(self, worker_id, client_id, received_pkg):
         valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
@@ -99,12 +103,12 @@ class Server(fedavg.Server):
             l = len(self.clients)
             self.logger.info("%s joined in the federation. The number of clients is %i" % (received_pkg['name'], l))
 
-            d = {"client_idx": l, 'port_send': self.port_send, 'port_recv': self.port_recv,
-                 '__option__': {k: self.option[k] for k in valid_keys}}
+            d = {"client_idx": l, 'port_send': self.port_send, 'port_recv': self.port_recv, 'port_alive':self.port_alive,
+                 '__option__': {k: self.option[k] for k in valid_keys},'algo_para':self.algo_para}
             self.registrar.send_multipart([worker_id, client_id, pickle.dumps(d, pickle.DEFAULT_PROTOCOL)])
         else:
             self.logger.info("%s rebuilt the connection." % received_pkg['name'])
-            self.registrar.send_pyobj({"client_idx": len(self.clients), 'port_send': self.port_send, 'port_recv': self.port_recv, '__option__': {k: self.option[k] for k in valid_keys}})
+            self.registrar.send_pyobj({"client_idx": len(self.clients), 'port_send': self.port_send, 'port_recv': self.port_recv, 'port_alive':self.port_alive, '__option__': {k: self.option[k] for k in valid_keys}, 'algo_para':self.algo_para})
 
     def task_pusher_handler(self, worker_id, client_id):
         zipped_task = self._get_zipped_task()
@@ -144,7 +148,11 @@ class Server(fedavg.Server):
                     self.add_buffer({'name': name, 'package': d})
                     self.logger.info("Received package of size {}MB from {} at round {}".format(package_size, name,
                                                                                                 self.current_round))
-
+            if self.alive_detector in events and events[self.alive_detector]==zmq.POLLIN:
+                name, _ = self.alive_detector.recv_multipart()
+                # self.logger.debug("Client %s is alive"%name.decode('utf-8'))
+                self._set_alive(name.decode('utf-8'), time.time())
+                self.alive_detector.send(b"")
     @property
     def clients(self):
         self._lock_registration.acquire()
@@ -162,6 +170,20 @@ class Server(fedavg.Server):
         self._clients[i] = name
         self._lock_registration.release()
         return
+
+    def _set_alive(self, client_name:str, timestamp):
+        self._lock_alive.acquire()
+        self._alive_state[client_name] = timestamp
+        self._lock_alive.release()
+
+    @property
+    def available_clients(self):
+        crt_timestamp = time.time()
+        self._lock_alive.acquire()
+        avl_clients = [name for name in self._alive_state if crt_timestamp-self._alive_state<=self._avalability_timeout]
+        res = {k:v for k,v in self.clients.items() if v in avl_clients}
+        self._lock_alive.release()
+        return res
 
     def pack(self, client_id, mtype=0, *args, **kwargs):
         if mtype=='close':
@@ -190,7 +212,7 @@ class Server(fedavg.Server):
         return b"".join(self._zipped_task)
 
     def run(self, ip:str='*', port:str='5555', protocol:str='tcp', port_task:str=''):
-        self._read_zipped_task()
+        if 'real' in self.option['scene']: self._read_zipped_task()
         self.logger = self.logger(task=self.option['task'], option=self.option, name=self.name+'_'+str(self.logger), level=self.option['log_level'])
         self.logger.register_variable(object=self, server=self)
         self._clients = {}
@@ -219,10 +241,17 @@ class Server(fedavg.Server):
         self.receiver = self.context.socket(zmq.PULL)
         self.receiver.bind("%s://%s:%s"%(protocol, ip, self.port_recv))
 
+        self.port_alive = self.get_free_port()
+        self.alive_detector = self.context.socket(zmq.ROUTER)
+        self.alive_detector.bind("%s://%s:%s"%(protocol, ip, self.port_alive))
+        self._lock_alive = threading.Lock()
+        self._alive_state = {}
+
         self._poller = zmq.Poller()
         self._poller.register(self.task_pusher, zmq.POLLIN)
         self._poller.register(self.registrar, zmq.POLLIN)
         self._poller.register(self.receiver, zmq.POLLIN)
+        self._poller.register(self.alive_detector, zmq.POLLIN)
         self._thread_listening = threading.Thread(target=self._listen)
         self._thread_listening.start()
 
@@ -304,13 +333,25 @@ class Server(fedavg.Server):
         sock.close()
         return port
 
+    def init_algo_para(self, algo_para: dict):
+        self.algo_para = algo_para
+        if len(self.algo_para) == 0: return
+        # initialize algorithm-dependent hyperparameters from the input options
+        if self.option['algo_para'] is not None:
+            # assert len(self.algo_para) == len(self.option['algo_para'])
+            keys = list(self.algo_para.keys())
+            for i, pv in enumerate(self.option['algo_para']):
+                if i == len(self.option['algo_para']): break
+                para_name = keys[i]
+                try:
+                    self.algo_para[para_name] = type(self.algo_para[para_name])(pv)
+                except:
+                    self.algo_para[para_name] = pv
+
 class Client(fedavg.Client):
     def initialize(self, *args, **kwargs):
         self.actions = {
             '0': self.reply,
-            'val_metric': self.val_metric,
-            'train_metric': self.train_metric,
-            'test_metric': self.test_metric,
         }
 
     def val_metric(self, package):
@@ -333,7 +374,10 @@ class Client(fedavg.Client):
         self.registrar.send_pyobj({"name": self.name})
         reply = self.registrar.recv_pyobj()
         if '__option__' in reply: self.set_option(reply['__option__'])
-        return reply["port_recv"], reply["port_send"],
+        if 'algo_para' in reply and isinstance(reply['algo_para'], dict):
+            self.option['algo_para'] = reply['algo_para']
+            for k,v in reply['algo_para']: setattr(self, k, v)
+        return reply["port_recv"], reply["port_send"], reply['port_alive']
 
     def message_handler(self, package, *args, **kwargs):
         mtype = package['__mtype__']
@@ -344,33 +388,40 @@ class Client(fedavg.Client):
         if hasattr(self, 'round'): response['__round__'] = self.round
         self.sender.send_string(self.name, zmq.SNDMORE)
         msg = pickle.dumps(response, pickle.DEFAULT_PROTOCOL)
-        self.logger.info("Sending the package of size {}MB to the server...".format(len(msg)/1024/1024))
+        self.logger.info("{} Sending the package of size {}MB to the server...".format(self.name, len(msg)/1024/1024))
         self.sender.send(msg)
         # self.sender.send_pyobj(response)
         return
 
-    def run(self, server_ip='127.0.0.1', server_port='5555'):
-        self.logger = self.logger(task=self.option['task'], option=self.option, name=self.name+'_'+str(self.logger), level=self.option['log_level'])
-        self.logger.register_variable(object=self, clients = [self])
-        self.context = zmq.Context()
-        # Registration Socket
-        self.registrar = self.context.socket(zmq.REQ)
-        self.registrar.connect("tcp://%s:%s"%(server_ip, server_port))
-        port_svr_recv, port_svr_send = self.register()
-        self.logger.info(f"Successfully Registered to {server_ip}:{server_port}")
+    def is_exit(self):
+        self._lock_exit.acquire()
+        res = self._exit
+        self._lock_exit.release()
+        return res
 
-        self.receiver = self.context.socket(zmq.SUB)
-        self.receiver.connect("tcp://%s:%s" % (server_ip, port_svr_send))
-        self.receiver.subscribe(self.name)
+    def set_exit(self):
+        self._lock_exit.acquire()
+        self._exit = True
+        self._lock_exit.release()
+        return
 
-        self.sender = self.context.socket(zmq.PUSH)
-        self.sender.connect("tcp://%s:%s" % (server_ip, port_svr_recv))
-        self.logger.info("Ready For Training...")
-        self.logger.info("---------------------------------------------------------------------")
-        while True:
-            name = self.receiver.recv_string()
-            assert name == self.name
+    def _heart_beat(self):
+        while not self.is_exit():
             try:
+                self.heart_beator.send(b"")
+                time.sleep(10)
+            except Exception as e:
+                self.logger.info(e)
+                continue
+
+    def _listen(self):
+        while not self.is_exit():
+            events = dict(self._poller.poll(10000))
+            if self.heart_beator in events and events[self.heart_beator] == zmq.POLLIN:
+                server_is_alive = self.heart_beator.recv()
+            if self.receiver in events and events[self.receiver]==zmq.POLLIN:
+                name = self.receiver.recv_string()
+                assert name==self.name
                 package_msg = self.receiver.recv()
                 package_size = len(package_msg)
                 package = self.receiver._deserialize(package_msg, pickle.loads)
@@ -383,13 +434,74 @@ class Client(fedavg.Client):
                 package['__size__'] = package_size/1024/1024 #MB
                 if '__round__' in package.keys():
                     self.round = package['__round__']
-                    self.logger.info("Selected at round {} and received the package of {}MB".format(package['__round__'], package['__size__']))
+                    self.logger.info("{} is selected at round {} and has received the package of {}MB".format(self.name, package['__round__'], package['__size__']))
                 self.message_handler(package)
-            except Exception as e:
-                print(e)
+        return
+
+    def run(self, server_ip='127.0.0.1', server_port='5555', protocol:str='tcp'):
+        self.logger = self.logger(task=self.option['task'], option=self.option, name=self.name+'_'+str(self.logger), level=self.option['log_level'])
+        self.logger.register_variable(object=self, clients = [self])
+
+        self._exit = False
+        self._lock_exit = threading.Lock()
+        self.actions.update({'val_metric': self.val_metric, 'train_metric': self.train_metric, 'test_metric': self.test_metric,})
+
+        self.context = zmq.Context()
+        # Registration Socket
+        self.registrar = self.context.socket(zmq.REQ)
+        self.registrar.connect("%s://%s:%s"%(protocol, server_ip, server_port))
+        port_svr_recv, port_svr_send, port_svr_alive = self.register()
+        self.logger.info(f"{self.name} Successfully Registered to {server_ip}:{server_port}")
+
+        self.receiver = self.context.socket(zmq.SUB)
+        self.receiver.connect("%s://%s:%s" % (protocol, server_ip, port_svr_send))
+        self.receiver.subscribe(self.name)
+
+        self.heart_beator = self.context.socket(zmq.DEALER)
+        self.heart_beator.setsockopt(zmq.IDENTITY, self.name.encode('utf-8'))
+        self.heart_beator.connect("%s://%s:%s" % (protocol, server_ip, port_svr_alive))
+
+        self.sender = self.context.socket(zmq.PUSH)
+        self.sender.connect("%s://%s:%s" % (protocol, server_ip, port_svr_recv))
+
+        self._poller = zmq.Poller()
+        self._poller.register(self.receiver, zmq.POLLIN)
+        self._poller.register(self.heart_beator, zmq.POLLIN)
+
+        self.logger.info(f"{self.name} Ready For Training...")
+        self.logger.info("---------------------------------------------------------------------")
+        # threading.Thread(target=self._heart_beat).start()
+        self._server_timeout = np.inf
+        self._server_alive_timestamp = time.time()
+        while True:
+            events = dict(self._poller.poll(10000))
+            if self.heart_beator in events and events[self.heart_beator] == zmq.POLLIN:
+                _ = self.heart_beator.recv()
+                self._server_alive_timestamp = time.time()
+            if self.receiver in events and events[self.receiver]==zmq.POLLIN:
+                name = self.receiver.recv_string()
+                assert name==self.name
+                package_msg = self.receiver.recv()
+                package_size = len(package_msg)
+                package = self.receiver._deserialize(package_msg, pickle.loads)
+                # package = self.receiver.recv_pyobj()
+                assert '__mtype__' in package
+                if package['__mtype__']=='close':
+                    self.sender.send_string(self.name, zmq.SNDMORE)
+                    self.sender.send_pyobj({'__mtype__':"close"})
+                    break
+                package['__size__'] = package_size/1024/1024 #MB
+                if '__round__' in package.keys():
+                    self.round = package['__round__']
+                    self.logger.info("{} is selected at round {} and has received the package of {}MB".format(self.name, package['__round__'], package['__size__']))
+                self.message_handler(package)
+            if time.time() - self._server_alive_timestamp>=self._server_timeout:
+                self.logger.info("Lose connection to the server")
+                self.set_exit()
                 break
         self.logger.info("%s has been closed" % self.name)
         torch.cuda.empty_cache()
+        self.set_exit()
         exit(0)
 
     def set_option(self, option:dict={}):
@@ -461,13 +573,12 @@ class algo:
     Server = Server
     Client = Client
 
-
 if __name__=='__main__':
     mlp.set_start_method('spawn', force=True)
     mlp.set_sharing_strategy('file_system')
     import flgo.benchmark.mnist_classification as mnist
     import flgo.benchmark.partition as fbp
     flgo.gen_task_by_(mnist, fbp.IIDPartitioner(num_clients=10), 'my_task')
-    runner = flgo.init('my_task', algo, option={'proportion':0.2, 'gpu':[0,1,2,3,], 'server_with_cpu':True, 'num_rounds':10, 'num_steps':1, 'log_file':True}, scene='parallel_horizontal')
+    runner = flgo.init('my_task', algo, option={'proportion':0.2, 'gpu':[0], 'server_with_cpu':True, 'num_rounds':10, 'num_steps':1, 'log_file':True, 'log_level':'DEBUG'}, scene='parallel_horizontal')
     runner.run()
 
