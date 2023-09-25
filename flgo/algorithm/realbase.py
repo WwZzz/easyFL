@@ -47,29 +47,63 @@ class Server(fedavg.Server):
         self._data_names = []
         self._exit = False
         self._avalability_timeout = 100
+        self._aggregate_timeout = np.inf
 
     def set_availability_timeout(self, t:float):
+        r"""
+        Set the timeout of being unavailable for each client.
+
+        Args:
+            t (float): the time (secs)
+        """
         self._avalability_timeout = t
 
+    def set_aggregate_timeout(self, t:float):
+        r"""
+        Set the timeout of waiting for clients' responses
+
+        Args:
+            t (float): the time (secs)
+        """
+        self._aggregate_timeout = t
+
     def is_exit(self):
+        r"""
+        Return True when the server is going to close
+        """
         self._lock_exit.acquire()
         res = self._exit
         self._lock_exit.release()
         return res
 
-    def set_exit(self):
+    def _exit(self):
+        r"""
+        Set the flag of exit to be True
+        """
         self._lock_exit.acquire()
         self._exit = True
         self._lock_exit.release()
         return
 
-    def add_buffer(self, x):
+    def add_buffer(self, x:dict):
+        r"""
+        Push x into network buffer (i.e. a queue)
+
+        Args:
+            x (dict): received packages from clients
+        """
         self._lock_buffer.acquire()
         self._buffer.put(x)
         self._lock_buffer.release()
         return
 
     def clear_buffer(self):
+        r"""
+        Pop all elements in the buffer
+
+        Return:
+            res (dict): a dict contains pairs of (client_name, package) in buffer
+        """
         self._lock_buffer.acquire()
         res = {}
         while not self._buffer.empty():
@@ -79,6 +113,12 @@ class Server(fedavg.Server):
         return res
 
     def size_buffer(self):
+        r"""
+        Return the number of current elements in buffer
+
+        Return:
+            buffer_size (int): the number of elements
+        """
         self._lock_buffer.acquire()
         buffer_size = len(self._buffer)
         self._lock_buffer.release()
@@ -95,8 +135,6 @@ class Server(fedavg.Server):
 
     def if_start(self):
         return self.num_clients>=5
-        # tmp = input("Press Y and Enter to start training: \n")
-        # return (tmp.lower()=='y' or tmp.lower()=='yes')
 
     def register_handler(self, worker_id, client_id, received_pkg):
         valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
@@ -282,7 +320,7 @@ class Server(fedavg.Server):
         self.logger.time_end('Total Time Cost')
         # save results as .json file
         self.logger.save_output_as_json()
-        self.set_exit()
+        self._exit()
         self.communicate([_ for _ in range(len(self.clients))], mtype='close')
         exit(0)
 
@@ -571,11 +609,11 @@ class Client(fedavg.Client):
                     self.num_epochs = 1.0 * self.num_steps / (math.ceil(self.datavol / self.batch_size))
                 else:
                     self.num_steps = self.num_epochs * math.ceil(self.datavol / self.batch_size)
-class algo:
-    Server = Server
-    Client = Client
 
 if __name__=='__main__':
+    class algo:
+        Server = Server
+        Client = Client
     mlp.set_start_method('spawn', force=True)
     mlp.set_sharing_strategy('file_system')
     import flgo.benchmark.mnist_classification as mnist
@@ -583,4 +621,3 @@ if __name__=='__main__':
     flgo.gen_task_by_(mnist, fbp.IIDPartitioner(num_clients=10), 'my_task')
     runner = flgo.init('my_task', algo, option={'proportion':0.2, 'gpu':[0], 'server_with_cpu':True, 'num_rounds':10, 'num_steps':1, 'log_file':True, 'log_level':'DEBUG'}, scene='parallel_horizontal')
     runner.run()
-
