@@ -94,7 +94,12 @@ class Server(fedavg.Server):
         return
 
     def if_start(self):
+<<<<<<< HEAD
         return self.num_clients>=5
+=======
+        tmp = input("Press Y and Enter to start training: \n")
+        return (tmp.lower()=='y' or tmp.lower()=='yes')
+>>>>>>> origin/FLGo
 
     def register_handler(self, worker_id, client_id, received_pkg):
         valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
