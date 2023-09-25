@@ -287,7 +287,10 @@ class BasicTaskPipe(AbstractTaskPipe):
         info = {'benchmark': '.'.join(generator.__module__.split('.')[:-1])}
         info['scene'] = generator.scene if hasattr(generator, 'scene') else 'unknown'
         info['num_clients'] = generator.num_clients if hasattr(generator, 'num_clients') else (generator.num_parties if hasattr(self, 'num_parties') else 'unknown')
-        info['bmk_path'] = os.path.dirname(generator.__module__.__file__)
+        try:
+            info['bmk_path'] = os.path.dirname(generator.__module__.__file__)
+        except:
+            pass
         with open(os.path.join(self.task_path, 'info'), 'w') as outf:
             json.dump(info, outf)
 
