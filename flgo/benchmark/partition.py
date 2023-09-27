@@ -52,7 +52,7 @@ class BasicPartitioner(AbstractPartitioner):
             num_clients (int): the number of clients
             datasize (int): the total data size
             imbalance (float): the degree of data imbalance across clients
-
+            minvol (int): the minimal size of dataset
         Returns:
             a list of integer numbers that represents local data sizes
         """
@@ -158,11 +158,12 @@ class DirichletPartitioner(BasicPartitioner):
         error_bar (float, optional): the allowed error when the generated distribution mismatches the distirbution that is actually wanted, since there may be no solution for particular imbalance and alpha.
         index_func (func, optional): to index the distribution-dependent (i.e. label) attribute in each sample.
     """
-    def __init__(self, num_clients=100, alpha=1.0, error_bar=1e-6, imbalance=0, index_func=lambda X:[xi[-1] for xi in X]):
+    def __init__(self, num_clients=100, alpha=1.0, error_bar=1e-6, imbalance=0, index_func=lambda X:[xi[-1] for xi in X], minvol=1):
         self.num_clients = num_clients
         self.alpha = alpha
         self.imbalance = imbalance
         self.index_func = index_func
+        self.minvol = minvol
         self.error_bar = error_bar
 
     def __str__(self):
@@ -173,7 +174,7 @@ class DirichletPartitioner(BasicPartitioner):
     def __call__(self, data):
         attrs = self.index_func(data)
         num_attrs = len(set(attrs))
-        samples_per_client = self.data_imbalance_generator(self.num_clients, len(data), self.imbalance)
+        samples_per_client = self.data_imbalance_generator(self.num_clients, len(data), self.imbalance, minvol=self.minvol)
         # count the label distribution
         lb_counter = collections.Counter(attrs)
         lb_names = list(lb_counter.keys())
@@ -236,6 +237,19 @@ class DirichletPartitioner(BasicPartitioner):
             local_datas = [local_data + lb_data.tolist() for local_data, lb_data in zip(local_datas, lb_datas)]
         self.dirichlet_dist = np.array(self.dirichlet_dist).T
         for i in range(self.num_clients): np.random.shuffle(local_datas[i])
+        len_dist = [len(d) for d in local_datas]
+        while min(len_dist)<=self.minvol:
+            min_did = np.argmin(len_dist)
+            max_did = np.argmax(len_dist)
+            max_d = local_datas[max_did]
+            min_d = local_datas[min_did]
+            if len(max_d)<=self.minvol:
+                raise RuntimeError("The number of clients is too large to distribute enough samples to each client when minvol=={}. Please decrease the number of clients".format(self.minvol))
+            min_d.extend(max_d[:1])
+            max_d = max_d[1:]
+            local_datas[min_did] = min_d
+            local_datas[max_did] = max_d
+            len_dist = [len(d) for d in local_datas]
         self.local_datas = local_datas
         return local_datas
 
