@@ -14,7 +14,7 @@ To use the partitioner, you can specify Partitioner in the configuration dict fo
 ...            'partitioner':{'name':'IIDPartitioner', 'para':{'num_clients':20, 'alpha':1.0}}}
 >>>flgo.gen_task(config, './test_partition')
 """
-
+import warnings
 from abc import abstractmethod, ABCMeta
 import random
 
@@ -44,7 +44,7 @@ class BasicPartitioner(AbstractPartitioner):
         r"""Register the generator as an self's attribute"""
         self.generator = generator
 
-    def data_imbalance_generator(self, num_clients, datasize, imbalance=0):
+    def data_imbalance_generator(self, num_clients, datasize, imbalance=0, minvol=1):
         r"""
         Split the data size into several parts
 
@@ -54,7 +54,7 @@ class BasicPartitioner(AbstractPartitioner):
             imbalance (float): the degree of data imbalance across clients
 
         Returns:
-            a list of integer numbers that represents local_movielens_recommendation data sizes
+            a list of integer numbers that represents local data sizes
         """
         if imbalance == 0:
             samples_per_client = [int(datasize / num_clients) for _ in range(num_clients)]
@@ -65,9 +65,10 @@ class BasicPartitioner(AbstractPartitioner):
             mean_datasize = datasize / num_clients
             mu = np.log(mean_datasize) - sigma ** 2 / 2.0
             samples_per_client = np.random.lognormal(mu, sigma, (num_clients)).astype(int)
-            thresold = int(imbalance ** 1.5 * (datasize - num_clients * 10))
-            delta = int(0.1 * thresold)
             crt_data_size = sum(samples_per_client)
+            total_delta = np.abs(crt_data_size-datasize)
+            thresold = max(int(total_delta/10), 1)
+            delta = min(int(0.1 * thresold), 10)
             # force current data size to match the total data size
             while crt_data_size != datasize:
                 if crt_data_size - datasize >= thresold:
@@ -81,10 +82,23 @@ class BasicPartitioner(AbstractPartitioner):
                     samples_per_client[maxid] = new_samples[new_size_id]
                 elif crt_data_size - datasize >= delta:
                     maxid = np.argmax(samples_per_client)
-                    samples_per_client[maxid] -= delta
+                    if samples_per_client[maxid]>=delta:
+                        samples_per_client[maxid] -= delta
+                    elif samples_per_client[maxid]>1:
+                        samples_per_client[maxid] -= 1
                 elif crt_data_size - datasize > 0:
                     maxid = np.argmax(samples_per_client)
-                    samples_per_client[maxid] -= (crt_data_size - datasize)
+                    crt_delta = (crt_data_size - datasize)
+                    if samples_per_client[maxid]>=crt_delta:
+                        samples_per_client[maxid] -= crt_delta
+                    elif samples_per_client[maxid]>=minvol:
+                        samples_per_client[maxid] -= (crt_delta-minvol)
+                    else:
+                        warnings.warn("Failed to keep the minvol of clients' training data to be larger than {}".format(minvol))
+                        if samples_per_client[maxid] > 1:
+                            samples_per_client[maxid] -=1
+                        else:
+                            raise RuntimeError("Failed to generate distribution due to the conflicts of imbalance and num_clients. Please try to decrease the imbalance term or decrease the number of clients. ")
                 elif datasize - crt_data_size >= thresold:
                     minid = np.argmin(samples_per_client)
                     minvol = samples_per_client[minid]
@@ -101,6 +115,13 @@ class BasicPartitioner(AbstractPartitioner):
                     minid = np.argmin(samples_per_client)
                     samples_per_client[minid] += (datasize - crt_data_size)
                 crt_data_size = sum(samples_per_client)
+            # let the minimal data size to be larger than 0
+            while min(samples_per_client)==0:
+                zero_client_idx = np.argmin(samples_per_client)
+                maxid = np.argmax(samples_per_client)
+                samples_per_client[maxid] -=1
+                samples_per_client[zero_client_idx] += 1
+            assert datasize==sum(samples_per_client) and min(samples_per_client)>0
         return samples_per_client
 
 class IIDPartitioner(BasicPartitioner):
