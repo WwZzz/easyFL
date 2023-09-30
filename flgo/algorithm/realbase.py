@@ -2,7 +2,7 @@ import collections
 import os.path
 import pickle
 import warnings
-
+import queue
 import torch.cuda
 import torch.multiprocessing as mlp
 import flgo
@@ -109,9 +109,11 @@ class Server(fedavg.Server):
         while not self._buffer.empty():
             d = self._buffer.get_nowait()
             res[d['name']] = d['package']
+            time.sleep(0.1)
         self._lock_buffer.release()
         return res
 
+    @property
     def size_buffer(self):
         r"""
         Return the number of current elements in buffer
@@ -120,7 +122,7 @@ class Server(fedavg.Server):
             buffer_size (int): the number of elements
         """
         self._lock_buffer.acquire()
-        buffer_size = len(self._buffer)
+        buffer_size = self._buffer.qsize()
         self._lock_buffer.release()
         return buffer_size
 
@@ -134,7 +136,7 @@ class Server(fedavg.Server):
         return
 
     def if_start(self):
-        return self.num_clients>=5
+        return self.num_clients>=1
 
     def register_handler(self, worker_id, client_id, received_pkg):
         valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
@@ -160,39 +162,46 @@ class Server(fedavg.Server):
 
     def _listen(self):
         while not self.is_exit():
-            events = dict(self._poller.poll(10000))
-            if self.task_pusher in events and events[self.task_pusher]==zmq.POLLIN:
-                worker_id, client_id, request = self.task_pusher.recv_multipart()
-                if request==b'pull task':
-                    try:
-                        self.logger.info("Receive task pull request from %s" % client_id)
-                        t = threading.Thread(target=self.task_pusher_handler, args=(worker_id, client_id))
-                        t.start()
-                    except:
-                        self.logger.info("Failed to handle task for %s" % client_id)
-            if self.registrar in events and events[self.registrar]==zmq.POLLIN:
-                worker_id = self.registrar.recv()
-                client_id = self.registrar.recv()
-                received_pkg = self.registrar.recv_pyobj()
-                t = threading.Thread(target=self.register_handler, args=(worker_id, client_id, received_pkg))
-                t.start()
-            if self.receiver in events and events[self.receiver]==zmq.POLLIN:
-                name = self.receiver.recv_string()
-                package_msg = self.receiver.recv()
-                package_size = len(package_msg) / 1024.0 / 1024.0
-                d = self.receiver._deserialize(package_msg, pickle.loads)
-                d['__size__'] = package_size
-                if '__mtype__' in d and d['__mtype__'] == "close":
-                    self.logger.info("{} was successfully closed.".format(name))
-                else:
-                    self.add_buffer({'name': name, 'package': d})
-                    self.logger.info("Received package of size {}MB from {} at round {}".format(package_size, name,
-                                                                                                self.current_round))
-            if self.alive_detector in events and events[self.alive_detector]==zmq.POLLIN:
-                name, _ = self.alive_detector.recv_multipart()
-                # self.logger.debug("Client %s is alive"%name.decode('utf-8'))
-                self._set_alive(name.decode('utf-8'), time.time())
-                self.alive_detector.send(b"")
+            try:
+                events = dict(self._poller.poll(10000))
+                if self.task_pusher in events and events[self.task_pusher]==zmq.POLLIN:
+                    worker_id, client_id, request = self.task_pusher.recv_multipart()
+                    if request==b'pull task':
+                        try:
+                            self.logger.info("Receive task pull request from %s" % client_id)
+                            t = threading.Thread(target=self.task_pusher_handler, args=(worker_id, client_id))
+                            t.start()
+                        except:
+                            self.logger.info("Failed to handle task for %s" % client_id)
+                if self.registrar in events and events[self.registrar]==zmq.POLLIN:
+                    worker_id = self.registrar.recv()
+                    client_id = self.registrar.recv()
+                    received_pkg = self.registrar.recv_pyobj()
+                    t = threading.Thread(target=self.register_handler, args=(worker_id, client_id, received_pkg))
+                    t.start()
+                if self.receiver in events and events[self.receiver]==zmq.POLLIN:
+                    client_id,_,package_msg = self.receiver.recv_multipart()
+                    name = client_id.decode("utf-8")
+                    # print(package_msg)
+                    # name = self.receiver.recv_string()
+                    # package_msg = self.receiver.recv()
+                    package_size = len(package_msg) / 1024.0 / 1024.0
+                    d = self.receiver._deserialize(package_msg, pickle.loads)
+                    d['__size__'] = package_size
+                    # print(type(d))
+                    if '__mtype__' in d and d['__mtype__'] == "close":
+                        self.logger.info("{} was successfully closed.".format(name))
+                    else:
+                        self.add_buffer({'name': name, 'package': d})
+                        self.logger.info("Received package of size {}MB from {} at round {}".format(package_size, name,
+                                                                                                    self.current_round))
+                if self.alive_detector in events and events[self.alive_detector]==zmq.POLLIN:
+                    name, _ = self.alive_detector.recv_multipart()
+                    # self.logger.debug("Client %s is alive"%name.decode('utf-8'))
+                    self._set_alive(name.decode('utf-8'), time.time())
+                    self.alive_detector.send(b"")
+            except Exception as e:
+                continue
     @property
     def clients(self):
         self._lock_registration.acquire()
@@ -259,7 +268,7 @@ class Server(fedavg.Server):
         self.ip = ip
         self.port = port
         self._lock_registration = threading.Lock()
-        self._buffer = mlp.Queue()
+        self._buffer = queue.Queue()
         self._lock_buffer = threading.Lock()
         self._exit = False
         self._lock_exit = threading.Lock()
@@ -278,7 +287,7 @@ class Server(fedavg.Server):
         self.sender.bind("%s://%s:%s" %(protocol, ip, self.port_send))
 
         self.port_recv = self.get_free_port()
-        self.receiver = self.context.socket(zmq.PULL)
+        self.receiver = self.context.socket(zmq.ROUTER)
         self.receiver.bind("%s://%s:%s"%(protocol, ip, self.port_recv))
 
         self.port_alive = self.get_free_port()
@@ -306,7 +315,9 @@ class Server(fedavg.Server):
             self.logger.log_once()
             self.logger.time_end('Eval Time Cost')
         while self.current_round<=self.num_rounds:
+            self.logger.debug("ready for iterate {}".format(self.current_round))
             updated = self.iterate()
+            self.logger.debug("finished iterate {}".format(self.current_round))
             if updated is True or updated is None:
                 self.logger.info("--------------Round {}--------------".format(self.current_round))
                 if self.logger.check_if_log(self.current_round, self.eval_interval):
@@ -354,9 +365,14 @@ class Server(fedavg.Server):
             self.communicate_with(name, package)
         buffer = {}
         while not self.is_exit():
-            new_comings = self.clear_buffer()
-            buffer.update(new_comings)
+            if self.size_buffer>0:
+                new_comings = self.clear_buffer()
+                buffer.update(new_comings)
+                self.logger.debug("update temp buffer")
+            self.logger.debug('wait for receive')
+            self.logger.debug(buffer)
             if asynchronous or all([(name in buffer) for name in selected_clients]):
+                self.logger.debug("has received from all clients")
                 break
             time.sleep(0.1)
         return self.unpack(buffer)
@@ -419,6 +435,29 @@ class Client(fedavg.Client):
             for k,v in reply['algo_para']: setattr(self, k, v)
         return reply["port_recv"], reply["port_send"], reply['port_alive']
 
+    def train(self, model):
+        r"""
+        Standard local_movielens_recommendation training procedure. Train the transmitted model with
+        local_movielens_recommendation training dataset.
+
+        Args:
+            model (FModule): the global model
+        """
+        model.train()
+        optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay,
+                                                  momentum=self.momentum)
+        model.to(self.device)
+        for iter in range(self.num_steps):
+            # get a batch of data
+            batch_data = self.get_batch_data()
+            model.zero_grad()
+            # calculate the loss of the model on batched dataset through task-specified calculator
+            loss = self.calculator.compute_loss(model, batch_data)['loss']
+            loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
+            optimizer.step()
+        return
+
     def message_handler(self, package, *args, **kwargs):
         mtype = package['__mtype__']
         action = self.default_action if mtype not in self.actions else self.actions[mtype]
@@ -426,10 +465,13 @@ class Client(fedavg.Client):
         assert isinstance(response, dict)
         response['__name__'] = self.name
         if hasattr(self, 'round'): response['__round__'] = self.round
-        self.sender.send_string(self.name, zmq.SNDMORE)
+        # self.sender.send_string(self.name, zmq.SNDMORE)
         msg = pickle.dumps(response, pickle.DEFAULT_PROTOCOL)
         self.logger.info("{} Sending the package of size {}MB to the server...".format(self.name, len(msg)/1024/1024))
         self.sender.send(msg)
+        print("send to server")
+        # self.sender.recv()
+        # print("receive from server")
         # self.sender.send_pyobj(response)
         return
 
@@ -501,7 +543,8 @@ class Client(fedavg.Client):
         self.heart_beator.setsockopt(zmq.IDENTITY, self.name.encode('utf-8'))
         self.heart_beator.connect("%s://%s:%s" % (protocol, server_ip, port_svr_alive))
 
-        self.sender = self.context.socket(zmq.PUSH)
+        self.sender = self.context.socket(zmq.REQ)
+        self.sender.setsockopt(zmq.IDENTITY, self.name.encode('utf-8'))
         self.sender.connect("%s://%s:%s" % (protocol, server_ip, port_svr_recv))
 
         self._poller = zmq.Poller()
@@ -527,7 +570,7 @@ class Client(fedavg.Client):
                 # package = self.receiver.recv_pyobj()
                 assert '__mtype__' in package
                 if package['__mtype__']=='close':
-                    self.sender.send_string(self.name, zmq.SNDMORE)
+                    # self.sender.send_string(self.name, zmq.SNDMORE)
                     self.sender.send_pyobj({'__mtype__':"close"})
                     break
                 package['__size__'] = package_size/1024/1024 #MB
