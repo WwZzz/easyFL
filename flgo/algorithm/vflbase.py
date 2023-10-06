@@ -210,6 +210,7 @@ class ActiveParty(PassiveParty):
                     self.gv.logger.time_start('Eval Time Cost')
                     self.gv.logger.log_once()
                     self.gv.logger.time_end('Eval Time Cost')
+                if self.gv.logger.early_stop(): break
                 self.current_round += 1
         self.gv.logger.info("=================End==================")
         self.gv.logger.time_end('Total Time Cost')
