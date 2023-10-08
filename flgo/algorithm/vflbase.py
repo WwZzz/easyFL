@@ -360,3 +360,36 @@ class ActiveParty(PassiveParty):
                     party.global_module.train()
                 else:
                     party.global_module.eval()
+
+    def init_algo_para(self, algo_para: dict):
+        """
+        Initialize the algorithm-dependent hyper-parameters for the server and all the clients.
+        :param
+            algo_paras (dict): the dict that defines the hyper-parameters (i.e. name, value and type) for the algorithm.
+
+        Example 1:
+            calling `self.init_algo_para({'u':0.1})` will set the attributions `server.u` and `c.u` as 0.1 with type float where `c` is an instance of `CLient`.
+        Note:
+            Once `option['algo_para']` is not `None`, the value of the pre-defined hyperparameters will be replaced by the list of values in `option['algo_para']`,
+            which requires the length of `option['algo_para']` is equal to the length of `algo_paras`
+        """
+        self.algo_para = algo_para
+        if len(self.algo_para)==0: return
+        # initialize algorithm-dependent hyperparameters from the input options
+        if self.option['algo_para'] is not None:
+            # assert len(self.algo_para) == len(self.option['algo_para'])
+            keys = list(self.algo_para.keys())
+            for i,pv in enumerate(self.option['algo_para']):
+                if i==len(self.option['algo_para']): break
+                para_name = keys[i]
+                try:
+                    self.algo_para[para_name] = type(self.algo_para[para_name])(pv)
+                except:
+                    self.algo_para[para_name] = pv
+        # register the algorithm-dependent hyperparameters as the attributes of the server and all the clients
+        for para_name, value in self.algo_para.items():
+            self.__setattr__(para_name, value)
+            for c in self.parties:
+                if c.id!=self.id:
+                    c.__setattr__(para_name, value)
+        return
