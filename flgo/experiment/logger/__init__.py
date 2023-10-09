@@ -2361,7 +2361,7 @@ class BasicLogger(Logger):
             self._es_best_score = score
             self._es_best_round = self.coordinator.current_round-1
             self._es_patience = self.option['early_stop']
-        elif score<self._es_best_score:
+        elif score<=self._es_best_score:
             self._es_counter += 1
             if self._es_counter >= self._es_patience:
                 self.info('Early stopping after training for {} rounds.'.format(self.coordinator.current_round-1))
