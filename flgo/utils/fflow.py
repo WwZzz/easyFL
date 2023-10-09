@@ -17,7 +17,10 @@ import requests
 import re
 import zipfile
 import urllib.request
-import zmq
+try:
+    import zmq
+except:
+    zmq = None
 from typing import *
 try:
     import ujson as json
@@ -58,7 +61,8 @@ agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
 default_option_dict = {'pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': -1, 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False,'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
-_ctx = zmq.Context()
+if zmq is not None: _ctx = zmq.Context()
+else: _ctx = None
 
 class GlobalVariable:
     """This class is to create a shared space for sharing variables across
