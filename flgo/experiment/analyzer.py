@@ -47,6 +47,8 @@ A standard analysis plan usually consists of the above three parts, and `Painter
 import argparse
 import math
 import random
+import warnings
+
 import numpy as np
 import matplotlib.pyplot as plt
 import yaml
@@ -113,11 +115,19 @@ class Record:
         with open(os.path.join(self.task, 'info')) as inf:
             task_info = json.load(inf)
             if 'num_clients' in task_info.keys():
-                N = int(task_info['num_clients'])
+                try:
+                    N = int(task_info['num_clients'])
+                except:
+                    warnings.warn(f"the value of num_clients {task_info['num_clients']} cannot be converted to int")
+                    N = 1
             elif 'num_parties' in task_info.keys():
-                N = int(task_info['num_parties'])
+                try:
+                    N = int(task_info['num_parties'])
+                except:
+                    warnings.warn(f"the value of num_clients {task_info['num_clients']} cannot be converted to int")
+                    N = 1
             else:
-                N = 0
+                N = 1
         self.data['client_id'] = [cid for cid in range(N)]
 
     def set_legend(self, legend_with = []):
