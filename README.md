@@ -155,7 +155,7 @@ Real Machine-Dependent options:
 
 * `eval_interval ` controls the interval between every two evaluations. 
 
-* `num_threads` is the number of threads in the clients computing session that aims to accelarate the training process.
+* `num_threads` is the number of threads in the clients computing session that aims to accelerate the training process.
 
 * `num_workers` is the number of workers of the torch.utils.data.Dataloader
 
