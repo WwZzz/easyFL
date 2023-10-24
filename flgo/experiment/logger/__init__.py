@@ -2281,7 +2281,7 @@ class BasicLogger(Logger):
         else:
             output_name = output_name + ("K{}_".format(self.option['num_steps']))
 
-        output_name = output_name + "LR{:.4f}_P{:.2f}_S{}_LD{:.3f}_WD{:.3f}".format(
+        output_name = output_name + "LR{:.2e}_P{:.2e}_S{}_LD{:.2e}_WD{:.2e}".format(
                         self.option['learning_rate'],
                         self.option['proportion'],
                         self.option['seed'],
