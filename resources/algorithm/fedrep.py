@@ -69,73 +69,31 @@ class Client(flgo.algorithm.fedbase.BasicClient):
         dataset = getattr(self, flag + '_data') if hasattr(self, flag + '_data') else None
         if dataset is None: return {}
         return self.calculator.test(self.server.model, dataset, min(self.test_batch_size, len(dataset)), self.option['num_workers'])
-
-dataset_list = ['mnist', 'cifar10', 'cifar100', ]
-
-def init_global_module(object):
-    if 'Server' in object.get_classname():
-        d = object.test_data
-        while hasattr(d, 'dataset') and isinstance(d, torch.utils.data.dataset.Subset):
-            d = d.dataset
-        dataset = object.test_data.__class__.__name__.lower()
-        for dname in dataset_list:
-            if dname in dataset:
-                dataset = dname
-                break
-        object.set_model(Encoder(dataset).to(object.device))
-
-def init_local_module(object):
-    if 'Client' in object.get_classname():
-        d = object.train_data
-        while hasattr(d, 'dataset') and isinstance(d, torch.utils.data.dataset.Subset):
-            d = d.dataset
-        dataset = d.__class__.__name__.lower()
-        for dname in dataset_list:
-            if dname in dataset:
-                dataset = dname
-                break
-        object.set_model(Head(dataset).to(object.device))
-
-def init_dataset(object):
-    if 'Client' in object.get_classname():
-        dataset = object.train_data.__class__.__name__.lower()
-        if 'cifar10' in dataset:
-            from flgo.benchmark.cifar10_classification.model.cnn_data_aug import AugmentDataset
-            object.train_data = AugmentDataset(object.train_data)
-
-class Encoder(FModule):
-    def __init__(self, name='mnist'):
+class HeadCIFAR(FModule):
+    def __init__(self):
         super().__init__()
-        self.name = name
-        if name=='mnist':
-            self.encoder = nn.Sequential(
-                nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, padding=2),
-                nn.ReLU(),
-                nn.MaxPool2d(2),
-                nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5, padding=2),
-                nn.ReLU(),
-                nn.MaxPool2d(2),
-                nn.Flatten(1),
-                nn.Linear(3136, 512),
-                nn.ReLU(),
-            )
-        elif 'cifar' in name:
-            self.encoder = nn.Sequential(
-                nn.Conv2d(3, 64, 5),
-                nn.ReLU(),
-                nn.MaxPool2d(2),
-                nn.Conv2d(64, 64, 5),
-                nn.ReLU(),
-                nn.MaxPool2d(2),
-                nn.Flatten(1),
-                nn.Linear(1600, 384),
-                nn.ReLU(),
-                nn.Linear(384, 192),
-                nn.ReLU(),
-            )
-        else:
-            self.encoder = None
-            warnings.WarningMessage('Model has not been implemented')
+        self.head = nn.Linear(192, 10)
+
+    def forward(self, *args, **kwargs):
+        return self.head(*args, **kwargs)
+
+class EncoderCIFAR(FModule):
+    def __init__(self):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 64, 5),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 64, 5),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Flatten(1),
+            nn.Linear(1600, 384),
+            nn.ReLU(),
+            nn.Linear(384, 192),
+            nn.ReLU(),
+        )
+        self.head = HeadCIFAR()
 
     def set_head(self, head=None):
         if head is not None:
@@ -147,17 +105,78 @@ class Encoder(FModule):
         else:
             return self.encoder(*args, **kwargs)
 
-class Head(FModule):
-    def __init__(self, name='mnist'):
+class HeadMNIST(FModule):
+    def __init__(self):
         super().__init__()
-        self.name = name
-        if name=='mnist':
-            self.head = nn.Linear(512, 10)
-        elif 'cifar' in name:
-            self.head = nn.Linear(192, 10)
-        else:
-            self.head = None
-            raise NotImplementedError('Model for {} has not been implemented.'.format(self.name))
+        self.head = nn.Linear(512, 10)
 
     def forward(self, *args, **kwargs):
         return self.head(*args, **kwargs)
+
+class EncoderMNIST(FModule):
+    def __init__(self):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Flatten(1),
+            nn.Linear(3136, 512),
+            nn.ReLU(),
+        )
+        self.head = HeadMNIST()
+
+    def set_head(self, head=None):
+        if head is not None:
+            self.head = head
+
+    def forward(self, *args, **kwargs):
+        if self.head is not None:
+            return self.head(self.encoder(*args, **kwargs))
+        else:
+            return self.encoder(*args, **kwargs)
+
+dataset_list = ['mnist', 'cifar10', 'cifar100', ]
+model_maps = {
+    'mnist':{'global':EncoderMNIST, 'local':HeadMNIST},
+    'cifar10':{'global':EncoderCIFAR, 'local':HeadCIFAR},
+    'cifar100': {'global': EncoderCIFAR, 'local': HeadCIFAR},
+}
+
+def init_global_module(object):
+    if 'Server' in object.get_classname():
+        d = object.test_data
+        while hasattr(d, 'dataset') and isinstance(d, torch.utils.data.dataset.Subset):
+            d = d.dataset
+        dataset = object.test_data.__class__.__name__.lower()
+        for dname in dataset_list:
+            if dname in dataset:
+                dataset = dname
+                break
+        Model = model_maps[dataset]['global']
+        object.set_model(Model().to(object.device))
+
+def init_local_module(object):
+    if 'Client' in object.get_classname():
+        d = object.train_data
+        while hasattr(d, 'dataset') and isinstance(d, torch.utils.data.dataset.Subset):
+            d = d.dataset
+        dataset = d.__class__.__name__.lower()
+        for dname in dataset_list:
+            if dname in dataset:
+                dataset = dname
+                break
+        Model = model_maps[dataset]['local']
+        object.set_model(Model().to(object.device))
+        # object.set_model(Head(dataset).to(object.device))
+
+def init_dataset(object):
+    if 'Client' in object.get_classname():
+        dataset = object.train_data.__class__.__name__.lower()
+        if 'cifar10' in dataset:
+            from flgo.benchmark.cifar10_classification.model.cnn_data_aug import AugmentDataset
+            object.train_data = AugmentDataset(object.train_data)
+

@@ -2221,8 +2221,8 @@ class BasicLogger(Logger):
         try:
             with open(filepath, 'w') as outf:
                 json.dump(dict(self.output), outf)
-        except:
-            self.error('Failed to save flw.logger.output as results')
+        except Exception as e:
+            self.error('Failed to save logger.output as results due to Error {}'.format(e))
 
     def check_is_jsonable(self, x):
         try:
