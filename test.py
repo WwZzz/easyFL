@@ -2,6 +2,8 @@ import flgo.algorithm.fedavg as fedavg
 import flgo.experiment.analyzer
 import os
 
+# test
+
 task = './my_task'
 gen_config = {
     'benchmark':{'name':'flgo.benchmark.mnist_classification'},
