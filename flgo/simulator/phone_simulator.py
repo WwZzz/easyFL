@@ -1,8 +1,13 @@
 import copy
+import warnings
+
 from flgo.simulator.base import BasicSimulator
 import os
 import zipfile
-import pandas as pd
+try:
+    import pandas as pd
+except:
+    pd = None
 import urllib
 import numpy as np
 import re

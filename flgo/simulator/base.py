@@ -383,7 +383,7 @@ class BasicSimulator(AbstractSimulator):
         """API to update client responsiveness every time unit"""
         return
 
-    def update_client_capability(self, client_ids, *args, **kwargs):
+    def update_client_capability(self, *args, **kwargs):
         """API to update client capability every time unit"""
         return
 
