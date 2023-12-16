@@ -16,7 +16,7 @@ class PFLLogger(BasicLogger):
                 if met_name not in cval_dict.keys(): cval_dict[met_name] = []
                 for cid in range(len(cvals)):
                     cval_dict[met_name].append(cvals[cid][met_name])
-                self.output['local_val_'+met_name].append(float(np.array(cval_dict[met_name]).mean()))
+                self.output['val_'+met_name].append(float(np.array(cval_dict[met_name]).mean()))
         ctest_dict = {}
         if len(ctests)>0:
             for met_name in ctests[0].keys():

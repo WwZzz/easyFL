@@ -2222,6 +2222,7 @@ class BasicLogger(Logger):
             with open(filepath, 'w') as outf:
                 json.dump(dict(self.output), outf)
         except Exception as e:
+            self.warning(e)
             self.error('Failed to save logger.output as results due to Error {}'.format(e))
 
     def check_is_jsonable(self, x):
@@ -2237,7 +2238,8 @@ class BasicLogger(Logger):
                 try:
                     self.output[key] = str(self.output[key])
                     self.warning("flw.logger.output['{}'] is not jsonable, and is automatically converted to string.".format(key))
-                except:
+                except Exception as e:
+                    self.warning(e)
                     del self.output[key]
                     self.warning("Automatically remove flw.logger.output['{}'] from logger, because it is not jsonable and is failed to convert into string. ".format(key))
         return
