@@ -13,17 +13,42 @@ from flgo.utils.fmodule import FModule
 
 class Server(flgo.algorithm.fedbase.BasicServer):
     def initialize(self):
-        self.init_algo_para({'num_local_layers':0, "embed_dim":int(1+self.num_clients/4), 'hidden_dim':100, 'num_hidden_layers':1, })
+        self.init_algo_para({'num_local_layers':2, "embed_dim":int(1+self.num_clients/4), 'hidden_dim':100, 'num_hidden_layers':1, })
         self.hnet = self.init_hnet().to(self.device)
-
+        self.client_weights = {}
+        self.outer_optim = torch.optim.SGD(
+            self.hnet.parameters(), lr=self.option['learning_rate'], weight_decay=self.option['weight_decay'], momentum=self.option['momentum']
+        )
     def pack(self, client_id, mtype=0):
-        return {'model':copy.deepcopy(self.hnet),}
+        return {'w':self.client_weights[client_id]}
 
     def iterate(self):
         self.selected_clients = self.sample()
+        client_weights = self.hnet(torch.LongTensor(self.selected_clients).to(self.device))
+        self.client_weights = {ci:mi for ci, mi in zip(self.selected_clients, client_weights)}
+        inner_states = {ci: OrderedDict({k: tensor.data for k, tensor in w.items()}) for ci,w in zip(self.selected_clients, client_weights)}
         # training
-        hnets = self.communicate(self.selected_clients)['model']
-        self.hnet = self.aggregate(hnets)
+        models = self.communicate(self.selected_clients)['model']
+        self.outer_optim.zero_grad()
+        for ci,mi in zip(self.selected_clients, models):
+            weights = self.client_weights[ci]
+            inner_state = inner_states[ci]
+            final_state = mi.state_dict()
+            delta_theta = OrderedDict({k: inner_state[k] - final_state[k] for k in inner_state.keys()})
+            hnet_grads = torch.autograd.grad(
+                list(weights.values()), self.hnet.parameters(), grad_outputs=list(delta_theta.values()), retain_graph=True
+            )
+            # update hnet weights
+            for p, g in zip(self.hnet.parameters(), hnet_grads):
+                if p.grad is None:
+                    p.grad = g
+                else: p.grad += g
+        for p in self.hnet.parameters():
+            p.grad/=len(models)
+        clip_grad = self.option['clip_grad'] if self.option['clip_grad']>0 else 50
+        torch.nn.utils.clip_grad_norm_(self.hnet.parameters(), clip_grad)
+        self.outer_optim.step()
+        self.client_weights = {}
         return
 
     def init_hnet(self):
@@ -32,9 +57,11 @@ class Server(flgo.algorithm.fedbase.BasicServer):
         hidden_dim = self.hidden_dim
         num_hidden_layers = self.num_hidden_layers
         num_local_layers = self.num_local_layers
+        num_clients = self.num_clients
         class HyperNet(FModule):
             def __init__(self):
                 super(HyperNet, self).__init__()
+                self.user_embeddings = nn.Embedding(num_embeddings=num_clients, embedding_dim=embed_dim)
                 # set mlp: embed -> hidden_feature
                 layers = [
                     nn.Linear(embed_dim, hidden_dim),
@@ -54,56 +81,20 @@ class Server(flgo.algorithm.fedbase.BasicServer):
                 for k in weight_generators.keys():
                     setattr(self, k, weight_generators[k])
 
-            def forward(self, embed):
+            def forward(self, client_id):
+                embed = self.user_embeddings(client_id)
                 features = self.embed_convertor(embed)
-                weights = {k:getattr(self, k)(features).view(self.weight_shapes[k]) for k in self.weight_shapes.keys()}
-                return weights
+                weights = {k: getattr(self, k)(features) for k in self.weight_shapes.keys()}
+                res = [{k:v[i].view(self.weight_shapes[k]) for k,v in weights.items()} for i in range(len(client_id))]
+                return res
         return HyperNet()
 
 class Client(flgo.algorithm.fedbase.BasicClient):
     def initialize(self):
-        self.embed = torch.randn((1, self.embed_dim)).to(self.device)
-        self.model = copy.deepcopy(self.server.model).to('cpu')
+        self.model = copy.deepcopy(self.server.model).to(self.device)
 
-    @fmodule.with_multi_gpus
-    def train(self, hnet):
-        hnet.to(self.device)
-        self.model.to(self.device)
-        self.embed = self.embed.detach().to(self.device)
-        self.embed.requires_grad= True
-        weights = hnet(self.embed)
-        local_dict = self.model.state_dict()
-        local_dict.update(weights)
-        self.model.load_state_dict(local_dict)
-        outer_optim = torch.optim.SGD(
-            hnet.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum
-        )
-        embed_optim = torch.optim.SGD([self.embed], lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        inner_optim = self.calculator.get_optimizer(self.model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        inner_state = OrderedDict({k: tensor.data for k, tensor in weights.items()})
-        for i in range(self.num_steps):
-            self.model.train()
-            inner_optim.zero_grad()
-            outer_optim.zero_grad()
-            embed_optim.zero_grad()
-            batch_data = self.get_batch_data()
-            loss = self.calculator.compute_loss(self.model, batch_data)['loss']
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 50)
-            inner_optim.step()
-        outer_optim.zero_grad()
-        embed_optim.zero_grad()
-        final_state = self.model.state_dict()
-        delta_theta = OrderedDict({k:inner_state[k]-final_state[k] for k in weights.keys()})
-        # calculating phi gradient
-        hnet_grads = torch.autograd.grad(
-            list(weights.values()), hnet.parameters(), grad_outputs=list(delta_theta.values())
-        )
-        # update hnet weights
-        for p, g in zip(hnet.parameters(), hnet_grads):
-            p.grad = g
-        torch.nn.utils.clip_grad_norm_(hnet.parameters(), 50)
-        outer_optim.step()
-        embed_optim.step()
-        self.model.to('cpu')
-        return
+    def unpack(self, received_pkg):
+        model_dict = self.model.state_dict()
+        model_dict.update(received_pkg['w'])
+        self.model.load_state_dict(model_dict)
+        return self.model
