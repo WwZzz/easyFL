@@ -651,23 +651,21 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     setup_seed(option['seed']+346)
     # init communicator
     gv.communicator = flgo.VirtualCommunicator(objects)
-
-    for ob in objects: ob.initialize()
     if 'real' not in scene:
-        # init virtual system environment
         logger.info('SIMULATOR:\t{}'.format(str(Simulator)))
-        # flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
-
         gv.clock = flgo.simulator.base.ElemClock()
         gv.simulator = Simulator(objects, option) if scene == 'horizontal' else None
         if gv.simulator is not None: gv.simulator.initialize()
         gv.clock.register_simulator(simulator=gv.simulator)
+    for ob in objects: ob.initialize()
+    if 'real' not in scene:
+        # init virtual system environment
+        # flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
         logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects, simulator=Simulator.__name__ if scene == 'horizontal' else 'None')
         if scene=='horizontal':
             logger.register_variable(server=objects[0], clients=objects[1:])
         logger.initialize()
         logger.info('Ready to start.')
-
         # register global variables for objects
         for c in tmp:
             try:
