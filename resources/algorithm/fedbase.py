@@ -837,7 +837,7 @@ class BasicClient(BasicParty):
         if self._train_loader is None:
             self._train_loader = self.calculator.get_dataloader(self.train_data, batch_size=self.batch_size,
                                                                    num_workers=self.loader_num_workers,
-                                                                   pin_memory=self.option['pin_memory'])
+                                                                   pin_memory=self.option['pin_memory'], drop_last = not self.option.get('no_drop_last', False))
         try:
             batch_data = next(self.data_loader)
         except Exception as e:
