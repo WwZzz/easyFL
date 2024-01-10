@@ -201,5 +201,5 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
     def to_device(self, data):
         return data.to(self.device)
 
-    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False):
+    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False, *args, **kwargs):
         return self.DataLoader([dataset], batch_size=batch_size, shuffle=shuffle, pin_memory=pin_memory)

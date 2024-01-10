@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from typing import Any
-
+import numpy as np
 import torch.utils.data
 import json
 from flgo.benchmark.base import *
@@ -162,7 +162,7 @@ class GeneralCalculator(BasicTaskCalculator):
             except: res[k] = v
         return res
 
-    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False):
+    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False, *args, **kwargs):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, collate_fn=collate_fn)
@@ -189,8 +189,7 @@ class UserLevelCalculator(BasicTaskCalculator):
         if local_model is not None and hasattr(local_model, 'to'):local_model.to(self.device)
         global_model.eval()
         if batch_size == -1: batch_size = len(dataset)
-        data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers,
-                                          pin_memory=pin_memory)
+        data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
         total_loss = 0.0
         mse_loss = 0.0
         for batch_id, batch_data in enumerate(data_loader):
@@ -204,7 +203,7 @@ class UserLevelCalculator(BasicTaskCalculator):
     def to_device(self, data):
         return {k: torch.Tensor(v).to(self.device) for k, v in data.items()}
 
-    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False):
+    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False, *args, **kwargs):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers,

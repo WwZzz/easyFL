@@ -285,7 +285,7 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
     def to_device(self, data:tuple):
         return data[0].to(self.device), data[1].to(self.device)
 
-    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False):
+    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False, *args, **kwargs):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
         return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last, collate_fn=collate_fn)

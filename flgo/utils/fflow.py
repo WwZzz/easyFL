@@ -154,6 +154,7 @@ def read_option_from_command():
     parser.add_argument('--num_parallels', help="the number of parallels in the clients computing session", type=int, default=1)
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
     parser.add_argument('--pin_memory', help='pin_memory of DataLoader', action="store_true", default=False)
+    parser.add_argument('--no_drop_last', help='not to drop_last option of DataLoader, default is False', action="store_true", default=False)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
 
     """Simulator Options"""
