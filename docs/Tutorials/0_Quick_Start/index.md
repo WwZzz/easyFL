@@ -27,7 +27,7 @@ task_path = './my_first_task'
 task_config = {'benchmark':{'name': 'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDPartitioner', 'para':{'num_clients':100}}}
 
 # generate the task if the task doesn't exist
-if not os.path.exist(task_path):
+if not os.path.exists(task_path):
 	flgo.gen_task(task_config, task_path)
 ```
 
