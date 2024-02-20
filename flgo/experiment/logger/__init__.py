@@ -2291,7 +2291,7 @@ class BasicLogger(Logger):
                         self.option['weight_decay'],
         )
         output_name = output_name + '_SIM{}_AVL{}_CN{}_CP{}_RS{}_LG{}'.format(
-                        self.simulator if hasattr(self, 'simulator') else 'None',
+                        self.option['simulator'],
                         self.option['availability'],
                         self.option['connectivity'],
                         self.option['completeness'],

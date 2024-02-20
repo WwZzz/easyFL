@@ -252,11 +252,12 @@ class Selector:
                     res[task].append(record)
         return res
 
-    def group_records(self, key=['seed']):
+    def group_records(self, key=['seed'], group_with_gpu=False):
         if type(key) is not list: key=[key]
+        if not group_with_gpu: key.append('gpu')
         groups = collections.defaultdict(list)
         for rec in self.all_records:
-            group_name = '.'.join([str(rec.data['option'][k]) for k in rec.data['option'].keys() if k not in key])
+            group_name = '.'.join([str(rec.data['option'][k]) if k!='task' else os.path.split(rec.data['option'][k])[-1] for k in rec.data['option'].keys() if k not in key])
             groups[group_name].append(rec)
         res = []
         for g in groups:

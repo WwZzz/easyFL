@@ -212,7 +212,7 @@ class BasicSimulator(AbstractSimulator):
         object (list): a list of objects in the federated scenario
     """
     _STATE = ['offline', 'idle', 'selected', 'working', 'dropped']
-    _VAR_NAMES = ['prob_available', 'prob_unavailable', 'prob_drop', 'working_amount', 'latency', 'capability']
+    _VAR_NAMES = ['prob_available', 'prob_unavailable', 'prob_drop', 'working_amount', 'latency', 'capacity']
     def __init__(self, objects, *args, **kwargs):
         if len(objects)>0:
             self.server = objects[0]
@@ -232,7 +232,7 @@ class BasicSimulator(AbstractSimulator):
             'prob_drop': 0.,
             'working_amount': c.num_steps,
             'latency': 0,
-            'capability':1.0,
+            'capacity':1.0,
         } for c in self.clients.values()}
         for var in self._VAR_NAMES:
             self.set_variable(self.all_clients, var, [self.variables[cid][var] for cid in self.all_clients])
@@ -380,8 +380,8 @@ class BasicSimulator(AbstractSimulator):
         """API to update client responsiveness every time unit"""
         return
 
-    def update_client_capability(self, *args, **kwargs):
-        """API to update client capability every time unit"""
+    def update_client_capacity(self, *args, **kwargs):
+        """API to update client capacity every time unit"""
         return
 
     def flush(self):
@@ -389,8 +389,8 @@ class BasicSimulator(AbstractSimulator):
         # +++++++++++++++++++ availability +++++++++++++++++++++
         # change self.variables[cid]['prob_available'] and self.variables[cid]['prob_unavailable'] for each client `cid`
         self.update_client_availability()
-        # change self.variables[cid]['capability'] for each client
-        self.update_client_capability()
+        # change self.variables[cid]['capacity'] for each client
+        self.update_client_capacity()
         # update states for offline & idle clients
         if len(self.idle_clients)==0 or not self.roundwise_fixed_availability or self.server.current_round > self.availability_latest_round:
             self.availability_latest_round = self.server.current_round

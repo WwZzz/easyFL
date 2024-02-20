@@ -1,3 +1,4 @@
+import os
 import math
 import copy
 import collections
@@ -6,10 +7,11 @@ from tqdm import tqdm
 import torch
 import torch.multiprocessing as mp
 import numpy as np
-
 import flgo.benchmark.base
 from flgo.utils import fmodule
 import flgo.simulator.base as ss
+# import threading
+# from concurrent.futures import ThreadPoolExecutor,wait,ALL_COMPLETED,FIRST_COMPLETED, as_completed
 
 # The BasicParty
 class BasicParty:
@@ -234,7 +236,7 @@ class BasicServer(BasicParty):
         Running the FL symtem where the global model is trained and evaluated iteratively.
         """
         self.gv.logger.time_start('Total Time Cost')
-        if self.eval_interval>0:
+        if not self._load_checkpoint() and self.eval_interval>0:
             # evaluating initial model performance
             self.gv.logger.info("--------------Initial Evaluation--------------")
             self.gv.logger.time_start('Eval Time Cost')
@@ -252,6 +254,7 @@ class BasicServer(BasicParty):
                     self.gv.logger.time_start('Eval Time Cost')
                     self.gv.logger.log_once()
                     self.gv.logger.time_end('Eval Time Cost')
+                    self._save_checkpoint()
                 # check if early stopping
                 if self.gv.logger.early_stop(): break
                 self.current_round += 1
@@ -300,9 +303,10 @@ class BasicServer(BasicParty):
         for client_id in communicate_clients:
             received_package_buffer[client_id] = None
         # communicate with selected clients
+        self.gv.logger.time_start("Training")
         if self.num_parallels <= 1:
             # computing iteratively
-            for client_id in tqdm(communicate_clients, desc="Local Training on {} Clients".format(len(communicate_clients)), leave=False):
+            for client_id in tqdm(communicate_clients, desc="Round {}/{} Local Training on {} Clients".format(self.current_round, self.num_rounds, len(communicate_clients)), leave=False):
                 server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
                 response_from_client_id = self.communicate_with(self.clients[client_id].id, package=server_pkg)
@@ -328,6 +332,34 @@ class BasicServer(BasicParty):
                             pkg[k] = v.to(self.device)
                         except:
                             continue
+            # self.model = self.model.to(torch.device('cpu'))
+            #
+            # def worker(args):
+            #     print(os.getpid())
+            #     print(id(self.clients[args[0]]))
+            #     return self.communicate_with(*args), args[0]
+            #
+            # pool = ThreadPoolExecutor(self.num_parallels)
+            # packages_received_from_clients = []
+            # for client_id in communicate_clients:
+            #     server_pkg = self.pack(client_id, mtype)
+            #     server_pkg['__mtype__'] = mtype
+            #     self.clients[client_id].update_device(self.gv.apply_for_device())
+            #     args = (self.clients[client_id].id, server_pkg)
+            #     packages_received_from_clients.append(pool.submit(worker, args))
+            # wait(packages_received_from_clients, return_when=ALL_COMPLETED)
+            # packages_received_from_clients = [v.result() for v in packages_received_from_clients]
+            # packages_received_from_clients = {v[1]:v[0] for v in packages_received_from_clients}
+            # packages_received_from_clients = [packages_received_from_clients[k] for k in communicate_clients]
+            # self.model = self.model.to(self.device)
+            # for pkg in packages_received_from_clients:
+            #     for k,v in pkg.items():
+            #         if hasattr(v, 'to'):
+            #             try:
+            #                 pkg[k] = v.to(self.device)
+            #             except:
+            #                 continue
+        self.gv.logger.time_end("Training")
         for i, client_id in enumerate(communicate_clients): received_package_buffer[client_id] = packages_received_from_clients[i]
         packages_received_from_clients = [received_package_buffer[cid] for cid in selected_clients if
                                           received_package_buffer[cid]]
@@ -626,6 +658,64 @@ class BasicServer(BasicParty):
         self.clients_per_round = max(int(self.num_clients * self.proportion), 1)
         self.selected_clients = []
         self.dropped_clients = []
+
+    def _save_checkpoint(self):
+        checkpoint = self.option.get('save_checkpoint', '')
+        if checkpoint!='':
+            cpt = self.save_checkpoint()
+            cpt_path = os.path.join(self.option['task'], 'checkpoint', checkpoint,)
+            if not os.path.exists(cpt_path): os.makedirs(cpt_path)
+            cpt_path = os.path.join(cpt_path, self.gv.logger.get_output_name(f'.{self.current_round}'))
+            torch.save(cpt, cpt_path)
+
+    def save_checkpoint(self):
+        cpt = {
+            'round': self.current_round,
+            'model_state_dict': self.model.state_dict(),
+            'early_stop_option': {
+                '_es_best_score': self.gv.logger._es_best_score,
+                '_es_best_round': self.gv.logger._es_best_round,
+                '_es_patience': self.gv.logger._es_patience,
+            },
+            'output': self.gv.logger.output,
+            'time': self.gv.clock.current_time,
+        }
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        md = cpt.get('model_state_dict', None)
+        round = cpt.get('round', None)
+        output = cpt.get('output', None)
+        early_stop_option = cpt.get('early_stop_option', None)
+        time = cpt.get('time', None)
+        if md is not None: self.model.load_state_dict(md)
+        if round is not None: self.current_round = round + 1
+        if early_stop_option is not None:
+            self.gv.logger._es_best_score = early_stop_option['_es_best_score']
+            self.gv.logger._es_best_round = early_stop_option['_es_best_round']
+            self.gv.logger._es_patience = early_stop_option['_es_patience']
+        if output is not None:
+            self.gv.logger.output = output
+        if time is not None:
+            self.gv.clock.set_time(time)
+
+    def _load_checkpoint(self):
+        checkpoint = self.option.get('load_checkpoint', '')
+        if checkpoint!='':
+            try:
+                cpt_name = self.gv.logger.get_output_name('')
+                cpt_path = os.path.join(self.option['task'], 'checkpoint', checkpoint)
+                cpts = os.listdir(cpt_path)
+                cpts = [p for p in cpts if cpt_name in p]
+                cpt_round = max([int(p.split('.')[-1]) for p in cpts])
+                cpt_path = os.path.join(cpt_path, '.'.join([cpt_name, str(cpt_round)]))
+                self.gv.logger.info(f'Loading checkpoint {cpt_name} at round {cpt_round}...')
+                cpt = torch.load(cpt_path)
+                self.load_checkpoint(cpt)
+                return True
+            except Exception as e:
+                self.gv.logger.info(f"Failed to load checkpoint due to {e}")
+        return False
 
 class BasicClient(BasicParty):
     TaskCalculator = flgo.benchmark.base.BasicTaskCalculator
