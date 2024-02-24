@@ -219,7 +219,7 @@ class BasicServer(BasicParty):
         self.proportion = option['proportion']
         self.decay_rate = option['learning_rate_decay']
         self.lr_scheduler_type = option['lr_scheduler']
-        self.lr = option['learning_rate']
+        self.learning_rate = option['learning_rate']
         self.sample_option = option['sample']
         self.aggregation_option = option['aggregate']
         # systemic option
@@ -424,14 +424,14 @@ class BasicServer(BasicParty):
             return
         elif self.lr_scheduler_type == 0:
             """eta_{round+1} = DecayRate * eta_{round}"""
-            self.lr *= self.decay_rate
+            self.learning_rate *= self.decay_rate
             for c in self.clients:
-                c.set_learning_rate(self.lr)
+                c.set_learning_rate(self.learning_rate)
         elif self.lr_scheduler_type == 1:
             """eta_{round+1} = eta_0/(round+1)"""
-            self.lr = self.option['learning_rate'] * 1.0 / (current_round + 1)
+            self.learning_rate = self.option['learning_rate'] * 1.0 / (current_round + 1)
             for c in self.clients:
-                c.set_learning_rate(self.lr)
+                c.set_learning_rate(self.learning_rate)
 
     def sample(self):
         r"""
@@ -671,6 +671,7 @@ class BasicServer(BasicParty):
     def save_checkpoint(self):
         cpt = {
             'round': self.current_round,
+            'learning_rate': self.learning_rate,
             'model_state_dict': self.model.state_dict(),
             'early_stop_option': {
                 '_es_best_score': self.gv.logger._es_best_score,
@@ -688,16 +689,17 @@ class BasicServer(BasicParty):
         output = cpt.get('output', None)
         early_stop_option = cpt.get('early_stop_option', None)
         time = cpt.get('time', None)
+        learning_rate = cpt.get('learning_rate', None)
         if md is not None: self.model.load_state_dict(md)
         if round is not None: self.current_round = round + 1
+        if output is not None: self.gv.logger.output = output
+        if time is not None: self.gv.clock.set_time(time)
+        if learning_rate is not None: self.learning_rate = learning_rate
         if early_stop_option is not None:
             self.gv.logger._es_best_score = early_stop_option['_es_best_score']
             self.gv.logger._es_best_round = early_stop_option['_es_best_round']
             self.gv.logger._es_patience = early_stop_option['_es_patience']
-        if output is not None:
-            self.gv.logger.output = output
-        if time is not None:
-            self.gv.clock.set_time(time)
+
 
     def _load_checkpoint(self):
         checkpoint = self.option.get('load_checkpoint', '')
