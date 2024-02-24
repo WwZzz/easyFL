@@ -1,7 +1,7 @@
-from flgo.benchmark.toolkits.series.time_series_forecasting import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
+from flgo.benchmark.toolkits.series.forecasting import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 import os
 import flgo
-from flgo.benchmark.toolkits.series.time_series_forecasting.datasets import Electricity
+from flgo.benchmark.toolkits.series.forecasting.datasets import Electricity
 
 path = os.path.join(flgo.benchmark.data_root, 'ELECTRICITY')
 builtin_class = Electricity

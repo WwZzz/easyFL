@@ -22,6 +22,7 @@ import networkx as nx
 import numpy as np
 import collections
 import torch
+from torch.utils.data import ConcatDataset
 try:
     import community.community_louvain
 except:
@@ -608,6 +609,44 @@ class LinkDirichletPartitioner(DirichletPartitioner):
         self.local_datas = local_datas
         return local_datas
 
+class DeconcatPartitioner(BasicPartitioner):
+    def __init__(self, num_clients:int=-1, min_vol:int=3):
+        self.num_clients = num_clients
+        self.min_vol = min_vol
+
+    def __str__(self):
+        return 'Deconcat'
+
+    def __call__(self, data):
+        assert isinstance(data, ConcatDataset)
+        crt_idx = 0
+        local_datas = []
+        for cdata in data.datasets:
+            if len(cdata)<self.min_vol: continue
+            local_datas.append([crt_idx+i for i in range(len(cdata))])
+            crt_idx += len(cdata)
+        if self.num_clients<0: self.num_clients = len(local_datas)
+        self.num_clients = min(self.num_clients, len(local_datas))
+        if self.num_clients<len(local_datas): local_datas = local_datas[:self.num_clients]
+        return local_datas
+
+class MultiConcatPartitioner(BasicPartitioner):
+    def __init__(self, num_clients=-1, imbalance=0.0):
+        self.num_clients = num_clients
+        self.imbalance = imbalance
+
+    def __str__(self):
+        return 'MultiConcat'
+
+    def __call__(self, data):
+        assert isinstance(data, ConcatDataset)
+        if self.num_clients==-1: self.num_clients = len(data.datasets)
+        self.num_clients = min(self.num_clients, len(data.datasets))
+        samples_per_client = self.data_imbalance_generator(self.num_clients, len(data.datasets), self.imbalance)
+        d_idxs = np.random.permutation(len(data.datasets))
+        local_datas = np.split(d_idxs, np.cumsum(samples_per_client))[:-1]
+        local_datas = [di.tolist() for di in local_datas]
+        return local_datas
 
 # class KMeansPartitioner(BasicPartitioner):
 #     """`Partition the indices of samples in the original dataset

@@ -1,7 +1,7 @@
-from flgo.benchmark.toolkits.series.time_series_classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
+from flgo.benchmark.toolkits.series.classification import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 import os
 import flgo
-from flgo.benchmark.toolkits.series.time_series_classification.datasets import UCRArchiveDataset
+from flgo.benchmark.toolkits.series.classification.datasets import UCRArchiveDataset
 
 path = os.path.join(flgo.benchmark.data_root,  'UCRArchive')
 builtin_class = UCRArchiveDataset

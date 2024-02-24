@@ -5,7 +5,7 @@ import flgo.benchmark
 from flgo.utils.fmodule import FModule
 
 import os
-from flgo.benchmark.toolkits.series.time_series_classification.datasets import UCRArchiveDataset
+from flgo.benchmark.toolkits.series.classification.datasets import UCRArchiveDataset
 
 class Model(FModule):
     def __init__(self):

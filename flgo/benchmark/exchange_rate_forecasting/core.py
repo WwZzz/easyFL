@@ -1,7 +1,7 @@
-from flgo.benchmark.toolkits.series.time_series_forecasting import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
+from flgo.benchmark.toolkits.series.forecasting import BuiltinClassGenerator, BuiltinClassPipe, GeneralCalculator
 import os
 import flgo
-from flgo.benchmark.toolkits.series.time_series_forecasting.datasets import BuiltinClassDataset
+from flgo.benchmark.toolkits.series.forecasting.datasets import BuiltinClassDataset
 from flgo.benchmark.toolkits import download_from_url, extract_from_gz, normalized
 import numpy as np
 import ujson as json

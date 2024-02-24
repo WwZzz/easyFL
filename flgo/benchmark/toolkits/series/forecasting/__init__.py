@@ -3,10 +3,15 @@ import math
 import flgo
 import numpy
 import torch
-
-from flgo.benchmark.base import *
-
-class BuiltinClassGenerator(BasicTaskGenerator):
+import os
+import flgo.benchmark.base as fbb
+from torch.utils.data import Subset
+import torch.nn.functional as F
+try:
+    import ujson as json
+except:
+    import json
+class BuiltinClassGenerator(fbb.BasicTaskGenerator):
     r"""
     Generator for the time series dataset.
 
@@ -45,7 +50,7 @@ class BuiltinClassGenerator(BasicTaskGenerator):
         self.local_datas = self.partitioner(self.train_data)
         self.num_clients = len(self.local_datas)
 
-class BuiltinClassPipe(BasicTaskPipe):
+class BuiltinClassPipe(fbb.BasicTaskPipe):
     r"""
     TaskPipe for the time series dataset.
 
@@ -132,74 +137,134 @@ class BuiltinClassPipe(BasicTaskPipe):
             task_data[cname] = {'train':cdata_train, 'val':cdata_val, 'test': cdata_test}
         return task_data
 
-class GeneralCalculator(BasicTaskCalculator):
-    r"""
-    Calculator for the time series dataset.
+class FromDatasetGenerator(fbb.FromDatasetGenerator):
+    def __init__(self, seq_len=None, train_data=None, val_data=None, test_data=None):
+        super(FromDatasetGenerator, self).__init__(benchmark=os.path.split(os.path.dirname(__file__))[-1],
+                                            train_data=train_data, val_data=val_data, test_data=test_data)
+        self.seq_len = seq_len
+        if self.seq_len is not None:
+            if self.train_data is not None and hasattr(self.train_data, 'set_len'):
+                self.train_data.set_len(*seq_len)
+            if self.test_data is not None and hasattr(self.test_data, 'set_len'):
+                self.test_data.set_len(*seq_len)
+            if self.val_data is not None and hasattr(self.val_data, 'set_len'):
+                self.val_data.set_len(*seq_len)
 
-    Args:
-        device (torch.device): device
-        optimizer_name (str): the name of the optimizer
-    """
+class FromDatasetPipe(fbb.FromDatasetPipe):
+    TaskDataset = Subset
+    def __init__(self, task_path, train_data=None, val_data=None, test_data=None):
+        super(FromDatasetPipe, self).__init__(task_path, train_data=train_data, val_data=val_data, test_data=test_data)
+
+    def save_task(self, generator):
+        client_names = self.gen_client_names(len(generator.local_datas))
+        feddata = {'client_names': client_names}
+        for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
+        if hasattr(generator, 'seq_len') and generator.seq_len is not None:
+            feddata['seq_len'] = generator.seq_len
+        with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
+            json.dump(feddata, outf)
+        return
+
+    def split_dataset(self, dataset, p=0.0):
+        if p == 0: return dataset, None
+        s1 = int(len(dataset) * p)
+        s2 = len(dataset) - s1
+        if s1==0:
+            return dataset, None
+        elif s2==0:
+            return None, dataset
+        else:
+            all_idx = list(range(len(dataset)))
+            d1_idx = all_idx[:s2]
+            d2_idx = all_idx[s2:]
+            return Subset(dataset, d1_idx), Subset(dataset, d2_idx)
+
+    def load_data(self, running_time_option) -> dict:
+        train_data = self.train_data
+        test_data = self.test_data
+        val_data = self.val_data
+        seq_len = self.feddata.get('seq_len', None)
+        if seq_len is not None:
+            if hasattr(self.train_data, 'set_len'):
+                self.train_data.set_len(*seq_len)
+            if hasattr(self.val_data, 'set_len'):
+                self.val_data.set_len(*seq_len)
+            if hasattr(self.test_data, 'set_len'):
+                self.test_data.set_len(*seq_len)
+        # rearrange data for server
+        if val_data is None:
+            server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
+        else:
+            server_data_test = test_data
+            server_data_val = val_data
+        task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
+        # rearrange data for clients
+        for cid, cname in enumerate(self.feddata['client_names']):
+            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'])
+            cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
+            if running_time_option['train_holdout']>0 and running_time_option['local_test']:
+                cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
+            else:
+                cdata_test = None
+            task_data[cname] = {'train':cdata_train, 'val':cdata_val, 'test': cdata_test}
+        return task_data
+
+
+class GeneralCalculator(fbb.BasicTaskCalculator):
     def __init__(self, device, optimizer_name='sgd'):
         super(GeneralCalculator, self).__init__(device, optimizer_name)
         self.criterion = torch.nn.MSELoss()
         self.DataLoader = torch.utils.data.DataLoader
 
+    def to_device(self, data):
+        if len(data)==2:
+            return data[0].to(self.device), data[1].to(self.device)
+        elif len(data)==4:
+            x,y = data[0].to(self.device), data[1].to(self.device)
+            if isinstance(data[2], torch.Tensor):
+                return x,y, data[2].to(self.device), data[3].to(self.device)
+            else:
+                return x,y, data[2],data[3]
+
     def compute_loss(self, model, data):
-        """
-        Args:
-            model: the model to train
-            data: the training dataset
-        Returns: dict of train-one-step's result, which should at least contains the key 'loss'
-        """
-        tdata = self.to_device(data)
-        outputs = model(tdata[0])
-        loss = self.criterion(outputs, tdata[1])
+        data = self.to_device(data)
+        if len(data)==2:
+            x, y = data
+            ypred = model(x)
+        elif len(data)==4:
+            x, y, xmark, ymark = data
+            ypred = model(x, xmark, ymark)
+        loss = self.criterion(ypred, y)
         return {'loss': loss}
 
     @torch.no_grad()
     def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
         """
-        Metric = [rse, corr]
+        Metric = [mean_accuracy, mean_loss]
 
         Args:
             model:
             dataset:
             batch_size:
-        Returns: [rse, corr]
+        Returns: [mean_accuracy, mean_loss]
         """
         model.eval()
-        if batch_size==-1:batch_size=len(dataset)
+        if batch_size == -1: batch_size = len(dataset)
         data_loader = self.get_dataloader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
-        predict = None
-        Y = None
+        mse = 0.0
+        mae = 0.0
         for batch_id, batch_data in enumerate(data_loader):
             batch_data = self.to_device(batch_data)
-            outputs = model(batch_data[0])
-            if predict is None:
-                predict = outputs
-                Y = batch_data[1]
-            else:
-                predict = torch.cat((predict, outputs))
-                Y = torch.cat((Y, batch_data[1]))
-        return {'rse': self.RSE(predict, Y), 'corr': self.CORR(predict, Y)}
+            if len(batch_data) == 2:
+                x, y = batch_data
+                outputs = model(x)
+            elif len(batch_data) == 4:
+                x, y, xmark, ymark = batch_data
+                outputs = model(x, xmark, ymark)
+            batch_mse = self.criterion(outputs, y).item()
+            batch_mae = F.l1_loss(outputs, y).item()
+            mse += batch_mse * len(batch_data[-1])
+            mae += batch_mae * len(batch_data[-1])
+        return {'mse': mse / len(dataset), 'mae': mae / len(dataset)}
 
-    def to_device(self, data):
-        return data[0].to(self.device), data[1].to(self.device)
 
-    def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False, *args, **kwargs):
-        if self.DataLoader == None:
-            raise NotImplementedError("DataLoader Not Found.")
-        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last)
-
-    def RSE(self, predict, Ytest):
-        mean = Ytest.mean(dim=0)
-        sum1 = ((Ytest - predict)**2).sum().item()
-        sum2 = ((Ytest - mean)**2).sum().item()
-        return math.sqrt(sum1/sum2)
-
-    def CORR(self, predict, Ytest):
-        mean_1 = predict.mean(dim=0)
-        mean_2 = Ytest.mean(dim=0)
-        corr = ((Ytest - mean_2) * (predict - mean_1)).sum(dim=1) / torch.sqrt(((Ytest - mean_2)**2) * ((predict - mean_1)**2)).sum(dim=1)
-        return corr.mean().item()

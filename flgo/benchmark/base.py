@@ -291,6 +291,8 @@ class BasicTaskPipe(AbstractTaskPipe):
             info['bmk_path'] = os.path.dirname(generator.__module__.__file__)
         except:
             pass
+        if hasattr(generator, 'partitioner'):
+            info['partitioner'] = str(generator.partitioner)
         with open(os.path.join(self.task_path, 'info'), 'w') as outf:
             json.dump(info, outf)
 
