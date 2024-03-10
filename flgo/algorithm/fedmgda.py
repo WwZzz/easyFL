@@ -1,6 +1,8 @@
 """
 This is a non-official implementation of 'FedMGDA+: Federated Learning meets Multi-objective Optimization' (http://arxiv.org/abs/2006.11489)
 """
+import torch
+
 from flgo.utils import fmodule
 from flgo.algorithm.fedbase import BasicServer
 from flgo.algorithm.fedavg import Client
@@ -15,7 +17,12 @@ class Server(BasicServer):
     def aggregate(self, models: list, *args, **kwargs):
         # calculate normalized gradients
         grads = [self.model - w for w in models]
-        for gi in grads: gi.normalize()
+        for i in range(len(grads)):
+            gi_norm = 0.0
+            for p in grads[i].parameters():
+                gi_norm += (p**2).sum()
+            grads[i] = grads[i]/(torch.sqrt(gi_norm) + 1e-8)
+        # for gi in grads: gi.normalize()
         # calculate λ0
         nks = [len(self.clients[cid].train_data) for cid in self.received_clients]
         nt = sum(nks)
