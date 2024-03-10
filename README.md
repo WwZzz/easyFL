@@ -15,7 +15,9 @@
 Our FLGo is a strong and reusable experimental platform for research on federated learning (FL) algorithm, which has provided a few easy-to-use modules to hold out for those who want to do various federated learning experiments. 
 
 Welcome to our FLGo's WeChat group for more technical discussion.
-![86024fc7d678820d777d380aa4856da](https://github.com/WwZzz/easyFL/assets/20792079/7bc65fc8-9c54-443f-b9e3-9c79a59fc425)
+![2d765fe5ff67d3702d882dbec68ca31](https://github.com/WwZzz/easyFL/assets/20792079/c4b6f0f3-2d88-4c78-974e-a12c23d482b5)
+
+
 
 
 
@@ -62,7 +64,7 @@ task_path = './my_first_task'
 task_config = {'benchmark':{'name': 'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDPartitioner', 'para':{'num_clients':100}}}
 
 # generate the task if the task doesn't exist
-if not os.path.exist(task_path):
+if not os.path.exists(task_path):
     flgo.gen_task(task_config, task_path)
 ```
 *After running the codes above, a federated dataset is successfully created in the task_path. The visualization of the task is stored in **task_path/res.png** as below*
