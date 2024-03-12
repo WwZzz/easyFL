@@ -75,7 +75,7 @@ if not os.path.exists(task_path):
 ```
 import flgo.algorithm.fedavg as fedavg
 # create fedavg runner on the task
-runner = flgo.init(task, fedavg, {'gpu':[0,],'log_file':True, 'num_steps':5})
+runner = flgo.init(task_path, fedavg, {'gpu':[0,],'log_file':True, 'num_steps':5})
 runner.run()
 ```
 
