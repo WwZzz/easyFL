@@ -84,6 +84,7 @@ class Server(fedavg.Server):
         self._lock_exit.acquire()
         self._exit = True
         self._lock_exit.release()
+        self.logger.info("Server was closed")
         return
 
     def add_buffer(self, x:dict):
@@ -135,7 +136,7 @@ class Server(fedavg.Server):
         return
 
     def if_start(self):
-        return self.num_clients>=1
+        return self.num_clients>=2
 
     def register_handler(self, worker_id, client_id, received_pkg):
         valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
@@ -394,6 +395,7 @@ class Client(fedavg.Client):
         self.actions = {
             '0': self.reply,
         }
+        self.timeout_register = 5000
 
     def val_metric(self, package):
         model = package['model']
@@ -410,10 +412,21 @@ class Client(fedavg.Client):
         metrics = self.test(model, 'train')
         return metrics
 
+    def set_timeout_register(self, t=5000):
+        self.timeout_register = t
+
     def register(self):
         self.logger.info("%s Registering..." % self.name)
-        self.registrar.send_pyobj({"name": self.name})
-        reply = self.registrar.recv_pyobj()
+        if self.timeout_register>0:
+            self.registrar.setsockopt(zmq.RCVTIMEO, self.timeout_register)
+        try:
+            self.registrar.send_pyobj({"name": self.name})
+            reply = self.registrar.recv_pyobj()
+        except zmq.error.Again as e:
+            self.logger.info("Server temporarily unavailable")
+            self.do_exit()
+            exit(0)
+
         if '__option__' in reply: self.set_option(reply['__option__'])
         if 'algo_para' in reply and isinstance(reply['algo_para'], dict):
             self.option['algo_para'] = reply['algo_para']
@@ -422,6 +435,10 @@ class Client(fedavg.Client):
 
     def message_handler(self, package, *args, **kwargs):
         mtype = package['__mtype__']
+        if package['__mtype__'] == 'close':
+            self.sender.send_string(self.name, zmq.SNDMORE)
+            self.sender.send_pyobj({'__mtype__': "close"})
+            return True
         action = self.default_action if mtype not in self.actions else self.actions[mtype]
         response = action(package)
         assert isinstance(response, dict)
@@ -432,7 +449,7 @@ class Client(fedavg.Client):
         self.logger.info("{} Sending the package of size {}MB to the server...".format(self.name, len(msg)/1024/1024))
         self.sender.send(msg)
         # self.sender.send_pyobj(response)
-        return
+        return False
 
     def is_exit(self):
         self._lock_exit.acquire()
@@ -440,10 +457,11 @@ class Client(fedavg.Client):
         self._lock_exit.release()
         return res
 
-    def set_exit(self):
+    def do_exit(self):
         self._lock_exit.acquire()
         self._exit = True
         self._lock_exit.release()
+        self.logger.info("%s was closed" % self.name)
         return
 
     def _heart_beat(self):
@@ -468,15 +486,12 @@ class Client(fedavg.Client):
                 package = self.receiver._deserialize(package_msg, pickle.loads)
                 # package = self.receiver.recv_pyobj()
                 assert '__mtype__' in package
-                if package['__mtype__']=='close':
-                    self.sender.send_string(self.name, zmq.SNDMORE)
-                    self.sender.send_pyobj({'__mtype__':"close"})
-                    break
                 package['__size__'] = package_size/1024/1024 #MB
                 if '__round__' in package.keys():
                     self.round = package['__round__']
                     self.logger.info("{} is selected at round {} and has received the package of {}MB".format(self.name, package['__round__'], package['__size__']))
-                self.message_handler(package)
+                do_break = self.message_handler(package)
+                if do_break: break
         return
 
     def run(self, server_ip='127.0.0.1', server_port='5555', protocol:str='tcp'):
@@ -538,11 +553,10 @@ class Client(fedavg.Client):
                 self.message_handler(package)
             if time.time() - self._server_alive_timestamp>=self._server_timeout:
                 self.logger.info("Lose connection to the server")
-                self.set_exit()
+                self.do_exit()
                 break
-        self.logger.info("%s has been closed" % self.name)
         torch.cuda.empty_cache()
-        self.set_exit()
+        self.do_exit()
         exit(0)
 
     def set_option(self, option:dict={}):

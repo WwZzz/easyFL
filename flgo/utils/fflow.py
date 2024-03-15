@@ -544,14 +544,16 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     option['algorithm'] = (algorithm.__name__).split('.')[-1]
     option['scene'] = scene
     option['simulator'] = Simulator.__name__ if Simulator is not None else 'None'
-    # option['server_with_cpu'] = True if (option['num_parallels']>1 and len(option['gpu'])>1) else option['server_with_cpu']
-    # init task info
+
+    # init task information
     if not os.path.exists(task):
         raise FileExistsError("Fedtask '{}' doesn't exist. Please generate the specified task by flgo.gen_task().")
     with open(os.path.join(task, 'info'), 'r') as inf:
         task_info = json.load(inf)
+    # benchmark information
     benchmark = task_info['benchmark']
     if 'bmk_path' in task_info and os.path.isdir(task_info['bmk_path']): sys.path.append(task_info['bmk_path'])
+    # model information
     if model== None:
         bmk_module = importlib.import_module(benchmark)
         if hasattr(algorithm, 'init_global_module') or hasattr(algorithm, 'init_local_module'):
@@ -561,28 +563,29 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         else:
             raise NotImplementedError("Model cannot be None when there exists no default model for the current benchmark {} and the algorithm {} didn't define the model by `init_local_module` or `init_global_module`".format(task_info['benchmark'], option['algorithm']))
     option['model'] = (model.__name__).split('.')[-1]
+
     # create global variable
     gv = GlobalVariable()
     # init logger
-    if Logger is None:
-        if scene=='horizontal':
-            Logger = felp.SimpleLogger
-        elif scene=='vertical':
-            Logger = felp.VerticalLogger
-        elif scene=='decentralized':
-            Logger = felp.DecLogger
-        elif scene=='hierarchical':
-            Logger = felp.HierLogger
-        elif scene=='parallel_horizontal':
-            Logger = felp.ParallelHFLLogger
-        elif scene=='real_hserver' or scene=='real_hclient':
-            Logger = felp.ParallelHFLLogger
+    default_scene_logger = {
+        'horizontal': felp.SimpleLogger,
+        'vertical': felp.VerticalLogger,
+        'real_hclient': felp.ParallelHFLLogger,
+        'real_hserver': felp.ParallelHFLLogger,
+        'parallel_horizontal': felp.ParallelHFLLogger,
+        'decentralized': felp.DecLogger,
+        'hierarchical':felp.HierLogger,
+    }
+    assert scene in default_scene_logger.keys()
+    if Logger is None: Logger = default_scene_logger[scene]
     logger = Logger(task=task, option=option, name=str(id(gv))+str(Logger), level=option['log_level'])
     gv.logger = logger
+
     # init device
     gv.dev_list = [torch.device('cpu')] if (option['gpu'] is None or len(option['gpu'])==0) else [torch.device('cuda:{}'.format(gpu_id)) for gpu_id in option['gpu']]
     logger.info('PROCESS ID:\t{}'.format(os.getpid()))
     logger.info('Initializing devices: '+','.join([str(dev) for dev in gv.dev_list])+' will be used for this running.')
+
     # init task
     logger.info('BENCHMARK:\t{}'.format(benchmark))
     logger.info('TASK:\t\t\t{}'.format(task))
@@ -594,82 +597,67 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     TaskCalculator = getattr(importlib.import_module(core_module), 'TaskCalculator')
     gv.TaskCalculator = TaskCalculator
     setup_seed(option['dataseed'])
-    if 'real' not in scene:
+
+    # scene-specific procedure
+    ############################################### Simulation FL ###########################################
+    if scene in ['horizontal', 'vertical', 'decentralized', 'hierarchical','parallel_horizontal']:
         task_data = task_pipe.load_data(option)
-    else:
-        sys.path.append(task)
-        task_config = importlib.import_module('_dataset')
-        train_data = getattr(task_config, 'train_data') if hasattr(task_config, 'train_data') else None
-        test_data = getattr(task_config, 'test_data') if hasattr(task_config, 'test_data') else None
-        val_data = getattr(task_config, 'val_data') if hasattr(task_config, 'val_data') else None
-        task_data = {'train':train_data, 'test':test_data, 'val':val_data}
-    # init objects
-    obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
-    tmp = []
-    for c in obj_class:
-        try:
-            C = getattr(algorithm, c)
-            setattr(C, 'gv', gv)
-            setattr(C, 'TaskCalculator', TaskCalculator)
-            tmp.append(c)
-        except:
-            continue
-    # init simulator
-    if scene=='horizontal':
+        # init objects
+        obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
+        tmp = []
         for c in obj_class:
-            if 'Client' in c:
-                class_client = getattr(algorithm, c)
-                class_client.train = flgo.simulator.base.with_completeness(class_client.train)
-            elif 'Server' in c:
-                class_server = getattr(algorithm, c)
-                class_server.sample = flgo.simulator.base.with_availability(class_server.sample)
-                class_server.communicate_with = flgo.simulator.base.with_latency(class_server.communicate_with)
-                class_server.communicate = flgo.simulator.base.with_dropout(class_server.communicate)
-    objects = task_pipe.generate_objects(option, algorithm, scene=scene)
-    if scene=='real_hclient':
-        name_path = os.path.join(task, 'name')
-        if not os.path.exists(name_path):
-            name = _get_name()
-            with open(name_path, 'w') as namefile:
-                namefile.write(name)
-        with open(name_path, 'r') as namefile:
-            objects[0].name = namefile.readline()
-    obj_classes = collections.defaultdict(int)
-    for obj in objects: obj_classes[obj.__class__]+=1
-    creating_str = []
-    for k,v in obj_classes.items(): creating_str.append("{} {}".format(v, k))
-    creating_str = ', '.join(creating_str)
-    logger.info('SCENE:\t\t{} FL with '.format(scene)+creating_str)
-    if 'real' in scene:
-        task_data = {objects[0].name: task_data}
-        objects[0].logger = Logger
-    task_pipe.distribute(task_data, objects)
-    # init model
-    if hasattr(model, 'init_local_module'):
-        for object in objects:
-            model.init_local_module(object)
-    if hasattr(model, 'init_global_module'):
-        for object in objects:
-            model.init_global_module(object)
-    if hasattr(model, 'init_dataset'):
-        for object in objects:
-            model.init_dataset(object)
-    setup_seed(option['seed']+346)
-    # init communicator
-    gv.communicator = flgo.VirtualCommunicator(objects)
-    if 'real' not in scene:
+            try:
+                C = getattr(algorithm, c)
+                setattr(C, 'gv', gv)
+                setattr(C, 'TaskCalculator', TaskCalculator)
+                tmp.append(c)
+            except:
+                continue
+        if scene == 'horizontal':
+            for c in obj_class:
+                if 'Client' in c:
+                    class_client = getattr(algorithm, c)
+                    class_client.train = flgo.simulator.base.with_completeness(class_client.train)
+                elif 'Server' in c:
+                    class_server = getattr(algorithm, c)
+                    class_server.sample = flgo.simulator.base.with_availability(class_server.sample)
+                    class_server.communicate_with = flgo.simulator.base.with_latency(class_server.communicate_with)
+                    class_server.communicate = flgo.simulator.base.with_dropout(class_server.communicate)
+        objects = task_pipe.generate_objects(option, algorithm, scene=scene)
+        obj_classes = collections.defaultdict(int)
+        for obj in objects: obj_classes[obj.__class__] += 1
+        creating_str = []
+        for k, v in obj_classes.items(): creating_str.append("{} {}".format(v, k))
+        creating_str = ', '.join(creating_str)
+        logger.info('SCENE:\t\t{} FL with '.format(scene) + creating_str)
+        task_pipe.distribute(task_data, objects)
+
+        # init model
+        if hasattr(model, 'init_local_module'):
+            for object in objects:
+                model.init_local_module(object)
+        if hasattr(model, 'init_global_module'):
+            for object in objects:
+                model.init_global_module(object)
+        if hasattr(model, 'init_dataset'):
+            for object in objects:
+                model.init_dataset(object)
+        setup_seed(option['seed'] + 346)
+
+        # init communicator
+        gv.communicator = flgo.VirtualCommunicator(objects)
         logger.info('SIMULATOR:\t{}'.format(str(Simulator)))
         gv.clock = flgo.simulator.base.ElemClock()
         gv.simulator = Simulator(objects, option) if scene == 'horizontal' else None
         if gv.simulator is not None: gv.simulator.initialize()
         gv.clock.register_simulator(simulator=gv.simulator)
-    for ob in objects: ob.initialize()
-    if 'real' not in scene:
+
+        # final initialize
+        for ob in objects: ob.initialize()
+
         # init virtual system environment
-        # flgo.simulator.base.random_seed_gen = flgo.simulator.base.seed_generator(option['seed'])
-        logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects = objects, simulator=Simulator.__name__ if scene == 'horizontal' else 'None')
-        if scene=='horizontal':
-            logger.register_variable(server=objects[0], clients=objects[1:])
+        logger.register_variable(coordinator=objects[0], participants=objects[1:], option=option, clock=gv.clock, scene=scene, objects=objects, simulator=Simulator.__name__ if scene == 'horizontal' else 'None')
+        if scene == 'horizontal': logger.register_variable(server=objects[0], clients=objects[1:])
         logger.initialize()
         logger.info('Ready to start.')
         # register global variables for objects
@@ -685,19 +673,71 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
             gv.simulator.gv = gv
         gv.clock.gv = gv
         logger.gv = gv
-    if scene=='parallel_horizontal':
-        for obj in objects: obj.logger = Logger
-        class HParallelRunner:
-            def __init__(self, objects:list):
-                self.objects = objects
-                self.plist = []
+        if scene=='parallel_horizontal':
+            for obj in objects: obj.logger = Logger
+            class HParallelRunner:
+                def __init__(self, objects:list):
+                    self.objects = objects
+                    self.plist = []
 
-            def run(self):
-                for obj in self.objects:
-                    p = torch.multiprocessing.Process(target=obj.run, )
-                    p.start()
-                    self.plist.append(p)
-        objects = [HParallelRunner(objects)]
+                def run(self):
+                    for obj in self.objects:
+                        p = torch.multiprocessing.Process(target=obj.run, )
+                        p.start()
+                        self.plist.append(p)
+            objects = [HParallelRunner(objects)]
+    ############################################### Real World FL #####################################################
+    else:
+        # load task data
+        sys.path.append(task)
+        task_config = importlib.import_module('_dataset')
+        train_data = getattr(task_config, 'train_data') if hasattr(task_config, 'train_data') else None
+        test_data = getattr(task_config, 'test_data') if hasattr(task_config, 'test_data') else None
+        val_data = getattr(task_config, 'val_data') if hasattr(task_config, 'val_data') else None
+        task_data = {'train':train_data, 'test':test_data, 'val':val_data}
+
+        # init objects
+        obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
+        tmp = []
+        for c in obj_class:
+            try:
+                C = getattr(algorithm, c)
+                setattr(C, 'gv', gv)
+                setattr(C, 'TaskCalculator', TaskCalculator)
+                tmp.append(c)
+            except:
+                continue
+        # distribute local data to objects
+        objects = task_pipe.generate_objects(option, algorithm, scene=scene)
+        if scene=='real_hclient':
+            # load self name in the current task
+            name_path = os.path.join(task, 'name')
+            if not os.path.exists(name_path):
+                name = _get_name()
+                with open(name_path, 'w') as namefile:
+                    namefile.write(name)
+            with open(name_path, 'r') as namefile:
+                objects[0].name = namefile.readline()
+        obj_classes = collections.defaultdict(int)
+        for obj in objects: obj_classes[obj.__class__]+=1
+        creating_str = []
+        for k,v in obj_classes.items(): creating_str.append("{} {}".format(v, k))
+        creating_str = ', '.join(creating_str)
+        logger.info('SCENE:\t\t{} FL with '.format(scene)+creating_str)
+        task_data = {objects[0].name: task_data}
+        objects[0].logger = Logger
+        task_pipe.distribute(task_data, objects)
+        # init model
+        if hasattr(model, 'init_local_module'):
+            for object in objects: model.init_local_module(object)
+        if hasattr(model, 'init_global_module'):
+            for object in objects: model.init_global_module(object)
+        if hasattr(model, 'init_dataset'):
+            for object in objects: model.init_dataset(object)
+        setup_seed(option['seed']+346)
+        # init communicator
+        gv.communicator = flgo.VirtualCommunicator(objects)
+        for ob in objects: ob.initialize()
     return objects[0]
 
 def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, scene, send_end):
@@ -1223,6 +1263,15 @@ def gen_empty_task(benchmark, task_path:str, scene:str="unknown"):
     return task_path
 
 def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
+    """
+        Compress an existing task folder into a .zip file. The zipped task can be transmitted to others.
+    Args:
+        task_path (str): the task path
+        target_path= (str): the target directory to save the zipped file
+        with_bmk (bool): whether to zip the benchmark codes together
+    Return:
+        output_path (str): the path of the zipped task
+    """
     if not os.path.exists(task_path):
         raise FileNotFoundError("Task {} doesn't exist.".format(task_path))
     if not os.path.isdir(target_path):
@@ -1271,6 +1320,16 @@ def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
     return output_path
 
 def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True):
+    """
+    Pull task from the server at given ip address. The pulled task will be a zip file that can be extracted to the federated task in flgo.
+    Args:
+        address (str): the ip address of the server
+        task_name= (str): the name of the task
+        target_path= (str): the target directory to save the zipped file
+        unzip (bool): whether to unzip the pulled task
+    Return:
+        output_path (str): the path of the zipped task
+    """
     if os.path.exists(os.path.join(target_path, task_name)):
         raise FileExistsError("Task %s already exists."%os.path.join(target_path, task_name))
     task_zip = os.path.basename(task_name)+'.zip'
