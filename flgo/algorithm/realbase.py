@@ -188,12 +188,13 @@ class Server(fedavg.Server):
                     self.logger.info("{} was successfully closed.".format(name))
                 else:
                     self.add_buffer({'name': name, 'package': d})
-                    self.logger.info("Received package of size {}MB from {} at round {}".format(package_size, name,
+                    self.logger.info("Server Received package of size {}MB from {} at round {}".format(package_size, name,
                                                                                                 self.current_round))
             if self.alive_detector in events and events[self.alive_detector]==zmq.POLLIN:
                 name, _ = self.alive_detector.recv_multipart()
-                # self.logger.debug("Client %s is alive"%name.decode('utf-8'))
-                self._set_alive(name.decode('utf-8'), time.time())
+                t = time.time()
+                self.logger.debug(f"Client {name.decode('utf-8')} is alive at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                self._set_alive(name.decode('utf-8'), t)
                 self.alive_detector.send(b"")
     @property
     def clients(self):
@@ -222,7 +223,7 @@ class Server(fedavg.Server):
     def available_clients(self):
         crt_timestamp = time.time()
         self._lock_alive.acquire()
-        avl_clients = [name for name in self._alive_state if crt_timestamp-self._alive_state<=self._avalability_timeout]
+        avl_clients = [name for name in self._alive_state if crt_timestamp-self._alive_state[name]<=self._avalability_timeout]
         res = {k:v for k,v in self.clients.items() if v in avl_clients}
         self._lock_alive.release()
         return res
@@ -395,7 +396,8 @@ class Client(fedavg.Client):
         self.actions = {
             '0': self.reply,
         }
-        self.timeout_register = 5000
+        self.timeout_register = 5
+        self.heartbeat_interval = 30
 
     def val_metric(self, package):
         model = package['model']
@@ -412,13 +414,13 @@ class Client(fedavg.Client):
         metrics = self.test(model, 'train')
         return metrics
 
-    def set_timeout_register(self, t=5000):
+    def set_timeout_register(self, t=5):
         self.timeout_register = t
 
     def register(self):
         self.logger.info("%s Registering..." % self.name)
         if self.timeout_register>0:
-            self.registrar.setsockopt(zmq.RCVTIMEO, self.timeout_register)
+            self.registrar.setsockopt(zmq.RCVTIMEO, self.timeout_register*1000)
         try:
             self.registrar.send_pyobj({"name": self.name})
             reply = self.registrar.recv_pyobj()
@@ -467,8 +469,8 @@ class Client(fedavg.Client):
     def _heart_beat(self):
         while not self.is_exit():
             try:
+                time.sleep(self.heartbeat_interval)
                 self.heart_beator.send(b"")
-                time.sleep(10)
             except Exception as e:
                 self.logger.info(e)
                 continue
@@ -524,6 +526,9 @@ class Client(fedavg.Client):
         self._poller.register(self.receiver, zmq.POLLIN)
         self._poller.register(self.heart_beator, zmq.POLLIN)
 
+        self._thread_heartbeat = threading.Thread(target=self._heart_beat)
+        self._thread_heartbeat.start()
+
         self.logger.info(f"{self.name} Ready For Training...")
         self.logger.info("---------------------------------------------------------------------")
         # threading.Thread(target=self._heart_beat).start()
@@ -531,9 +536,9 @@ class Client(fedavg.Client):
         self._server_alive_timestamp = time.time()
         while True:
             events = dict(self._poller.poll(10000))
-            if self.heart_beator in events and events[self.heart_beator] == zmq.POLLIN:
-                _ = self.heart_beator.recv()
-                self._server_alive_timestamp = time.time()
+            # if self.heart_beator in events and events[self.heart_beator] == zmq.POLLIN:
+            #     _ = self.heart_beator.recv()
+            #     self._server_alive_timestamp = time.time()
             if self.receiver in events and events[self.receiver]==zmq.POLLIN:
                 name = self.receiver.recv_string()
                 assert name==self.name
