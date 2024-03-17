@@ -15,8 +15,7 @@
 Our FLGo is a strong and reusable experimental platform for research on federated learning (FL) algorithm, which has provided a few easy-to-use modules to hold out for those who want to do various federated learning experiments. 
 
 Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
-![490003683a28e6e8cbf5c2abc7f8292](https://github.com/WwZzz/easyFL/assets/20792079/0de90155-0adc-4d88-85df-23b4e8f7dee2)
-![_7C3FAWT6TA{EHA`WRSIZPY](https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c)
+![WeChat](https://github.com/WwZzz/easyFL/assets/20792079/0de90155-0adc-4d88-85df-23b4e8f7dee2)![QQ](https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c)
 
 
 
