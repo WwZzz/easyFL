@@ -255,6 +255,17 @@ class Server(fedavg.Server):
         return b"".join(self._zipped_task)
 
     def run(self, ip:str='*', port:str='5555', protocol:str='tcp', port_task:str=''):
+        """
+        Start the parameter server process that listens to the public address 'server_ip:server:port' for clients. Each client can connect to this public address to join in training.
+        >>> import flgo.algorithm.realbase as realbase
+        >>> task = flgo.gen_task(...)
+        >>> server_runner = flgo.init(task, realbase, scene='real_hserver')
+        >>> server_runner.run(port='5555')
+        Args:
+            server_ip (str): ip address
+            server_port (str): public port for client registration, default is 5555
+            protocol (str): the communication protocol, default is TCP
+        """
         if 'real' in self.option['scene']: self._read_zipped_task()
         self.logger = self.logger(task=self.option['task'], option=self.option, name=self.name+'_'+str(self.logger), level=self.option['log_level'])
         self.logger.register_variable(object=self, server=self)
@@ -498,11 +509,17 @@ class Client(fedavg.Client):
 
     def run(self, server_ip:str='127.0.0.1', server_port: str='5555', protocol:str='tcp'):
         """
-        Start the parameter server process that listens to the public address 'server_ip:server:port' for clients. Each client can connect to this public address to join in training.
+        Start the client process that connects to the public address 'server_ip:server:port' of the parameter server..
         >>> import flgo.algorithm.realbase as realbase
-        >>> task = flgo.gen_task(...)
-        >>> server_runner = flgo.init(task, realbase, scene='real_hserver')
-        >>> server_runner.run(port='5555')
+        >>> import flgo
+        >>> server_ip = '127.0.0.1'
+        >>> server_task_port = ...
+        >>> server_register_port = '5555'
+        >>> task = ...
+        >>> flgo.pull_task_from_("tcp://{}:{}".format(server_ip, server_task_port), task)
+        >>> # set local dataset in task/dataset.py before joining in training
+        >>> client_runner = flgo.init(task, realbase, scene='real_hclient')
+        >>> client_runner.run(server_ip, server_register_port)
         Args:
             server_ip (str): ip address
             server_port (str): public port for client registration, default is 5555
