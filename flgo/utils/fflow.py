@@ -1368,7 +1368,7 @@ def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
         out_dataset.writelines(old_config)
     return output_path
 
-def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True):
+def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True, timeout=10):
     """
     Pull task from the server at given ip address. The pulled task will be a zip file that can be extracted to the federated task in flgo.
     Args:
@@ -1376,6 +1376,7 @@ def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True):
         task_name= (str): the name of the task
         target_path= (str): the target directory to save the zipped file
         unzip (bool): whether to unzip the pulled task
+        timeout (int): connections of timeout
     Return:
         output_path (str): the path of the zipped task
     """
@@ -1387,6 +1388,7 @@ def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True):
         raise FileExistsError("Zipped task {} already exists.".format(zip_path))
     # ctx = zmq.Context()
     sck = _ctx.socket(zmq.REQ)
+    sck.setsockopt(zmq.RCVTIMEO, timeout*1000)
     sck.connect(address)
     try:
         print('Requesting task %s from %s ...'% (task_name, address))
