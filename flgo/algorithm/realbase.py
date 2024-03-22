@@ -496,7 +496,18 @@ class Client(fedavg.Client):
                 if do_break: break
         return
 
-    def run(self, server_ip='127.0.0.1', server_port='5555', protocol:str='tcp'):
+    def run(self, server_ip:str='127.0.0.1', server_port: str='5555', protocol:str='tcp'):
+        """
+        Start the parameter server process that listens to the public address 'server_ip:server:port' for clients. Each client can connect to this public address to join in training.
+        >>> import flgo.algorithm.realbase as realbase
+        >>> task = flgo.gen_task(...)
+        >>> server_runner = flgo.init(task, realbase, scene='real_hserver')
+        >>> server_runner.run(port='5555')
+        Args:
+            server_ip (str): ip address
+            server_port (str): public port for client registration, default is 5555
+            protocol (str): the communication protocol, default is TCP
+        """
         self.logger = self.logger(task=self.option['task'], option=self.option, name=self.name+'_'+str(self.logger), level=self.option['log_level'])
         self.logger.register_variable(object=self, clients = [self])
 

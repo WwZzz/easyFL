@@ -324,6 +324,55 @@ def gen_hierarchical_benchmark(benchmark:str, config_file:str, target_path = '.'
     bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
     return bmk_module
 
+def gen_real_task(benchmark, config_file:str, task_path:str='', seed=0, overwrite=False):
+    """
+       Generate federated task from benchmark and partitioner without inputing other parameters
+       Args:
+           benchmark (module): benchmark
+           partitioner (flgo.benchmark.partition.BasicPartitioner): a instance of type flgo.benchmark.partition.BasicPartitioner
+           task_path (str): the name and the path of the task
+           seed (int): random seed
+           overwrite (bool): overwrite the old task if the task_path already exist if True
+
+       Returns:
+           task_path (str): the path of the task
+       """
+    # generate the name of task randomly if empty
+    if len(task_path) == 0: task_path = 'FLGoTask_' + uuid.uuid4().hex
+    # setup random seed
+    random.seed(3 + seed)
+    np.random.seed(97 + seed)
+    torch.manual_seed(12 + seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    bmk_core = importlib.import_module('.core', benchmark.__name__)
+    # load configuration
+    task_generator = getattr(bmk_core, 'TaskGenerator')()
+    # check if task already exists
+    task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
+    if task_pipe.task_exists():
+        if not overwrite:
+            warnings.warn(
+                'Task {} already exists. To overwrite the existing task, use flgo.gen_task_by_(...,overwrite=True,...)'.format(
+                    task_path))
+            return
+        else:
+            shutil.rmtree(task_path)
+    # save the generated federated benchmark
+    # initialize task pipe
+    try:
+        # create task architecture
+        task_pipe.create_task_architecture()
+        # save meta infomation
+        task_pipe.save_info(task_generator)
+        shutil.copyfile(config_file, os.path.join(task_path, 'dataset.py'))
+        print('Task {} has been successfully generated.'.format(task_pipe.task_path))
+    except Exception as e:
+        print(e)
+        task_pipe.remove_task()
+        print("Failed to saving task.")
+        return None
+    return task_path
+
 def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, overwrite:bool=False):
     r"""
     Generate a federated task that is specified by the benchmark information and the partition information, where the generated task will be stored in the task_path and the raw data will be downloaded into the rawdata_path.
@@ -690,7 +739,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     else:
         # load task data
         sys.path.append(task)
-        task_config = importlib.import_module('_dataset')
+        task_config = importlib.import_module('dataset')
         train_data = getattr(task_config, 'train_data') if hasattr(task_config, 'train_data') else None
         test_data = getattr(task_config, 'test_data') if hasattr(task_config, 'test_data') else None
         val_data = getattr(task_config, 'val_data') if hasattr(task_config, 'val_data') else None
@@ -1257,7 +1306,7 @@ def gen_empty_task(benchmark, task_path:str, scene:str="unknown"):
     os.makedirs(os.path.join(task_path, 'record'))
     with open(os.path.join(task_path, 'info'), 'w') as outinfo:
         json.dump(info, outinfo)
-    with open(os.path.join(task_path, '_dataset.py'), 'w') as outf:
+    with open(os.path.join(task_path, 'dataset.py'), 'w') as outf:
         pass
     print("Empty task {} has been successfully generated.".format(task_path))
     return task_path
@@ -1281,7 +1330,7 @@ def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
     with open(os.path.join(task_path, 'info'), 'r') as inf:
         info = json.load(inf)
     old_info = info.copy()
-    config_path = os.path.join(task_path, '_dataset.py')
+    config_path = os.path.join(task_path, 'dataset.py')
     if os.path.exists(config_path):
         with open(config_path, 'r') as in_dataset:
             old_config = in_dataset.readlines()
