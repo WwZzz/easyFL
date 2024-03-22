@@ -1,5 +1,5 @@
 import flgo
-import flgo.benchmark.synthetic_regression as synthetic
+import synthetic_regression as synthetic
 import flgo.algorithm.realbase as realbase
 
 server_ip = '127.0.0.1'
