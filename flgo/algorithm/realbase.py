@@ -315,7 +315,7 @@ class Server(fedavg.Server):
 
         self.current_round = 1
         self.logger.time_start('Total Time Cost')
-        if self.eval_interval>0:
+        if not self._load_checkpoint() and self.eval_interval>0:
             # evaluating initial model performance
             self.logger.info("--------------Initial Evaluation--------------")
             self.logger.time_start('Eval Time Cost')
@@ -329,6 +329,7 @@ class Server(fedavg.Server):
                     self.logger.time_start('Eval Time Cost')
                     self.logger.log_once()
                     self.logger.time_end('Eval Time Cost')
+                    self._save_checkpoint()
                 # check if early stopping
                 if self.logger.early_stop(): break
                 self.current_round += 1
@@ -403,6 +404,37 @@ class Server(fedavg.Server):
                     self.algo_para[para_name] = type(self.algo_para[para_name])(pv)
                 except:
                     self.algo_para[para_name] = pv
+
+    def save_checkpoint(self):
+        cpt = {
+            'round': self.current_round,
+            'model_state_dict': self.model.state_dict(),
+            'early_stop_option': {
+                '_es_best_score': self.logger._es_best_score,
+                '_es_best_round': self.logger._es_best_round,
+                '_es_patience': self.logger._es_patience,
+            },
+            'output': self.logger.output,
+        }
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        md = cpt.get('model_state_dict', None)
+        round = cpt.get('round', None)
+        output = cpt.get('output', None)
+        early_stop_option = cpt.get('early_stop_option', None)
+        time = cpt.get('time', None)
+        learning_rate = cpt.get('learning_rate', None)
+        if md is not None: self.model.load_state_dict(md)
+        if round is not None: self.current_round = round + 1
+        if output is not None: self.gv.logger.output = output
+        if time is not None: self.gv.clock.set_time(time)
+        if learning_rate is not None: self.learning_rate = learning_rate
+        if early_stop_option is not None:
+            self.gv.logger._es_best_score = early_stop_option['_es_best_score']
+            self.gv.logger._es_best_round = early_stop_option['_es_best_round']
+            self.gv.logger._es_patience = early_stop_option['_es_patience']
+
 
 class Client(fedavg.Client):
     def initialize(self, *args, **kwargs):

@@ -1,6 +1,6 @@
 import flgo.algorithm.fedavg as fedavg
 import flgo.experiment.analyzer
-from example import fedprox
+from example.fedprox_test import fedprox
 import os
 
 task = '../my_task'
