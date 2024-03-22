@@ -1331,11 +1331,11 @@ def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
         info = json.load(inf)
     old_info = info.copy()
     config_path = os.path.join(task_path, 'dataset.py')
-    if os.path.exists(config_path):
-        with open(config_path, 'r') as in_dataset:
-            old_config = in_dataset.readlines()
-    with open(config_path, 'w') as new_dataset:
-        new_dataset.writelines(['train_data=None\n', 'test_data=None\n', 'val_data=None\n'])
+    # if os.path.exists(config_path):
+    #     with open(config_path, 'r') as in_dataset:
+    #         old_config = in_dataset.readlines()
+    # with open(config_path, 'w') as new_dataset:
+    #     new_dataset.writelines(['train_data=None\n', 'test_data=None\n', 'val_data=None\n'])
     output_path = os.path.join(target_path, os.path.basename(task_path)+'.zip')
     zipf = zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED)
 
@@ -1364,8 +1364,8 @@ def zip_task(task_path:str, target_path='.', with_bmk:bool=True):
     if flag:
         with open(os.path.join(task_path, 'info'), 'w') as outf:
             json.dump(old_info, outf)
-    with open(config_path, 'w') as out_dataset:
-        out_dataset.writelines(old_config)
+    # with open(config_path, 'w') as out_dataset:
+    #     out_dataset.writelines(old_config)
     return output_path
 
 def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True, timeout=10):

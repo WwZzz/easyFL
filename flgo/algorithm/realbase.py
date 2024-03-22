@@ -167,7 +167,8 @@ class Server(fedavg.Server):
                 worker_id, client_id, request = self.task_pusher.recv_multipart()
                 if request==b'pull task':
                     try:
-                        self.logger.info("Receive task pull request from %s" % client_id)
+                        self.logger.info("Receive task pull request from {}:{}".format(worker_id, client_id))
+                        self.logger.info("Receive task pull request from {}:{}".format(worker_id, client_id))
                         t = threading.Thread(target=self.task_pusher_handler, args=(worker_id, client_id))
                         t.start()
                     except:
