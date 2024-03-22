@@ -1405,6 +1405,7 @@ def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True, tim
     if unzip:
         zip_task = zipfile.ZipFile(zip_path, 'r')
         zip_task.extractall(target_path)
+        os.remove(zip_path)
     return
 
 def _get_name():
