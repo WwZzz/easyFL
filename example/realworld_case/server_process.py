@@ -6,4 +6,5 @@ server_ip = '127.0.0.1'
 
 task = './real_synthetic'
 flgo.gen_real_task(synthetic, 'synthetic_dataset.py', task)
-flgo.init(task, realbase, {'save_checkpoint':'1', 'proportion':1.0}, scene='real_hserver').run(ip=server_ip, port="5555", port_task='7777')
+server_runner = flgo.init(task, realbase, {'save_checkpoint':'1', 'proportion':1.0, 'num_rounds':20, 'learning_rate':0.1}, scene='real_hserver')
+server_runner.run(ip=server_ip, port="5555", port_task='7777')
