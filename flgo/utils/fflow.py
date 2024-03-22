@@ -1311,7 +1311,7 @@ def gen_empty_task(benchmark, task_path:str, scene:str="unknown"):
     print("Empty task {} has been successfully generated.".format(task_path))
     return task_path
 
-def zip_task(task_path:str, target_path='.', with_bmk:bool=True, ignore_names:list=['data.json', '__pycache__']):
+def zip_task(task_path:str, target_path='.', with_bmk:bool=True, ignore_names:list=['data.json', '__pycache__', 'checkpoint']):
     """
         Compress an existing task folder into a .zip file. The zipped task can be transmitted to others.
     Args:
@@ -1359,8 +1359,9 @@ def zip_task(task_path:str, target_path='.', with_bmk:bool=True, ignore_names:li
     for root, dirs, files in os.walk(task_path):
         relative_root = task_base if root == task_path else root.replace(task_path, task_base) + os.sep
         for filename in files:
-            if filename in ignore_names: continue
-            zipf.write(os.path.join(root, filename), os.path.join(relative_root,filename))
+            p = os.path.join(relative_root,filename)
+            if any([k in p for k in ignore_names]): continue
+            zipf.write(os.path.join(root, filename), p)
     zipf.close()
     if flag:
         with open(os.path.join(task_path, 'info'), 'w') as outf:

@@ -35,6 +35,7 @@ class Server(fedavg.Server):
         self.decay_rate = option['learning_rate_decay']
         self.lr_scheduler_type = option['lr_scheduler']
         self.lr = option['learning_rate']
+        self.learning_rate = option['learning_rate']
         self.sample_option = option['sample']
         self.aggregation_option = option['aggregate']
         # systemic option
@@ -47,8 +48,8 @@ class Server(fedavg.Server):
         self.id = -1
         self._data_names = []
         self._exit = False
-        self._avalability_timeout = 100
-        self._aggregate_timeout = np.inf
+        self._avalability_timeout = 30
+        self._communication_timeout = 30
 
     def set_availability_timeout(self, t:float):
         r"""
@@ -59,14 +60,14 @@ class Server(fedavg.Server):
         """
         self._avalability_timeout = t
 
-    def set_aggregate_timeout(self, t:float):
+    def set_communication_timeout(self, t:float):
         r"""
         Set the timeout of waiting for clients' responses
 
         Args:
             t (float): the time (secs)
         """
-        self._aggregate_timeout = t
+        self._communication_timeout = t
 
     def is_exit(self):
         r"""
@@ -140,6 +141,7 @@ class Server(fedavg.Server):
 
     def register_handler(self, worker_id, client_id, received_pkg):
         valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
+        self._set_alive(received_pkg["name"], time.time())
         if received_pkg["name"] not in self.clients.keys():
             self.add_client(received_pkg["name"])
             l = len(self.clients)
@@ -189,8 +191,7 @@ class Server(fedavg.Server):
                     self.logger.info("{} was successfully closed.".format(name))
                 else:
                     self.add_buffer({'name': name, 'package': d})
-                    self.logger.info("Server Received package of size {}MB from {} at round {}".format(package_size, name,
-                                                                                                self.current_round))
+                    self.logger.info("Server Received package of size {}MB from {} at round {}".format(package_size, name, self.current_round))
             if self.alive_detector in events and events[self.alive_detector]==zmq.POLLIN:
                 name, _ = self.alive_detector.recv_multipart()
                 t = time.time()
@@ -235,13 +236,13 @@ class Server(fedavg.Server):
         else:
             return {'model': self.model}
 
-    def _read_zipped_task(self, with_bmk=True):
+    def _read_zipped_task(self, with_bmk=True, ignore_names=[]):
         task_path = self.option['task']
         task_name = os.path.basename(task_path)
         task_dir = os.path.dirname(os.path.abspath(task_path))
         task_zip = task_name + '.zip'
         if not os.path.exists(task_zip):
-            flgo.zip_task(task_path, target_path=task_dir, with_bmk=with_bmk)
+            flgo.zip_task(task_path, target_path=task_dir, with_bmk=with_bmk, ignore_names=ignore_names)
         if not hasattr(self, '_zipped_task'): self._zipped_task = []
         CHUNK_SIZE = 1024
         with open(os.path.join(task_dir, task_zip), 'rb') as inf:
@@ -255,7 +256,7 @@ class Server(fedavg.Server):
         if not hasattr(self, '_zipped_task'): return None
         return b"".join(self._zipped_task)
 
-    def run(self, ip:str='*', port:str='5555', port_task:str='', protocol:str='tcp'):
+    def run(self, ip:str='*', port:str='5555', port_task:str='', protocol:str='tcp', no_zip_flags:list=['data.json', '__pycache__', 'checkpoint', 'record', 'log']):
         """
         Start the parameter server process that listens to the public address 'server_ip:server:port' for clients. Each client can connect to this public address to join in training.
         >>> import flgo.algorithm.realbase as realbase
@@ -268,7 +269,7 @@ class Server(fedavg.Server):
             port_task (str): public port for client pulling task
             protocol (str): the communication protocol, default is TCP
         """
-        if 'real' in self.option['scene']: self._read_zipped_task()
+        if 'real' in self.option['scene']: self._read_zipped_task(ignore_names=no_zip_flags)
         self.logger = self.logger(task=self.option['task'], option=self.option, name=self.name+'_'+str(self.logger), level=self.option['log_level'])
         self.logger.register_variable(object=self, server=self)
         self._clients = {}
@@ -360,8 +361,23 @@ class Server(fedavg.Server):
         self.sender.send_string(target_id, zmq.SNDMORE)
         self.sender.send_pyobj(package)
 
-    def communicate(self, selected_clients, mtype=0, asynchronous=False):
-        selected_clients = [self.clients[i] for i in selected_clients]
+    def communicate(self, selected_clients, mtype=0, asynchronous=False, only_available=True):
+        avl_clients = self.available_clients
+        avl_selected_clients = []
+        uavl_selected_clients = []
+        for i in selected_clients:
+            if i in avl_clients.keys():
+                avl_selected_clients.append(i)
+            else:
+                uavl_selected_clients.append(i)
+        if only_available:
+            self.selected_clients = avl_selected_clients
+            for i in uavl_selected_clients:
+                self.logger.info(f"Selected client {self.clients[i]} is dropped since it is currently not available.")
+        else:
+            for i in uavl_selected_clients:
+                warnings.warn(f"Selected client {self.clients[i]} is dropped since it is currently not available.")
+        selected_clients = [self.clients[i] for i in self.selected_clients]
         self.model.to('cpu')
         for i, name in enumerate(selected_clients):
             package = self.pack(i, mtype=mtype)
@@ -370,10 +386,16 @@ class Server(fedavg.Server):
             package['name'] = name
             self.communicate_with(name, package)
         buffer = {}
+        start_timestamp = time.time()
         while not self.is_exit():
             new_comings = self.clear_buffer()
             buffer.update(new_comings)
-            if asynchronous or all([(name in buffer) for name in selected_clients]):
+            crt_cost = time.time() - start_timestamp
+            if asynchronous or all([(name in buffer) for name in selected_clients]) or crt_cost>self._communication_timeout:
+                if crt_cost>self._communication_timeout:
+                    timeout_clients = [name for name in selected_clients if name not in buffer.keys()]
+                    for name in timeout_clients:
+                        self.logger.info(f"Failed to receive packages from Client {name} due to timeout {self._communication_timeout}s.")
                 break
             time.sleep(0.1)
         return self.unpack(buffer)
@@ -434,7 +456,6 @@ class Server(fedavg.Server):
             self.gv.logger._es_best_score = early_stop_option['_es_best_score']
             self.gv.logger._es_best_round = early_stop_option['_es_best_round']
             self.gv.logger._es_patience = early_stop_option['_es_patience']
-
 
 class Client(fedavg.Client):
     def initialize(self, *args, **kwargs):
