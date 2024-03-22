@@ -50,6 +50,11 @@ class Server(fedavg.Server):
         self._exit = False
         self._avalability_timeout = 30
         self._communication_timeout = 30
+        self.start_condition = lambda x: x.num_clients>=2
+
+    def register_start_condition(self, f):
+        assert callable(f)
+        self.start_condition = f
 
     def set_availability_timeout(self, t:float):
         r"""
@@ -137,7 +142,7 @@ class Server(fedavg.Server):
         return
 
     def if_start(self):
-        return self.num_clients>=2
+        return self.start_condition(self)
 
     def register_handler(self, worker_id, client_id, received_pkg):
         valid_keys = ['num_steps', 'learning_rate', 'batch_size', 'momentum', 'weight_decay', 'num_epochs', 'optimizer']
