@@ -509,7 +509,7 @@ class Client(fedavg.Client):
                 if do_break: break
         return
 
-    def run(self, server_ip:str='127.0.0.1', server_port: str='5555', protocol:str='tcp'):
+    def run(self, server_ip:str='127.0.0.1', server_port: str='5555', protocol:str='tcp', timeout_register=10):
         """
         Start the client process that connects to the public address 'server_ip:server:port' of the parameter server..
         >>> import flgo.algorithm.realbase as realbase
@@ -526,10 +526,12 @@ class Client(fedavg.Client):
             server_ip (str): ip address
             server_port (str): public port for client registration, default is 5555
             protocol (str): the communication protocol, default is TCP
+            timeout_register (int): the timeout for registeration (seconds), defaulf is 10
         """
         self.logger = self.logger(task=self.option['task'], option=self.option, name=self.name+'_'+str(self.logger), level=self.option['log_level'])
         self.logger.register_variable(object=self, clients = [self])
 
+        self.timeout_register = timeout_register
         self._exit = False
         self._lock_exit = threading.Lock()
         self.actions.update({'val_metric': self.val_metric, 'train_metric': self.train_metric, 'test_metric': self.test_metric,})
