@@ -1382,12 +1382,12 @@ def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True, tim
         output_path (str): the path of the zipped task
     """
     if os.path.exists(os.path.join(target_path, task_name)):
-        raise FileExistsError("Task %s already exists."%os.path.join(target_path, task_name))
+        warnings.warn("Task {} already exists. Please remove this task before pulling.".format(os.path.join(target_path, task_name)))
+        return
     task_zip = os.path.basename(task_name)+'.zip'
     zip_path = os.path.join(target_path, task_zip)
     if os.path.exists(zip_path):
-        warnings.warn("Zipped task {} already exists. Please Remove this task before the next pulling.".format(zip_path))
-        return
+        raise FileExistsError("Zipped task {} already exists.".format(zip_path))
     # ctx = zmq.Context()
     sck = _ctx.socket(zmq.REQ)
     sck.setsockopt(zmq.RCVTIMEO, timeout*1000)
