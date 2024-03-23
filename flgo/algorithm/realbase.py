@@ -171,11 +171,10 @@ class Server(fedavg.Server):
         while not self.is_exit():
             events = dict(self._poller.poll(10000))
             if self.task_pusher in events and events[self.task_pusher]==zmq.POLLIN:
-                worker_id, client_id, request = self.task_pusher.recv_multipart()
+                worker_id, client_id, name, request = self.task_pusher.recv_multipart()
                 if request==b'pull task':
                     try:
-                        self.logger.info("Receive task pull request from {}:{}".format(worker_id, client_id))
-                        self.logger.info("Receive task pull request from {}:{}".format(worker_id, client_id))
+                        self.logger.info("Receive task pull request from {}".format(name))
                         t = threading.Thread(target=self.task_pusher_handler, args=(worker_id, client_id))
                         t.start()
                     except:

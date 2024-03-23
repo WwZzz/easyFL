@@ -1395,6 +1395,7 @@ def pull_task_from_(address:str, task_name:str, target_path='.', unzip=True, tim
     sck.connect(address)
     try:
         print('Requesting task %s from %s ...'% (task_name, address))
+        sck.send_string(_get_name(), zmq.SNDMORE)
         sck.send(b"pull task")
         chunk = sck.recv()
         print('Successfully received task from %s'%address)
