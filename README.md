@@ -16,7 +16,7 @@ Our FLGo is a strong and reusable experimental platform for research on federate
 
 Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 <center class="half">
-<img src="https://github.com/WwZzz/easyFL/assets/20792079/8686d502-80f3-4ff2-945e-692ca55b754f" width=200/>
+<img src="https://github.com/WwZzz/easyFL/assets/20792079/8686d502-80f3-4ff2-945e-692ca55b754f" width=180/>
 <img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=200/>
 </center>
 
