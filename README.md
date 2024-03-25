@@ -60,16 +60,14 @@ pip install --upgrade pip
 ```
 import flgo
 import os
-
+import flgo.benchmark.mnist as mnist
+import flgo.benchmark.partition as fbp
 # the target path of the task
 task_path = './my_first_task'
 
-# create task configuration
-task_config = {'benchmark':{'name': 'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDPartitioner', 'para':{'num_clients':100}}}
-
 # generate the task if the task doesn't exist
 if not os.path.exists(task_path):
-    flgo.gen_task(task_config, task_path)
+    flgo.gen_task_by_(mnist, fbp.IIDPartitioner(num_clients=100), task_path)
 ```
 *After running the codes above, a federated dataset is successfully created in the task_path. The visualization of the task is stored in **task_path/res.png** as below*
 
