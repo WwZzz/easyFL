@@ -60,7 +60,7 @@ pip install --upgrade pip
 ```
 import flgo
 import os
-import flgo.benchmark.mnist as mnist
+import flgo.benchmark.mnist_classification as mnist
 import flgo.benchmark.partition as fbp
 # the target path of the task
 task_path = './my_first_task'
