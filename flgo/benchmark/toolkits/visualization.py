@@ -5,8 +5,6 @@ import collections
 import numpy as np
 import os
 
-from numba.cuda import local
-
 
 def visualize_by_class(generator, partitioner, task_path:str):
     r"""
