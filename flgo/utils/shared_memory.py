@@ -158,7 +158,7 @@ class TmpDictDataset(tud.Dataset):
         return len(self.data[0])
 
     def __getitem__(self, i):
-        return {k:v[i] for k,v in zip(self.all_keys, self.data)}
+        return unflatten_dict({k:v[i] for k,v in zip(self.all_keys, self.data)})
 
 def _check_vector_shapes(vec_list):
     """
@@ -177,6 +177,50 @@ def _check_vector_shapes(vec_list):
             return False
     return True
 
+def flatten_dict(d, parent_key='', sep='@@'):
+    """
+    Flattens a nested dictionary into a flat dictionary.
+
+    Parameters:
+        d (dict): The nested dictionary to be flattened.
+        parent_key (str): The parent key name (used for recursion).
+        sep (str): The separator used to concatenate nested keys.
+
+    Returns:
+        dict: The flattened dictionary.
+    """
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
+def unflatten_dict(d, sep='@@'):
+    """
+    Unflattens a flat dictionary back into a nested dictionary.
+
+    Parameters:
+        d (dict): The flat dictionary.
+        sep (str): The separator used to split nested keys.
+
+    Returns:
+        dict: The restored nested dictionary.
+    """
+    result_dict = {}
+    for key, value in d.items():
+        parts = key.split(sep)
+        current_level = result_dict
+        for part in parts[:-1]:
+            if part not in current_level:
+                current_level[part] = {}
+            current_level = current_level[part]
+        current_level[parts[-1]] = value
+    return result_dict
+
 def dataset2sharable(dataset, batch_size=512):
     """
     Convert a dataset into sharable format, i.e., numpy arrays of features and the type information for recovering them
@@ -189,10 +233,12 @@ def dataset2sharable(dataset, batch_size=512):
     """
     first_item = dataset[0]
     if isinstance(first_item, dict):
-        etypes = ["@@".join(['dict']+list(first_item.keys()))] + [type(ei).__name__ if type(ei) not in TYPE_CANDIDATES else 'unknown' for ei in first_item.values()]
+        flattened_item = flatten_dict(first_item)
+        etypes = ["$$".join(['dict']+list(flattened_item.keys()))] + [type(ei).__name__ if type(ei) not in TYPE_CANDIDATES else 'unknown' for ei in flattened_item.values()]
         def collate_func_dict(batch):
-            batch = [list(di.values()) for di in batch]
-            return [list(xi) for xi in list(zip(*batch))]
+            flattened_batch = [flatten_dict(di) for di in batch]
+            flattened_batch = [list(di.values()) for di in flattened_batch]
+            return [list(xi) for xi in list(zip(*flattened_batch))]
         data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_func_dict)
         res  = [np.empty((0,))] + list(map(lambda x: list(chain(*x)), zip(*data_loader)))
         item_size = len(res)
@@ -256,8 +302,8 @@ def sharable2dataset(sharable_data):
 
     types = pickle.loads(sharable_data.pop(-1).tobytes())
     data = []
-    if types[0].startswith('dict') and "@@" in types[0]:
-        all_keys = types[0].split("@@")[1:]
+    if types[0].startswith('dict') and "$$" in types[0]:
+        all_keys = types[0].split("$$")[1:]
         types = types[1:]
         sharable_data = sharable_data[1:]
     else:
@@ -405,7 +451,7 @@ def create_task_data_npy(task, train_holdout:float=0.2, test_holdout:float=0.0, 
         soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
     else:
         soft_limit = 100
-    if isinstance(example_data, dict): num_elems = len(example_data)+2
+    if isinstance(example_data, dict): num_elems = len(flatten_dict(example_data))+2
     elif isinstance(example_data, tuple):num_elems = len(example_data)+1
     else:
          num_elems = 2
@@ -538,6 +584,7 @@ if __name__=='__main__':
     tmp_data =DictData2()
     sharable_data = dataset2sharable(tmp_data)
     dataset = sharable2dataset(sharable_data)
+    print('ok')
     # for party in task_data:
     #     task_meta[party] = {}
     #     for data_name in task_data[party]:
