@@ -40,7 +40,7 @@ class MemmapManager:
         }
         for i in range(self.num_elems):
             self.data_block[i].append(data[i])
-            data_meta['size'].append(len(data[i]))
+            data_meta['size'].append(len(data[i]) if data[i] is not None else 0)
         self.data_meta[name] = data_meta
         self.block_map[self.crt_block_id].append(name)
         self.crt_block_size += 1
@@ -148,6 +148,18 @@ class TmpDataset(tud.Dataset):
     def __getitem__(self, i):
         return tuple(d[i] for d in self.data)
 
+class TmpDictDataset(tud.Dataset):
+    def __init__(self, all_keys, data):
+        super().__init__()
+        self.data = data
+        self.all_keys = all_keys
+
+    def __len__(self):
+        return len(self.data[0])
+
+    def __getitem__(self, i):
+        return {k:v[i] for k,v in zip(self.all_keys, self.data)}
+
 def _check_vector_shapes(vec_list):
     """
     Check whether the tensors\ndarrays have the same shape
@@ -176,13 +188,22 @@ def dataset2sharable(dataset, batch_size=512):
         sharable_data (list[numpy.ndarray]): the numpy arrays of the dataset
     """
     first_item = dataset[0]
-    item_size = len(first_item)
-    if not isinstance(first_item, tuple): first_item = tuple(first_item)
-    etypes = [type(ei).__name__ if type(ei) not in TYPE_CANDIDATES else 'unknown' for ei in first_item]
-    def collate_func(batch):
-        return [list(xi) for xi in list(zip(*batch))]
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_func)
-    res = list(map(lambda x: list(chain(*x)), zip(*data_loader)))
+    if isinstance(first_item, dict):
+        etypes = ["@@".join(['dict']+list(first_item.keys()))] + [type(ei).__name__ if type(ei) not in TYPE_CANDIDATES else 'unknown' for ei in first_item.values()]
+        def collate_func_dict(batch):
+            batch = [list(di.values()) for di in batch]
+            return [list(xi) for xi in list(zip(*batch))]
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_func_dict)
+        res  = [np.empty((0,))] + list(map(lambda x: list(chain(*x)), zip(*data_loader)))
+        item_size = len(res)
+    else:
+        item_size = len(first_item)
+        if not isinstance(first_item, tuple): first_item = tuple(first_item)
+        etypes = [type(ei).__name__ if type(ei) not in TYPE_CANDIDATES else 'unknown' for ei in first_item]
+        def collate_func(batch):
+            return [list(xi) for xi in list(zip(*batch))]
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_func)
+        res = list(map(lambda x: list(chain(*x)), zip(*data_loader)))
     for j in range(item_size):
         if etypes[j] in ['int', 'float', 'str', 'int64', 'float64']:
             res[j] = np.array(res[j])
@@ -213,6 +234,8 @@ def dataset2sharable(dataset, batch_size=512):
             except:
                 res[j] = np.frombuffer(pickle.dumps(res[j]), dtype=np.uint8)
                 etypes[j] = 'pickle'
+        elif etypes[j].startswith('dict') and "@@" in etypes[j]:
+            continue
         else:
             res[j] = np.frombuffer(pickle.dumps(res[j]), dtype=np.uint8)
             etypes[j] = 'pickle'
@@ -233,6 +256,12 @@ def sharable2dataset(sharable_data):
 
     types = pickle.loads(sharable_data.pop(-1).tobytes())
     data = []
+    if types[0].startswith('dict') and "@@" in types[0]:
+        all_keys = types[0].split("@@")[1:]
+        types = types[1:]
+        sharable_data = sharable_data[1:]
+    else:
+        all_keys = None
     for i in range(len(types)):
         if isinstance(types[i], dict):
             etype = types[i]['etype']
@@ -257,7 +286,10 @@ def sharable2dataset(sharable_data):
                 data.append(sharable_data[i].tolist())
             elif types[i] in ['int64', 'float64']:
                 data.append(sharable_data[i])
-    return TmpDataset(data)
+    if all_keys is not None:
+        return TmpDictDataset(all_keys, data)
+    else:
+        return TmpDataset(data)
 
 def create_memmap_meta_for_dataset(sharable_data, name, use_uuid=True):
     """
@@ -373,7 +405,10 @@ def create_task_data_npy(task, train_holdout:float=0.2, test_holdout:float=0.0, 
         soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
     else:
         soft_limit = 100
-    num_elems = len(example_data)+1 if isinstance(example_data, tuple) else 2
+    if isinstance(example_data, dict): num_elems = len(example_data)+2
+    elif isinstance(example_data, tuple):num_elems = len(example_data)+1
+    else:
+         num_elems = 2
     num_datas = sum([len(task_data[k]) for k in task_data])
     files_per_block = max(num_datas*num_elems/max(int(0.05*soft_limit), 10), 1)
     memmap_manager = MemmapManager(memmap_path, num_elems)
@@ -479,6 +514,19 @@ if __name__=='__main__':
 
         def __getitem__(self, i):
             return self.x[i], self.y[i]
+
+    class DictData2(tud.Dataset):
+        def __init__(self, n: int = 5, l: int = 3, r: int = 8):
+            self.n = n
+            self.x = np.random.randn(n, 10)
+            self.y = np.random.randn(n, 10)
+
+        def __len__(self):
+            return self.n
+
+        def __getitem__(self, i):
+            return {'x': self.x[i], 'y':{'data':self.y[i]}}
+
     NUM_WORKERS = 3
     # task = './my_task'
     DATA = NPDataset
@@ -487,10 +535,9 @@ if __name__=='__main__':
     # DEBUG: create_meta_for_task
     task_meta = {}
 
-    tmp_data =DATA()
+    tmp_data =DictData2()
     sharable_data = dataset2sharable(tmp_data)
     dataset = sharable2dataset(sharable_data)
-    print('ok')
     # for party in task_data:
     #     task_meta[party] = {}
     #     for data_name in task_data[party]:
