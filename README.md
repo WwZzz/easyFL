@@ -4,7 +4,7 @@
 
 <!-- [![article-red](https://img.shields.io/badge/pypi-v0.0.11-red)](https://pypi.org/project/flgo/)
 [![arxiv-orange](https://img.shields.io/badge/pypi-v0.0.11-red)](https://pypi.org/project/flgo/) -->
-[![PyPI](https://img.shields.io/badge/pypi-v0.3.0-yellow)](https://pypi.org/project/flgo/)
+[![PyPI](https://img.shields.io/badge/pypi-v0.4.4-yellow)](https://pypi.org/project/flgo/)
 [![docs](https://img.shields.io/badge/docs-maintaining-green)](https://flgo-xmu.github.io/)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/WwZzz/easyFL/blob/FLGo/LICENSE)
 
